@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link'; // Added for Admin Dashboard link
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import SocialShareCard from '@/components/social-share-card';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut } from 'lucide-react';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -77,6 +78,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const {
     currentUser,
+    isAdminUser,
     isLoadingAuth,
     logoutUser,
     wellnessPlan,
@@ -108,24 +110,20 @@ export default function DashboardPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-         // User is logged in but not onboarded and no plan is loading
-         // This specific condition handles the case where they might have landed here directly
-         // and should be sent to onboarding.
-        if (router.pathname !== '/onboarding') {
-            router.replace('/onboarding');
-        }
-      } else if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
-         // User is onboarded, but no plan is available, and it's not currently loading.
-         // The UI below will handle showing a "Create a New Plan" button.
-         // No redirect needed here, the component will render the appropriate UI.
+      } else if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
+        // Non-admin user is logged in but not onboarded and no plan is loading.
+        // This could happen if they land here directly or after signup.
+        router.replace('/onboarding');
       }
+      // Admin users are not auto-redirected from dashboard to onboarding if they lack a plan,
+      // as their primary interaction might be via the admin panel.
+      // Other cases (like admin with plan, or non-admin with plan) will render the dashboard.
     }
-  }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
+  }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
 
   const sortedMoodLogs = React.useMemo(() => {
@@ -154,9 +152,9 @@ export default function DashboardPage() {
 
       const handlePlaying = () => {
         setTimeout(() => {
-          if (video.videoWidth > 0 && video.videoHeight > 0) {
+          if (video && video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
-          } else {
+          } else if (video) {
             console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
             setTimeout(() => {
               if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -176,7 +174,7 @@ export default function DashboardPage() {
       };
 
       const handleCanPlay = () => {
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
+        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
         }
       }
@@ -200,11 +198,13 @@ export default function DashboardPage() {
 
 
       return () => {
-        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        video.removeEventListener('playing', handlePlaying);
-        video.removeEventListener('canplay', handleCanPlay);
-        video.removeEventListener('waiting', handleWaiting);
-        video.removeEventListener('stalled', handleStalled);
+        if (video) {
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('playing', handlePlaying);
+            video.removeEventListener('canplay', handleCanPlay);
+            video.removeEventListener('waiting', handleWaiting);
+            video.removeEventListener('stalled', handleStalled);
+        }
         setIsVideoReadyForCapture(false);
       };
     } else {
@@ -259,13 +259,13 @@ export default function DashboardPage() {
     setIsVideoReadyForCapture(false);
 
     if (isCameraActive && selfieStream) {
-      setSelfieStream(null);
+      setSelfieStream(null); // Triggers useEffect to stop tracks
       setIsCameraActive(false);
       if (videoRef.current) videoRef.current.srcObject = null;
     } else {
       setCapturedSelfie(null);
-      setHasCameraPermission(null);
-      setIsCameraActive(true);
+      setHasCameraPermission(null); // Reset permission state
+      setIsCameraActive(true); // This will trigger the useEffect to attach stream
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false);
+            setIsVideoReadyForCapture(false); // Reset ready state
             return;
         }
       const canvas = document.createElement('canvas');
@@ -306,6 +306,7 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
 
+        // Stop camera after capture
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
         setIsCameraActive(false);
@@ -333,13 +334,15 @@ export default function DashboardPage() {
 
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
+    // Optionally, re-enable camera button or reset camera state here if desired
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null);
+    setCapturedSelfie(null); // Clear any previous selfie
 
+    // Ensure camera is reset if it was open from a previous attempt
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
@@ -370,6 +373,7 @@ export default function DashboardPage() {
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) {
+        // Full reset when dialog closes
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -418,8 +422,7 @@ export default function DashboardPage() {
   };
 
 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.pathname !== '/login' && router.pathname !== '/signup')) {
-    // This condition is mostly handled by useEffect now, but acts as a fallback if router navigation is slow.
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -428,11 +431,10 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  // This specific condition is also handled by useEffect now.
-  // Kept here as a safeguard during initial render cycles before useEffect takes over completely.
-  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
-    // The useEffect will handle the redirect. We show a loader here.
+  
+  // User is logged in, but NOT an admin, and NOT onboarded, and NO plan is loading
+  if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
+    // useEffect will handle redirect, show loader.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -441,7 +443,8 @@ export default function DashboardPage() {
       </div>
     );
   }
-
+  
+  // User is logged in (could be admin or regular user), and a plan is currently generating
   if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
@@ -452,7 +455,9 @@ export default function DashboardPage() {
     );
   }
 
-  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
+  // User is onboarded, but no plan available, and it's not loading (could be regular user or admin without a plan)
+  // For regular users, this is a prompt to create/edit. Admin users might not need a personal plan.
+  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan && !isAdminUser) {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -468,24 +473,16 @@ export default function DashboardPage() {
     );
   }
 
-  // This specific condition is also handled by useEffect.
-  // Kept here as a safeguard.
-  if (!currentUser && !isLoadingAuth) {
-    // The useEffect will handle the redirect if not on allowed public paths.
-    // If on /login, /signup, / (home), it won't redirect from here.
-    if (!['/login', '/signup', '/'].includes(router.pathname)) {
-         return (
-             <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                <Logo size="text-3xl sm:text-4xl" />
-                <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-                <p className="mt-2 text-muted-foreground">Redirecting...</p>
-            </div>
-        );
-    }
-    // If on allowed public paths and no user, this component shouldn't render the dashboard.
-    // The page itself (e.g. login page) will render its content.
-    // Returning null here prevents dashboard content flash.
-    return null;
+  // This case handles when user is not logged in AND they are not on an auth page.
+  // Should be handled by useEffect redirect, but this is a fallback.
+  if (!currentUser && !isLoadingAuth && !['/login', '/signup', '/'].includes(router.pathname)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Redirecting...</p>
+      </div>
+    );
   }
 
 
@@ -494,23 +491,35 @@ export default function DashboardPage() {
       <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
         <div className="flex items-center gap-2 mt-3 sm:mt-0">
-            <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
-            New Plan / Edit Preferences
-            </Button>
+            {isAdminUser && (
+                <Button 
+                    variant="outline" 
+                    onClick={() => router.push('/admin')} 
+                    className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2"
+                >
+                    <ShieldCheck className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Admin Panel
+                </Button>
+            )}
+            {!isAdminUser && (
+                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+                New Plan / Edit Preferences
+                </Button>
+            )}
             <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
                 <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Logout
             </Button>
         </div>
       </header>
 
-      {isLoadingPlan && wellnessPlan && (
+      {isLoadingPlan && wellnessPlan && ( // Show only if there was a plan before new one starts loading
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
           <RotateCcw className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
           <p className="mt-3 text-sm sm:text-md">Updating your plan...</p>
         </div>
       )}
 
-      {wellnessPlan && (
+      {/* Show plan details only if plan is available and user is not admin OR if admin also has a personal plan */}
+      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
         <>
           <div className="mb-5 p-3 sm:p-4 neumorphic rounded-lg">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
@@ -570,6 +579,18 @@ export default function DashboardPage() {
           </SectionCard>
         </>
       )}
+      
+      {/* Admin user specific message if no plan exists for them */}
+      {isAdminUser && !isPlanAvailable && !isLoadingPlan && (
+        <Alert className="mb-6 neumorphic">
+          <AlertTitle>Admin View</AlertTitle>
+          <AlertDescription>
+            You are logged in as an admin. You can view your personal plan here if you create one, or proceed to the Admin Panel.
+            <Button variant="link" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="p-0 h-auto ml-1 text-accent">Create Personal Plan?</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
 
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="neumorphic w-[90vw] max-w-md">
@@ -753,10 +774,10 @@ export default function DashboardPage() {
                         <span className="text-xl sm:text-2xl">{log.mood}</span>
                         {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                       </h4>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setLogToDelete(log.id)}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setLogToDelete(log.id)} 
                                 className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
                                 aria-label="Delete mood log"
                             >

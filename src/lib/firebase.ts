@@ -14,13 +14,27 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
+// Explicitly check if essential Firebase config values are present
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error(
+    'CRITICAL FIREBASE CONFIG ERROR: Firebase API Key or Project ID is missing from environment variables. ' +
+    'Please ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are correctly set in your .env.local file ' +
+    'AND that you have RESTARTED your Next.js development server. Without these, Firebase cannot initialize.'
+  );
+  // Note: Firebase will likely still attempt to initialize and throw its own error,
+  // but this console message should appear first if the variables are completely missing.
+}
+
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApps()[0]!;
 }
 
-const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app); 
+auth = getAuth(app);
+db = getFirestore(app); 
 
 export { app, auth, db };

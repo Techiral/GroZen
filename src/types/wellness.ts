@@ -37,6 +37,7 @@ export interface MoodLog {
   notes?: string;
   selfieDataUri?: string; // To store the captured selfie
   aiFeedback?: string; // To store AI's feedback on the mood
+  createdAt?: any; // Firestore Timestamp for ordering
 }
 
 export interface GroceryItem {
@@ -53,3 +54,16 @@ export interface GroceryList {
   generatedDate: string; // ISO string
 }
 
+// For Admin Dashboard
+export interface UserListItem {
+  id: string; // UID
+  email: string | null;
+  // Add other simple fields like displayName if available/needed
+}
+
+export interface FullUserDetail extends UserListItem {
+  onboardingData: OnboardingData | null;
+  wellnessPlan: WellnessPlan | null;
+  moodLogs: MoodLog[];
+  groceryList: GroceryList | null;
+}
