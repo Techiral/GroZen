@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, GroceryItem } from '@/types/wellness';
+import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, GroceryItem, Meal } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
@@ -56,15 +56,36 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     const storedWellnessPlan = localStorage.getItem('grozen_wellnessPlan');
     if (storedWellnessPlan) {
-      setWellnessPlan(JSON.parse(storedWellnessPlan));
+      try {
+        const parsedPlan = JSON.parse(storedWellnessPlan);
+        // Basic validation for plan loaded from localStorage
+        if (parsedPlan && Array.isArray(parsedPlan.meals) && Array.isArray(parsedPlan.exercise) && Array.isArray(parsedPlan.mindfulness)) {
+          setWellnessPlan(parsedPlan);
+        } else {
+          localStorage.removeItem('grozen_wellnessPlan'); // Clear invalid stored plan
+        }
+      } catch (e) {
+        console.error("Failed to parse stored wellness plan:", e);
+        localStorage.removeItem('grozen_wellnessPlan');
+      }
     }
     const storedMoodLogs = localStorage.getItem('grozen_moodLogs');
     if (storedMoodLogs) {
-      setMoodLogs(JSON.parse(storedMoodLogs));
+       try {
+        setMoodLogs(JSON.parse(storedMoodLogs));
+      } catch (e) {
+        console.error("Failed to parse stored mood logs:", e);
+        localStorage.removeItem('grozen_moodLogs');
+      }
     }
     const storedGroceryList = localStorage.getItem('grozen_groceryList');
     if (storedGroceryList) {
-      setGroceryList(JSON.parse(storedGroceryList));
+      try {
+        setGroceryList(JSON.parse(storedGroceryList));
+      } catch (e) {
+        console.error("Failed to parse stored grocery list:", e);
+        localStorage.removeItem('grozen_groceryList');
+      }
     }
   }, []);
 
@@ -84,15 +105,40 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         budget: data.budget,
       };
       const result = await aiGenerateWellnessPlan(input);
-      const parsedPlan = JSON.parse(result.plan) as WellnessPlan;
-      setWellnessPlan(parsedPlan);
-      localStorage.setItem('grozen_wellnessPlan', JSON.stringify(parsedPlan));
-      toast({ title: "Success", description: "Your personalized wellness plan has been generated!" });
+      
+      let parsedPlanCandidate: any;
+      try {
+        parsedPlanCandidate = JSON.parse(result.plan);
+      } catch (parseError) {
+        console.error("Failed to parse wellness plan JSON from AI:", parseError, "Raw plan string:", result.plan);
+        setErrorPlan("The AI returned an invalid plan format. Please try again.");
+        toast({ variant: "destructive", title: "Plan Generation Error", description: "The AI's plan was not in a recognizable format." });
+        return; // Exit if JSON parsing fails
+      }
+
+      // Validate the structure, especially ensuring meals array is present and non-empty
+      if (
+        parsedPlanCandidate &&
+        typeof parsedPlanCandidate === 'object' &&
+        Array.isArray(parsedPlanCandidate.meals) && parsedPlanCandidate.meals.length > 0 &&
+        Array.isArray(parsedPlanCandidate.exercise) && // Ensure other parts are at least arrays
+        Array.isArray(parsedPlanCandidate.mindfulness)
+      ) {
+        const planToSet = parsedPlanCandidate as WellnessPlan;
+        setWellnessPlan(planToSet);
+        localStorage.setItem('grozen_wellnessPlan', JSON.stringify(planToSet));
+        toast({ title: "Success", description: "Your personalized wellness plan has been generated!" });
+      } else {
+        console.error("Generated plan is incomplete or malformed. Parsed plan:", parsedPlanCandidate, "Raw plan string:", result.plan);
+        // Do not update wellnessPlan if the new one is faulty, keep the old one (if any) or null.
+        setErrorPlan("The AI generated an incomplete plan (e.g., missing essential meal data). Please check your inputs or try again.");
+        toast({ variant: "destructive", title: "Plan Generation Incomplete", description: "The AI's plan was incomplete (e.g., missing meals). Please try again." });
+      }
     } catch (err) {
       console.error("Failed to generate plan:", err);
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during plan generation.";
       setErrorPlan(errorMessage);
-      toast({ variant: "destructive", title: "Error", description: `Failed to generate plan: ${errorMessage}` });
+      toast({ variant: "destructive", title: "Error Generating Plan", description: errorMessage });
     } finally {
       setIsLoadingPlan(false);
     }
@@ -137,7 +183,14 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingGroceryList(true);
     setErrorGroceryList(null);
     try {
-      const input: GenerateGroceryListInput = { meals: currentPlan.meals };
+      const input: GenerateGroceryListInput = { 
+        meals: currentPlan.meals.map(meal => ({ // Ensure only known Meal properties are passed
+          day: meal.day,
+          breakfast: meal.breakfast,
+          lunch: meal.lunch,
+          dinner: meal.dinner,
+        })) as Meal[] // Explicitly type assertion for Genkit flow input
+      };
       const result: GenerateGroceryListOutput = await aiGenerateGroceryList(input);
       
       const newGroceryList: GroceryList = {
@@ -170,7 +223,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('grozen_groceryList');
   };
 
-  const isPlanAvailable = !!wellnessPlan;
+  const isPlanAvailable = !!wellnessPlan && Array.isArray(wellnessPlan.meals) && wellnessPlan.meals.length > 0;
+
 
   return (
     <PlanContext.Provider value={{ 
@@ -203,3 +257,4 @@ export const usePlan = (): PlanContextType => {
   }
   return context;
 };
+
