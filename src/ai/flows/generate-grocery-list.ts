@@ -25,7 +25,7 @@ const GenerateGroceryListInputSchema = z.object({
 export type GenerateGroceryListInput = z.infer<typeof GenerateGroceryListInputSchema>;
 
 const GroceryItemSchema = z.object({
-  id: z.string().uuid().optional().describe("An optional unique identifier (UUID) for this grocery item. If not provided by the AI, the client application may generate one."),
+  id: z.string().optional().describe("An optional unique identifier (UUID format preferred, e.g., '123e4567-e89b-12d3-a456-426614174000') for this grocery item. If not provided by the AI, the client application may generate one."),
   name: z.string().describe("The name of the grocery item, e.g., 'Apples', 'Chicken Breast', 'Brown Rice'."),
   category: z.string().describe("The category of the item, e.g., 'Produce', 'Protein', 'Pantry', 'Dairy', 'Spices', 'Other'."),
   quantity: z.string().optional().describe("An estimated quantity, e.g., '2 lbs', '1 pack', '500g'. Be specific if possible."),
@@ -93,3 +93,4 @@ const generateGroceryListFlow = ai.defineFlow(
     }
   }
 );
+
