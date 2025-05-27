@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
+import SocialShareCard from '@/components/social-share-card'; // Added import
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2 } from 'lucide-react';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -25,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
@@ -93,10 +94,52 @@ export default function DashboardPage() {
     return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [moodLogs]);
 
+  // Social Share Card Logic
+  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
+  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+
+  useEffect(() => {
+    if (sortedMoodLogs.length >= 2) {
+      const logsWithSelfies = sortedMoodLogs.filter(log => !!log.selfieDataUri).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      if (logsWithSelfies.length >= 2) {
+        const firstSelfieLog = logsWithSelfies[0];
+        let suitableAfterLog = null;
+
+        for (let i = logsWithSelfies.length -1; i > 0; i--) {
+            const potentialAfterLog = logsWithSelfies[i];
+            if (differenceInDays(new Date(potentialAfterLog.date), new Date(firstSelfieLog.date)) >= 14) {
+                suitableAfterLog = potentialAfterLog;
+                break;
+            }
+        }
+        
+        if (suitableAfterLog) {
+          setBeforeShareLog(firstSelfieLog);
+          setAfterShareLog(suitableAfterLog);
+        } else {
+          setBeforeShareLog(null);
+          setAfterShareLog(null);
+        }
+      } else {
+         setBeforeShareLog(null);
+         setAfterShareLog(null);
+      }
+    } else {
+      setBeforeShareLog(null);
+      setAfterShareLog(null);
+    }
+  }, [sortedMoodLogs]);
+
+
   useEffect(() => {
     if (!isLoadingPlan && !isOnboarded) {
       router.push('/onboarding');
     } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
+      // This case implies onboarding was done, but plan generation might have failed or been cleared
+      // Redirecting to onboarding might be confusing if they just completed it.
+      // Consider if a "generate plan" button on dashboard or a specific error page is better long term.
+      // For now, keeping original logic to push to onboarding to re-trigger plan gen or re-onboard.
       router.push('/onboarding');
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
@@ -142,18 +185,22 @@ export default function DashboardPage() {
   };
 
   const handleCaptureSelfie = () => {
-    if (videoRef.current && selfieStream) {
+    if (videoRef.current && selfieStream && videoRef.current.readyState === 4) { // Ensure video is ready
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8);
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG for smaller size, adjust quality
         setCapturedSelfie(dataUri);
-        // Optionally turn off camera after capture
-        // handleToggleCamera(); 
       }
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Capture Failed',
+            description: 'Video stream not ready. Please try again.',
+        });
     }
   };
   
@@ -165,8 +212,12 @@ export default function DashboardPage() {
     setSelectedMood(mood);
     setMoodNotes("");
     setCapturedSelfie(null);
-    if (isCameraActive) { // If camera was on from a previous attempt, turn it off
-      handleToggleCamera(); // This will set isCameraActive to false
+    // Ensure camera is off when opening dialog for a new mood log
+    if (isCameraActive && selfieStream) {
+      selfieStream.getTracks().forEach(track => track.stop());
+      setSelfieStream(null);
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setIsCameraActive(false);
     }
     setHasCameraPermission(null); // Reset camera permission status for new dialog open
     setIsMoodDialogOpen(true);
@@ -175,7 +226,8 @@ export default function DashboardPage() {
   const handleSaveMoodLog = async () => {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
-      setIsMoodDialogOpen(false); // This will trigger handleDialogClose via onOpenChange
+      // Dialog close is handled by onOpenChange, which will call handleDialogClose
+      setIsMoodDialogOpen(false); 
     }
   };
   
@@ -226,7 +278,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (!wellnessPlan && !isOnboarded) { // Should have been caught by useEffect, but as safeguard
+  if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { // Safeguard against missing plan post-onboarding attempt
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
         <Logo size="text-4xl" />
@@ -343,11 +395,12 @@ export default function DashboardPage() {
                         {isCameraActive ? <VideoOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
                         {isCameraActive ? 'Close Camera' : 'Open Camera'}
                     </Button>
-                    {isCameraActive && selfieStream && (
+                    {isCameraActive && selfieStream && hasCameraPermission && (
                          <Button
                             type="button"
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
+                            disabled={!selfieStream}
                         >
                             <Camera className="mr-2 h-4 w-4" /> Capture
                         </Button>
@@ -355,13 +408,29 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className={cn(
-                    "mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video",
-                    isCameraActive && selfieStream ? "block" : "hidden"
+                    "mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20",
+                    // This container is always rendered to hold the video or message
                 )}>
-                     <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                     <video 
+                        ref={videoRef} 
+                        className={cn(
+                            "w-full h-full object-cover",
+                            isCameraActive && selfieStream && hasCameraPermission ? "block" : "hidden"
+                        )} 
+                        autoPlay 
+                        muted 
+                        playsInline 
+                     />
+                     {(!isCameraActive || !selfieStream || hasCameraPermission === false) && !capturedSelfie && (
+                        <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4">
+                            {hasCameraPermission === false && "Camera access denied. Please check browser settings."}
+                            {isCameraActive && hasCameraPermission === null && "Requesting camera..."}
+                            {!isCameraActive && "Camera is off. Click 'Open Camera' to start."}
+                        </div>
+                     )}
                 </div>
 
-                {hasCameraPermission === false && (
+                {hasCameraPermission === false && ( // Repeated for emphasis if needed, or rely on above
                      <Alert variant="destructive" className="mt-2">
                         <AlertTitle>Camera Access Denied</AlertTitle>
                         <AlertDescription>
@@ -459,6 +528,18 @@ export default function DashboardPage() {
           </ScrollArea>
         </SectionCard>
       )}
+      
+      {/* Social Share Card Section */}
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-6 w-6 text-accent" />}>
+        {beforeShareLog && afterShareLog ? (
+          <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
+        ) : (
+          <CardDescription>
+            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your 'Before & After' share card will appear here.
+          </CardDescription>
+        )}
+      </SectionCard>
+
 
       <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-6 w-6 text-accent" />}>
         <CardDescription className="mb-4">
@@ -517,3 +598,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
