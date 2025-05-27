@@ -83,20 +83,55 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
 
-  // Selfie related state
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null); // null: unknown, true: granted, false: denied
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
   const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false); // Tracks if we are *trying* to use the camera
+  const [isCameraActive, setIsCameraActive] = useState(false);
 
   const sortedMoodLogs = React.useMemo(() => {
     return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [moodLogs]);
 
-  // Social Share Card Logic
   const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
   const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+
+  useEffect(() => {
+    if (!isLoadingPlan && !isOnboarded) {
+      router.push('/onboarding');
+    } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
+      router.push('/onboarding');
+    }
+  }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
+
+  // Effect to handle attaching stream to video element and playing it
+  useEffect(() => {
+    if (videoRef.current && selfieStream && isCameraActive && hasCameraPermission === true) {
+      videoRef.current.srcObject = selfieStream;
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current?.play().catch(err => {
+          console.error("Error playing video stream (onloadedmetadata):", err);
+          toast({
+            variant: "destructive",
+            title: "Camera Error",
+            description: "Could not start the video stream. Please ensure permissions are granted and try again."
+          });
+        });
+      };
+      // Fallback play attempt in case onloadedmetadata is slow or doesn't fire
+      videoRef.current.play().catch(err => { /* console.error("Direct play attempt failed quietly:", err); */ });
+    }
+  }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
+
+  // Effect for cleaning up the selfieStream (stopping tracks)
+  useEffect(() => {
+    const currentStream = selfieStream; // Capture the stream for cleanup closure
+    return () => {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [selfieStream]); // This effect specifically manages the lifecycle of the selfieStream
 
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
@@ -131,47 +166,27 @@ export default function DashboardPage() {
     }
   }, [sortedMoodLogs]);
 
-
-  useEffect(() => {
-    if (!isLoadingPlan && !isOnboarded) {
-      router.push('/onboarding');
-    } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
-      router.push('/onboarding');
-    }
-  }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
-
-  // Cleanup camera stream when component unmounts or dialog closes (via onOpenChange)
-  useEffect(() => {
-    return () => {
-      if (selfieStream) {
-        selfieStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [selfieStream]);
-
-
   const handleToggleCamera = async () => {
     if (isCameraActive && selfieStream) { // Turning camera OFF
-      selfieStream.getTracks().forEach(track => track.stop());
-      setSelfieStream(null);
-      if (videoRef.current) videoRef.current.srcObject = null;
+      // Cleanup is handled by the useEffect for selfieStream when it's set to null
+      setSelfieStream(null); 
       setIsCameraActive(false);
-      // Keep hasCameraPermission as is, don't reset to null here
+      // Note: videoRef.current.srcObject = null will be implicitly handled if the video element unrenders or by effect cleanup.
+      // Explicitly setting it here can be redundant if the stream itself is nullified.
+      if (videoRef.current) videoRef.current.srcObject = null;
     } else { // Turning camera ON
-      setCapturedSelfie(null); // Clear previous selfie if re-opening camera
+      setCapturedSelfie(null); 
       setHasCameraPermission(null); 
       setIsCameraActive(true); 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        setSelfieStream(stream); // Set the stream, the useEffect will handle attaching it
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         setIsCameraActive(false); 
+        setSelfieStream(null);
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
@@ -182,7 +197,7 @@ export default function DashboardPage() {
   };
 
   const handleCaptureSelfie = () => {
-    if (videoRef.current && selfieStream && videoRef.current.readyState === 4 && videoRef.current.videoWidth > 0) {
+    if (videoRef.current && selfieStream && videoRef.current.readyState >= videoRef.current.HAVE_METADATA && videoRef.current.videoWidth > 0) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -191,12 +206,11 @@ export default function DashboardPage() {
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
-        // Optionally, turn off the camera stream after capture
-        if (selfieStream) {
-            selfieStream.getTracks().forEach(track => track.stop());
-        }
+        
+        // Stop the stream and set camera inactive
+        // The useEffect for selfieStream will handle track stopping when selfieStream becomes null.
         setSelfieStream(null);
-        setIsCameraActive(false); // Indicate camera is no longer actively streaming
+        setIsCameraActive(false); 
       }
     } else {
         toast({
@@ -209,8 +223,6 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // Optionally, re-enable camera if it was turned off post-capture
-    // For now, let user explicitly open camera again if they want to retake
   }
 
   const handleMoodButtonClick = (mood: string) => {
@@ -218,13 +230,12 @@ export default function DashboardPage() {
     setMoodNotes("");
     setCapturedSelfie(null);
     // Ensure camera is off when opening dialog for a new mood log
-    if (isCameraActive && selfieStream) {
-      selfieStream.getTracks().forEach(track => track.stop());
+    if (selfieStream) { // If a stream exists, set it to null to trigger cleanup
+        setSelfieStream(null);
     }
-    setSelfieStream(null);
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null); // Reset camera permission status for new dialog open
+    setHasCameraPermission(null); 
     setIsMoodDialogOpen(true);
   };
 
@@ -232,17 +243,15 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
-      // Dialog close is handled by onOpenChange, which will call handleDialogClose for full cleanup
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) { // Dialog is closing
-        if (selfieStream) { 
-            selfieStream.getTracks().forEach(track => track.stop());
+        if (selfieStream) { // If a stream exists, set it to null to trigger cleanup
+           setSelfieStream(null);
         }
-        setSelfieStream(null);
         if (videoRef.current) videoRef.current.srcObject = null;
         setIsCameraActive(false);
         setCapturedSelfie(null);
@@ -396,7 +405,7 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={handleToggleCamera}
                         className="neumorphic-button"
-                        disabled={!!capturedSelfie} // Disable if selfie already captured, user must clear first
+                        disabled={!!capturedSelfie} 
                     >
                         {isCameraActive ? <VideoOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
                         {isCameraActive ? 'Close Camera' : 'Open Camera'}
@@ -434,7 +443,7 @@ export default function DashboardPage() {
                       <p className="font-semibold text-destructive">Camera Access Denied</p>
                       <p className="text-xs">Enable camera permissions in browser settings. You might need to refresh.</p>
                     </div>
-                  ) : isCameraActive && hasCameraPermission === null ? (
+                  ) : isCameraActive && hasCameraPermission === null ? ( // Actively trying to turn on camera
                     <div className="p-4">
                       <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin" />
                       <p>Requesting camera access...</p>
@@ -453,7 +462,7 @@ export default function DashboardPage() {
                     <div className="mt-4 space-y-2">
                         <p className="text-sm font-medium">Selfie Preview:</p>
                         <div className="relative aspect-video w-full max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
-                             <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person" />
+                             <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                         </div>
                         <Button 
                             type="button" 
@@ -604,3 +613,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
