@@ -34,11 +34,11 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
 );
 
 const moodEmojis: { [key: string]: string | React.ReactNode } = {
-  "😊": <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />,
-  "🙂": <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" />,
-  "😐": <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />,
-  "😕": <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" />,
-  "😞": <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+  "😊": <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" aria-label="Happy emoji icon" />,
+  "🙂": <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" aria-label="Okay emoji icon" />,
+  "😐": <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" aria-label="Neutral emoji icon" />,
+  "😕": <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" aria-label="Worried emoji icon" />,
+  "😞": <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" aria-label="Sad emoji icon" />
 };
 
 export default function AdminUserDetailPage() {
@@ -81,7 +81,7 @@ export default function AdminUserDetailPage() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-2xl sm:text-3xl" />
         <p className="mt-3 text-md sm:text-lg text-destructive">User data could not be loaded or user not found.</p>
-        <Button onClick={() => router.back()} className="mt-3 neumorphic-button text-xs sm:text-sm px-3 py-1.5">
+        <Button onClick={() => router.back()} className="mt-3 neumorphic-button text-xs sm:text-sm px-3 py-1.5" aria-label="Go Back">
           <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Go Back
         </Button>
       </div>
@@ -101,10 +101,11 @@ export default function AdminUserDetailPage() {
                 variant="outline" 
                 onClick={() => router.push('/admin')} 
                 className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5"
+                aria-label="Back to User List"
             >
                 <ArrowLeft className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Back to User List
             </Button>
-             <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+             <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="Logout from admin user detail page">
                 <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
             </Button>
         </div>
@@ -190,7 +191,7 @@ export default function AdminUserDetailPage() {
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
                     <div className="relative w-full sm:w-16 md:w-20 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person"/>
+                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(new Date(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person"/>
                     </div>
                   )}
                   <div className="flex-1">
@@ -248,3 +249,4 @@ export default function AdminUserDetailPage() {
     </main>
   );
     
+

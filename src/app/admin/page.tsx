@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// import Link from 'next/link'; // Not directly used
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -56,10 +55,11 @@ export default function AdminPage() {
                 variant="outline" 
                 onClick={() => router.push('/dashboard')} 
                 className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5"
+                aria-label="Back to Dashboard"
             >
                 Back to Dashboard
             </Button>
-            <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+            <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="Logout from admin panel">
                 <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
             </Button>
         </div>
@@ -103,7 +103,7 @@ export default function AdminPage() {
                           size="sm"
                           onClick={() => router.push(`/admin/user/${user.id}`)}
                           className="neumorphic-button text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1"
-                          title="View User Details"
+                          aria-label={`View details for user ${user.email || user.id}`}
                         >
                           <Eye className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> View
                         </Button>

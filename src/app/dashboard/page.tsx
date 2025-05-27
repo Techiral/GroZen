@@ -4,7 +4,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-// import Link from 'next/link'; // No longer explicitly needed for admin link, router.push used
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import SocialShareCard from '@/components/social-share-card';
@@ -71,7 +70,13 @@ const moodEmojis: { [key: string]: string | React.ReactNode } = {
   "😕": <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" />,
   "😞": <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
 };
-const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
+const moodEmojiStrings = [
+    { emoji: "😊", label: "Happy" }, 
+    { emoji: "🙂", label: "Okay" }, 
+    { emoji: "😐", label: "Neutral" }, 
+    { emoji: "😕", label: "Worried" }, 
+    { emoji: "😞", label: "Sad" }
+];
 
 
 export default function DashboardPage() {
@@ -118,8 +123,6 @@ export default function DashboardPage() {
         // Regular user, not onboarded, no plan, not loading -> onboarding
         router.replace('/onboarding');
       }
-      // Admin users are not auto-redirected from dashboard
-      // Regular users with plan or onboarding data will stay or be handled by specific loading states below
     }
   }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
@@ -134,81 +137,80 @@ export default function DashboardPage() {
   useEffect(() => {
     const video = videoRef.current;
     if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
-      video.srcObject = selfieStream;
+        video.srcObject = selfieStream;
 
-      const handleLoadedMetadata = () => {
-         video.play().catch(err => {
-          console.error("Error playing video stream:", err);
-          toast({
-            variant: "destructive",
-            title: "Camera Error",
-            description: "Could not start video playback. Ensure your camera is not in use or try reopening the camera."
-          });
-          setIsVideoReadyForCapture(false);
-        });
-      };
-
-      const handlePlaying = () => {
-        setTimeout(() => {
-          if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-            setIsVideoReadyForCapture(true);
-          } else if (video) {
-            console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
-            setTimeout(() => {
-              if (video.videoWidth > 0 && video.videoHeight > 0) {
-                setIsVideoReadyForCapture(true);
-              } else {
-                console.error("Video dimensions still 0 after delay on 'playing' event.");
+        const handleLoadedMetadata = () => {
+            video.play().catch(err => {
+                console.error("Error playing video stream:", err);
                 toast({
-                  variant: "destructive",
-                  title: "Camera Feed Issue",
-                  description: "Video feed started but dimensions are not available. Try reopening camera."
+                    variant: "destructive",
+                    title: "Camera Error",
+                    description: "Could not start video playback. Ensure camera is not in use or try reopening the camera."
                 });
                 setIsVideoReadyForCapture(false);
-              }
-            }, 200);
-          }
-        }, 100);
-      };
+            });
+        };
 
-      const handleCanPlay = () => {
-        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-            setIsVideoReadyForCapture(true);
+        const handlePlaying = () => {
+            setTimeout(() => {
+                if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+                    setIsVideoReadyForCapture(true);
+                } else if (video) {
+                    console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
+                    setTimeout(() => {
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            setIsVideoReadyForCapture(true);
+                        } else {
+                            console.error("Video dimensions still 0 after delay on 'playing' event.");
+                            toast({
+                                variant: "destructive",
+                                title: "Camera Feed Issue",
+                                description: "Video feed started but dimensions are not available. Try reopening camera."
+                            });
+                            setIsVideoReadyForCapture(false);
+                        }
+                    }, 200); 
+                }
+            }, 100); 
+        };
+
+        const handleCanPlay = () => {
+            if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+                setIsVideoReadyForCapture(true);
+            }
+        };
+        
+        const handleWaiting = () => setIsVideoReadyForCapture(false);
+        const handleStalled = () => setIsVideoReadyForCapture(false);
+
+        video.addEventListener('loadedmetadata', handleLoadedMetadata);
+        video.addEventListener('playing', handlePlaying);
+        video.addEventListener('canplay', handleCanPlay);
+        video.addEventListener('waiting', handleWaiting);
+        video.addEventListener('stalled', handleStalled);
+        
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                setIsVideoReadyForCapture(true);
+            }
+        } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
+            video.play().catch(err => console.error("Error attempting to play already loaded video", err));
         }
-      }
 
-      const handleWaiting = () => setIsVideoReadyForCapture(false);
-      const handleStalled = () => setIsVideoReadyForCapture(false);
-
-      video.addEventListener('loadedmetadata', handleLoadedMetadata);
-      video.addEventListener('playing', handlePlaying);
-      video.addEventListener('canplay', handleCanPlay);
-      video.addEventListener('waiting', handleWaiting);
-      video.addEventListener('stalled', handleStalled);
-
-      if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
-         if (video.videoWidth > 0 && video.videoHeight > 0) {
-            setIsVideoReadyForCapture(true);
-          }
-      } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
-         video.play().catch(err => console.error("Error attempting to play already loaded video", err));
-      }
-
-
-      return () => {
-        if (video) {
-            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            video.removeEventListener('playing', handlePlaying);
-            video.removeEventListener('canplay', handleCanPlay);
-            video.removeEventListener('waiting', handleWaiting);
-            video.removeEventListener('stalled', handleStalled);
-        }
-        setIsVideoReadyForCapture(false);
-      };
+        return () => {
+            if (video) {
+                video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                video.removeEventListener('playing', handlePlaying);
+                video.removeEventListener('canplay', handleCanPlay);
+                video.removeEventListener('waiting', handleWaiting);
+                video.removeEventListener('stalled', handleStalled);
+            }
+            setIsVideoReadyForCapture(false);
+        };
     } else {
-      setIsVideoReadyForCapture(false);
+        setIsVideoReadyForCapture(false);
     }
-  }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
+}, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
 
   useEffect(() => {
@@ -257,6 +259,7 @@ export default function DashboardPage() {
     setIsVideoReadyForCapture(false);
 
     if (isCameraActive && selfieStream) {
+      selfieStream.getTracks().forEach(track => track.stop());
       setSelfieStream(null); 
       setIsCameraActive(false);
       if (videoRef.current) videoRef.current.srcObject = null;
@@ -303,11 +306,11 @@ export default function DashboardPage() {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
-        setIsVideoReadyForCapture(false); 
-
+        
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
         setIsCameraActive(false);
+        setIsVideoReadyForCapture(false); 
       } else {
          toast({
             variant: 'destructive',
@@ -331,12 +334,13 @@ export default function DashboardPage() {
 
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-  }
+  };
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
     setCapturedSelfie(null); 
+    setIsVideoReadyForCapture(false);
 
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
@@ -345,8 +349,7 @@ export default function DashboardPage() {
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
     setHasCameraPermission(null);
-    setIsVideoReadyForCapture(false);
-
+    
     setIsMoodDialogOpen(true);
   };
 
@@ -358,6 +361,7 @@ export default function DashboardPage() {
         setIsMoodDialogOpen(false); 
       } catch (error) {
         console.error("Error saving mood log:", error);
+         toast({ variant: "destructive", title: "Save Error", description: "Could not save mood log." });
       } finally {
         setIsSavingMood(false);
       }
@@ -414,7 +418,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Loading states
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -426,7 +429,6 @@ export default function DashboardPage() {
   }
   
   if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-    // useEffect will handle redirect, show loader. This is for regular user not onboarded.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
@@ -455,7 +457,7 @@ export default function DashboardPage() {
         <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2">
           New Plan / Edit Preferences
         </Button>
-         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-3 py-1 sm:px-4 sm:py-1.5">
+         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-3 py-1 sm:px-4 sm:py-1.5" aria-label="Logout">
             <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
         </Button>
       </div>
@@ -473,6 +475,7 @@ export default function DashboardPage() {
                     variant="outline" 
                     onClick={() => router.push('/admin')} 
                     className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5"
+                    aria-label="Admin Panel"
                 >
                     <ShieldCheck className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Admin Panel
                 </Button>
@@ -482,7 +485,7 @@ export default function DashboardPage() {
                 New Plan / Edit Preferences
                 </Button>
             )}
-            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="Logout">
                 <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
             </Button>
         </div>
@@ -508,7 +511,7 @@ export default function DashboardPage() {
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
                     <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
@@ -526,7 +529,7 @@ export default function DashboardPage() {
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
                      <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
@@ -543,7 +546,7 @@ export default function DashboardPage() {
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
                     <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
@@ -577,7 +580,7 @@ export default function DashboardPage() {
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-200px)] sm:max-h-[calc(70vh-200px)] -mx-1 px-1"> {/* Adjusted max-h and padding */}
+          <ScrollArea className="max-h-[calc(80vh-200px)] sm:max-h-[calc(70vh-200px)] -mx-1 px-1">
             <div className="grid gap-2.5 sm:gap-3 py-2.5 sm:py-3">
               <div className="space-y-1">
                 <Label htmlFor="mood-notes" className="text-2xs sm:text-xs">Notes (Optional)</Label>
@@ -588,6 +591,7 @@ export default function DashboardPage() {
                   placeholder="Any thoughts or details..."
                   className="h-14 sm:h-16 neumorphic-inset-sm text-2xs sm:text-xs"
                   disabled={isSavingMood}
+                  aria-label="Mood notes"
                 />
               </div>
               <div className="space-y-1">
@@ -599,6 +603,7 @@ export default function DashboardPage() {
                           onClick={handleToggleCamera}
                           className="neumorphic-button w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                           disabled={!!capturedSelfie || isSavingMood}
+                          aria-label={isCameraActive ? 'Close Camera' : 'Open Camera'}
                       >
                           {isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
                           {isCameraActive ? 'Close Camera' : 'Open Camera'}
@@ -610,6 +615,7 @@ export default function DashboardPage() {
                               onClick={handleCaptureSelfie}
                               disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
                               className="w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+                              aria-label="Capture Selfie"
                           >
                               <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Capture
                           </Button>
@@ -662,6 +668,7 @@ export default function DashboardPage() {
                               onClick={clearCapturedSelfie}
                               className="neumorphic-button items-center text-3xs px-2 py-0.5 sm:text-2xs sm:px-2 sm:py-1"
                               disabled={isSavingMood}
+                              aria-label="Clear captured selfie"
                           >
                               <Trash2 className="mr-1 h-2.5 w-2.5 text-destructive" /> Clear Selfie
                           </Button>
@@ -717,16 +724,16 @@ export default function DashboardPage() {
       <SectionCard title="Mood Check-in" icon={<Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} >
          <CardDescription className="mb-2.5 sm:mb-3 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 xs:space-x-1.5 sm:space-x-2 justify-center sm:justify-start">
-          {moodEmojiStrings.map(mood => (
+          {moodEmojiStrings.map(moodObj => (
             <Button
-              key={mood}
+              key={moodObj.emoji}
               variant="outline"
               size="icon"
-              onClick={() => handleMoodButtonClick(mood)}
+              onClick={() => handleMoodButtonClick(moodObj.emoji)}
               className="text-lg sm:text-xl neumorphic-button h-10 w-10 sm:h-12 sm:w-12 hover:neumorphic-inset"
-              aria-label={`Log mood: ${mood}`}
+              aria-label={`Log mood: ${moodObj.label}`}
             >
-              {mood}
+              {moodObj.emoji}
             </Button>
           ))}
         </div>
@@ -740,7 +747,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
                     <div className="relative w-full sm:w-16 md:w-20 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
+                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(new Date(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                     </div>
                   )}
                   <div className="flex-1">
@@ -766,7 +773,7 @@ export default function DashboardPage() {
                      {log.aiFeedback && (
                       <div className="mt-1 pt-1 border-t border-border/50">
                           <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-2.5 w-2.5 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
+                              <Sparkles className="h-3 w-3 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
@@ -805,6 +812,7 @@ export default function DashboardPage() {
           disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
           variant="neumorphic-primary"
           className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+          aria-label="Generate Grocery List"
         >
           {isLoadingGroceryList ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : <ShoppingCart className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
           Generate Grocery List
@@ -848,7 +856,7 @@ export default function DashboardPage() {
                             size="icon"
                             onClick={() => deleteGroceryItem(item.id)}
                             className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1 sm:ml-2"
-                            aria-label="Delete grocery item"
+                            aria-label={`Delete ${item.name} from grocery list`}
                           >
                             <Trash2 className="h-2.5 w-2.5" />
                           </Button>
