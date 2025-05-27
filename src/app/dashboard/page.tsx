@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
-import SocialShareCard from '@/components/social-share-card'; // Added import
+import SocialShareCard from '@/components/social-share-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -85,10 +85,10 @@ export default function DashboardPage() {
 
   // Selfie related state
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null); // null: unknown, true: granted, false: denied
   const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
   const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false); // Tracks if we are *trying* to use the camera
 
   const sortedMoodLogs = React.useMemo(() => {
     return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -136,15 +136,11 @@ export default function DashboardPage() {
     if (!isLoadingPlan && !isOnboarded) {
       router.push('/onboarding');
     } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
-      // This case implies onboarding was done, but plan generation might have failed or been cleared
-      // Redirecting to onboarding might be confusing if they just completed it.
-      // Consider if a "generate plan" button on dashboard or a specific error page is better long term.
-      // For now, keeping original logic to push to onboarding to re-trigger plan gen or re-onboard.
       router.push('/onboarding');
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
 
-  // Cleanup camera stream when component unmounts or dialog closes
+  // Cleanup camera stream when component unmounts or dialog closes (via onOpenChange)
   useEffect(() => {
     return () => {
       if (selfieStream) {
@@ -155,15 +151,16 @@ export default function DashboardPage() {
 
 
   const handleToggleCamera = async () => {
-    if (isCameraActive && selfieStream) {
+    if (isCameraActive && selfieStream) { // Turning camera OFF
       selfieStream.getTracks().forEach(track => track.stop());
       setSelfieStream(null);
       if (videoRef.current) videoRef.current.srcObject = null;
       setIsCameraActive(false);
-      // Keep hasCameraPermission as is, unless we want to re-trigger prompt on next open
-    } else {
-      setHasCameraPermission(null); // Reset to show loading/pending state
-      setIsCameraActive(true); // Indicate attempt to activate
+      // Keep hasCameraPermission as is, don't reset to null here
+    } else { // Turning camera ON
+      setCapturedSelfie(null); // Clear previous selfie if re-opening camera
+      setHasCameraPermission(null); 
+      setIsCameraActive(true); 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         setHasCameraPermission(true);
@@ -174,7 +171,7 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); // Failed to activate
+        setIsCameraActive(false); 
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
@@ -185,27 +182,35 @@ export default function DashboardPage() {
   };
 
   const handleCaptureSelfie = () => {
-    if (videoRef.current && selfieStream && videoRef.current.readyState === 4) { // Ensure video is ready
+    if (videoRef.current && selfieStream && videoRef.current.readyState === 4 && videoRef.current.videoWidth > 0) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG for smaller size, adjust quality
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
+        // Optionally, turn off the camera stream after capture
+        if (selfieStream) {
+            selfieStream.getTracks().forEach(track => track.stop());
+        }
+        setSelfieStream(null);
+        setIsCameraActive(false); // Indicate camera is no longer actively streaming
       }
     } else {
         toast({
             variant: 'destructive',
             title: 'Capture Failed',
-            description: 'Video stream not ready. Please try again.',
+            description: 'Video stream not ready or camera not active. Please try again.',
         });
     }
   };
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
+    // Optionally, re-enable camera if it was turned off post-capture
+    // For now, let user explicitly open camera again if they want to retake
   }
 
   const handleMoodButtonClick = (mood: string) => {
@@ -215,10 +220,10 @@ export default function DashboardPage() {
     // Ensure camera is off when opening dialog for a new mood log
     if (isCameraActive && selfieStream) {
       selfieStream.getTracks().forEach(track => track.stop());
-      setSelfieStream(null);
-      if (videoRef.current) videoRef.current.srcObject = null;
-      setIsCameraActive(false);
     }
+    setSelfieStream(null);
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setIsCameraActive(false);
     setHasCameraPermission(null); // Reset camera permission status for new dialog open
     setIsMoodDialogOpen(true);
   };
@@ -226,15 +231,15 @@ export default function DashboardPage() {
   const handleSaveMoodLog = async () => {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
-      // Dialog close is handled by onOpenChange, which will call handleDialogClose
       setIsMoodDialogOpen(false); 
+      // Dialog close is handled by onOpenChange, which will call handleDialogClose for full cleanup
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) { // Dialog is closing
-        if (selfieStream) { // Ensure stream is stopped
+        if (selfieStream) { 
             selfieStream.getTracks().forEach(track => track.stop());
         }
         setSelfieStream(null);
@@ -243,7 +248,7 @@ export default function DashboardPage() {
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null); // Reset for next time
+        setHasCameraPermission(null); 
     }
   }
 
@@ -268,7 +273,7 @@ export default function DashboardPage() {
   }, [groceryList]);
 
 
-  if (isLoadingPlan && !wellnessPlan) { // Show initial loading only if no plan yet
+  if (isLoadingPlan && !wellnessPlan) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
         <Logo size="text-4xl" />
@@ -278,7 +283,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { // Safeguard against missing plan post-onboarding attempt
+  if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
         <Logo size="text-4xl" />
@@ -300,7 +305,7 @@ export default function DashboardPage() {
         </Button>
       </header>
 
-      {isLoadingPlan && wellnessPlan && ( // Show loading indicator if plan exists but is being re-fetched/updated
+      {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
           <RotateCcw className="h-12 w-12 animate-spin text-primary" />
           <p className="mt-4 text-lg">Updating your plan...</p>
@@ -391,70 +396,73 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={handleToggleCamera}
                         className="neumorphic-button"
+                        disabled={!!capturedSelfie} // Disable if selfie already captured, user must clear first
                     >
                         {isCameraActive ? <VideoOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
                         {isCameraActive ? 'Close Camera' : 'Open Camera'}
                     </Button>
-                    {isCameraActive && selfieStream && hasCameraPermission && (
+                    {isCameraActive && selfieStream && hasCameraPermission === true && (
                          <Button
                             type="button"
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
-                            disabled={!selfieStream}
+                            disabled={!selfieStream || videoRef.current?.readyState !== 4}
                         >
                             <Camera className="mr-2 h-4 w-4" /> Capture
                         </Button>
                     )}
                 </div>
                 
-                <div className={cn(
-                    "mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20",
-                    // This container is always rendered to hold the video or message
-                )}>
-                     <video 
+                <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center">
+                  {isCameraActive && selfieStream && hasCameraPermission === true ? (
+                    <video 
                         ref={videoRef} 
-                        className={cn(
-                            "w-full h-full object-cover",
-                            isCameraActive && selfieStream && hasCameraPermission ? "block" : "hidden"
-                        )} 
+                        className="w-full h-full object-cover"
                         autoPlay 
                         muted 
                         playsInline 
                      />
-                     {(!isCameraActive || !selfieStream || hasCameraPermission === false) && !capturedSelfie && (
-                        <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4">
-                            {hasCameraPermission === false && "Camera access denied. Please check browser settings."}
-                            {isCameraActive && hasCameraPermission === null && "Requesting camera..."}
-                            {!isCameraActive && "Camera is off. Click 'Open Camera' to start."}
-                        </div>
-                     )}
+                  ) : capturedSelfie ? (
+                    <div className="p-4 text-muted-foreground">
+                      <Sparkles className="h-10 w-10 mx-auto mb-2 text-accent" />
+                      <p>Selfie captured!</p>
+                      <p className="text-xs">Preview below. You can clear it or save your mood.</p>
+                    </div>
+                  ) : hasCameraPermission === false ? (
+                    <div className="p-4">
+                      <VideoOff className="h-10 w-10 mx-auto mb-2 text-destructive" />
+                      <p className="font-semibold text-destructive">Camera Access Denied</p>
+                      <p className="text-xs">Enable camera permissions in browser settings. You might need to refresh.</p>
+                    </div>
+                  ) : isCameraActive && hasCameraPermission === null ? (
+                    <div className="p-4">
+                      <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin" />
+                      <p>Requesting camera access...</p>
+                      <p className="text-xs">Please allow in your browser.</p>
+                    </div>
+                  ) : ( // Default: !isCameraActive (and permission not denied and no selfie captured)
+                    <div className="p-4">
+                      <Camera className="h-10 w-10 mx-auto mb-2" />
+                      <p>Camera is off.</p>
+                      <p className="text-xs">Click 'Open Camera' to add a selfie.</p>
+                    </div>
+                  )}
                 </div>
 
-                {hasCameraPermission === false && ( // Repeated for emphasis if needed, or rely on above
-                     <Alert variant="destructive" className="mt-2">
-                        <AlertTitle>Camera Access Denied</AlertTitle>
-                        <AlertDescription>
-                            Please enable camera permissions in your browser settings.
-                            You might need to refresh the page after granting permissions.
-                        </AlertDescription>
-                    </Alert>
-                )}
-                {isCameraActive && hasCameraPermission === null && !selfieStream && (
-                  <div className="mt-2 p-3 text-sm text-muted-foreground neumorphic-inset-sm rounded-md flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Requesting camera access... Please allow in your browser.
-                  </div>
-                )}
-
-
                 {capturedSelfie && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-4 space-y-2">
                         <p className="text-sm font-medium">Selfie Preview:</p>
                         <div className="relative aspect-video w-full max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
-                             <Image src={capturedSelfie} alt="Captured selfie" layout="fill" objectFit="cover" />
+                             <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person" />
                         </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={clearCapturedSelfie} className="text-destructive hover:text-destructive-foreground">
-                            <Trash2 className="mr-1 h-4 w-4" /> Clear Selfie
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={clearCapturedSelfie} 
+                            className="neumorphic-button items-center"
+                        >
+                            <Trash2 className="mr-1 h-4 w-4 text-destructive" /> Clear Selfie
                         </Button>
                     </div>
                 )}
@@ -495,15 +503,14 @@ export default function DashboardPage() {
                 <ItemCard key={log.id} className="bg-card w-full min-w-0">
                   <div className="flex flex-col sm:flex-row gap-4">
                     {log.selfieDataUri && (
-                      <div className="relative w-full sm:w-32 h-32 sm:h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                        <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} layout="fill" objectFit="cover" data-ai-hint="selfie person" />
+                      <div className="relative w-full sm:w-32 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                        <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                       </div>
                     )}
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-1">
                         <h4 className="font-semibold text-lg flex items-center gap-2">
                           <span className="text-3xl">{log.mood}</span>
-                          {/* Render Lucide icon if available, otherwise nothing for plain emoji */}
                           {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                         </h4>
                       </div>
@@ -529,7 +536,6 @@ export default function DashboardPage() {
         </SectionCard>
       )}
       
-      {/* Social Share Card Section */}
       <SectionCard title="Share Your Progress" icon={<Gift className="h-6 w-6 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
@@ -598,4 +604,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
