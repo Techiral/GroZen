@@ -31,7 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTrigger, // Keep this import if used elsewhere, but the error is for a specific usage
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -90,7 +90,7 @@ export default function DashboardPage() {
     groceryList,
     isLoadingGroceryList,
     errorGroceryList,
-    generateGroceryList,
+    generateGroceryList: generateGroceryListFromContext,
     isPlanAvailable
   } = usePlan();
   const { toast } = useToast();
@@ -114,10 +114,10 @@ export default function DashboardPage() {
       } else if (!isPlanAvailable && !isLoadingPlan && !isOnboardedState) { 
         router.replace('/onboarding');
       } else if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
-         // If onboarded, but plan somehow missing and not loading, maybe prompt to re-generate or go to onboarding to review.
-         // For now, we can direct to onboarding to be safe, or just show dashboard with "no plan" message.
-         // Consider a state where onboarding is done, but plan failed to generate.
-         // Let's keep them on dashboard to see if they can try generating a new plan.
+         // User is onboarded, but no plan is available, and it's not currently loading.
+         // This state could occur if plan generation failed or was interrupted.
+         // They should stay on the dashboard to potentially try generating a new plan
+         // or see a message. The `return` block below handles this specific UI.
       }
     }
   }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
@@ -141,7 +141,7 @@ export default function DashboardPage() {
           toast({
             variant: "destructive",
             title: "Camera Error",
-            description: "Could not start video playback. Ensure your camera is not in use."
+            description: "Could not start video playback. Ensure your camera is not in use or try reopening the camera."
           });
           setIsVideoReadyForCapture(false);
         });
@@ -301,6 +301,8 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
         
+        // Stop camera after capture
+        selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null); 
         setIsCameraActive(false); 
         setIsVideoReadyForCapture(false); 
@@ -334,7 +336,10 @@ export default function DashboardPage() {
     setMoodNotes("");
     setCapturedSelfie(null); 
     
-    if (selfieStream) setSelfieStream(null); 
+    if (selfieStream) { // Ensure any active stream is stopped
+        selfieStream.getTracks().forEach(track => track.stop());
+        setSelfieStream(null);
+    }
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
     setHasCameraPermission(null); 
@@ -347,6 +352,7 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
+      // Dialog close will handle further cleanup via onOpenChange
     }
   };
   
@@ -373,7 +379,7 @@ export default function DashboardPage() {
       toast({ variant: "destructive", title: "Error", description: "No wellness plan with meals available to generate groceries from." });
       return;
     }
-    await generateGroceryList(wellnessPlan);
+    await generateGroceryListFromContext(wellnessPlan);
   };
 
   const groupedGroceryItems = React.useMemo(() => {
@@ -400,7 +406,7 @@ export default function DashboardPage() {
   };
 
 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser)) {
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup'].includes(router.pathname))) { // Added pathname check
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -411,7 +417,7 @@ export default function DashboardPage() {
   }
   
   // User is logged in, but no plan AND not yet onboarded
-  if (!isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') { // Added pathname check
     router.replace('/onboarding'); // Should be caught by useEffect, but as a safeguard
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
@@ -423,7 +429,7 @@ export default function DashboardPage() {
   }
   
   // User is logged in, onboarded, but plan is still loading
-  if (isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
+  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -434,7 +440,7 @@ export default function DashboardPage() {
   }
   
   // User is logged in, onboarded, plan is not loading, but still no plan available (e.g., generation failed or new user after onboarding)
-  if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
+  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -450,6 +456,27 @@ export default function DashboardPage() {
     );
   }
 
+  // If none of the above loading/redirect/error states are met, and we don't have a current user
+  // This can happen briefly or if routing logic is still settling.
+  // If they are on login/signup, this block shouldn't execute due to earlier checks.
+  if (!currentUser && !isLoadingAuth) {
+    // This check is a safeguard, useEffect should handle redirection to login/signup if not on those pages
+    // console.log("Dashboard: No current user, not loading auth. Current path:", router.pathname);
+    if (!['/login', '/signup', '/'].includes(router.pathname)) { // Allow landing page as well
+         router.replace('/login'); 
+         return (
+             <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                <Logo size="text-3xl sm:text-4xl" />
+                <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
+                <p className="mt-2 text-muted-foreground">Redirecting...</p>
+            </div>
+        );
+    }
+    // If on login/signup, it's fine, those pages will render. If on landing page, it's also fine.
+    // For other paths, they might see a flash of this before redirect.
+    return null; // Or a minimal loader if preferred, but usually redirect is fast
+  }
+  
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
@@ -703,17 +730,15 @@ export default function DashboardPage() {
                           <span className="text-xl sm:text-2xl">{log.mood}</span>
                           {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                         </h4>
-                        <AlertDialogTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => setLogToDelete(log.id)}
-                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
-                                aria-label="Delete mood log"
-                            >
-                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                            </Button>
-                        </AlertDialogTrigger>
+                          <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setLogToDelete(log.id)}
+                              className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
+                              aria-label="Delete mood log"
+                          >
+                              <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          </Button>
                       </div>
                        <p className="text-xs text-muted-foreground">
                         {format(new Date(log.date), "MMM d, yy 'at' h:mma")}
@@ -805,3 +830,6 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+
+    
