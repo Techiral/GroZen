@@ -18,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +67,11 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
 
+  // Moved useMemo before conditional returns to fix Hook order error
+  const sortedMoodLogs = React.useMemo(() => {
+    return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [moodLogs]);
+
   useEffect(() => {
     if (!isLoadingPlan && !isOnboarded) {
       router.push('/onboarding');
@@ -113,9 +117,6 @@ export default function DashboardPage() {
     }
   };
   
-  const sortedMoodLogs = React.useMemo(() => {
-    return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [moodLogs]);
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -257,3 +258,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
