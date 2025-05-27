@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness } from '@/types/wellness';
 import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Added this import
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount: number }> = ({ title, icon, children, itemsCount }) => (
   <Card className="neumorphic w-full mb-6">
