@@ -44,6 +44,7 @@ export default function OnboardingPage() {
     isPlanAvailable 
   } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Added state
 
   useEffect(() => {
     if (!isLoadingAuth) {
@@ -90,10 +91,19 @@ export default function OnboardingPage() {
         router.push('/login'); // Should not happen if useEffect works
         return;
     }
-    const fullData: OnboardingData = { ...data };
-    completeOnboarding(fullData); // This will save to LS for now
-    await generatePlan(fullData); // This will save to LS for now
-    router.push('/dashboard');
+    setIsSubmitting(true); // Set isSubmitting to true
+    try {
+      const fullData: OnboardingData = { ...data };
+      completeOnboarding(fullData); // This will save to LS for now
+      await generatePlan(fullData); // This will save to LS for now
+      router.push('/dashboard');
+    } catch (error) {
+      // Error handling is likely done within generatePlan or context,
+      // but you could add specific error handling here if needed.
+      console.error("Onboarding submission error:", error);
+    } finally {
+      setIsSubmitting(false); // Set isSubmitting to false
+    }
   };
   
   if (isLoadingAuth || (!isLoadingAuth && !currentUser) || (!isLoadingAuth && currentUser && isPlanAvailable)) {
@@ -194,7 +204,7 @@ export default function OnboardingPage() {
                     Previous
                   </Button>
                 )}
-                {currentStep === 0 && <div className="sm:flex-grow"></div>}
+                {currentStep === 0 && <div className="sm:flex-grow"></div>} {/* Spacer for alignment when "Previous" is not shown */}
                 {currentStep < steps.length - 1 && (
                   <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
                     Next
