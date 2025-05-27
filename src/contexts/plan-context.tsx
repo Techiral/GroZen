@@ -1,6 +1,7 @@
+
 "use client";
 
-import type { WellnessPlan, OnboardingData } from '@/types/wellness';
+import type { WellnessPlan, OnboardingData, MoodLog } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +17,8 @@ interface PlanContextType {
   isPlanAvailable: boolean;
   isOnboarded: boolean;
   completeOnboarding: (data: OnboardingData) => void;
+  moodLogs: MoodLog[];
+  addMoodLog: (mood: string, notes?: string) => void;
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
@@ -32,6 +35,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [errorPlan, setErrorPlan] = useState<string | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,6 +48,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedWellnessPlan = localStorage.getItem('grozen_wellnessPlan');
     if (storedWellnessPlan) {
       setWellnessPlan(JSON.parse(storedWellnessPlan));
+    }
+    const storedMoodLogs = localStorage.getItem('grozen_moodLogs');
+    if (storedMoodLogs) {
+      setMoodLogs(JSON.parse(storedMoodLogs));
     }
   }, []);
 
@@ -77,12 +85,29 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const addMoodLog = (mood: string, notes?: string) => {
+    const newLog: MoodLog = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      mood,
+      notes,
+    };
+    setMoodLogs(prevLogs => {
+      const updatedLogs = [newLog, ...prevLogs];
+      localStorage.setItem('grozen_moodLogs', JSON.stringify(updatedLogs));
+      return updatedLogs;
+    });
+    toast({ title: "Mood Logged", description: "Your mood has been successfully recorded." });
+  };
+
   const clearPlan = () => {
     setWellnessPlan(null);
     setOnboardingData(defaultOnboardingData);
     setIsOnboarded(false);
+    setMoodLogs([]);
     localStorage.removeItem('grozen_wellnessPlan');
     localStorage.removeItem('grozen_onboardingData');
+    localStorage.removeItem('grozen_moodLogs');
   };
 
   const isPlanAvailable = !!wellnessPlan;
@@ -98,7 +123,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       clearPlan,
       isPlanAvailable,
       isOnboarded,
-      completeOnboarding
+      completeOnboarding,
+      moodLogs,
+      addMoodLog
     }}>
       {children}
     </PlanContext.Provider>

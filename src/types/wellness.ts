@@ -1,3 +1,4 @@
+
 export interface Meal {
   day: string;
   breakfast: string;
@@ -27,4 +28,11 @@ export interface OnboardingData {
   goals: string;
   dietPreferences: string;
   budget: string;
+}
+
+export interface MoodLog {
+  id: string; // For unique key in lists
+  date: string; // ISO string for consistency
+  mood: string; // e.g., "😊", "🙂"
+  notes?: string;
 }

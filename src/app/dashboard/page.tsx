@@ -1,24 +1,41 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { Meal, Exercise, Mindfulness } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Added this import
+import type { Meal, Exercise, Mindfulness, MoodLog } from '@/types/wellness';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { format } from 'date-fns';
 
-const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount: number }> = ({ title, icon, children, itemsCount }) => (
+
+const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
   <Card className="neumorphic w-full mb-6">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-xl font-medium flex items-center gap-2">
-        {icon} {title}
-      </CardTitle>
-      <span className="text-sm text-muted-foreground">{itemsCount} items</span>
+      <div className="flex flex-row items-center">
+        <CardTitle className="text-xl font-medium flex items-center gap-2">
+          {icon} {title}
+        </CardTitle>
+        {itemsCount !== undefined && <span className="ml-4 text-sm text-muted-foreground">{itemsCount} items</span>}
+      </div>
+      {action}
     </CardHeader>
     <CardContent>
       {children}
@@ -32,18 +49,29 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
   </div>
 );
 
+// Map moods to Lucide icons or keep emojis
+const moodEmojis: { [key: string]: string | React.ReactNode } = {
+  "😊": <Laugh className="h-6 w-6 text-green-400" />, // Happy
+  "🙂": <Smile className="h-6 w-6 text-blue-400" />,    // Content
+  "😐": <Meh className="h-6 w-6 text-yellow-400" />,     // Neutral
+  "😕": <Annoyed className="h-6 w-6 text-orange-400" />, // Uneasy
+  "😞": <Frown className="h-6 w-6 text-red-400" />       // Sad
+};
+const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
+
+
 export default function DashboardPage() {
   const router = useRouter();
-  const { wellnessPlan, isOnboarded, clearPlan, isLoadingPlan } = usePlan();
+  const { wellnessPlan, isOnboarded, clearPlan, isLoadingPlan, addMoodLog, moodLogs } = usePlan();
+
+  const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [moodNotes, setMoodNotes] = useState("");
 
   useEffect(() => {
     if (!isLoadingPlan && !isOnboarded) {
       router.push('/onboarding');
     } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
-      // This case might mean onboarding is done, but plan generation failed or wasn't triggered
-      // For now, let's assume plan generation is part of onboarding flow before redirecting here
-      // Or, if plan generation can be re-triggered, add a button.
-      // For now, if no plan and onboarded, means something went wrong, redirect to retry.
       router.push('/onboarding');
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
@@ -69,10 +97,25 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const handleMoodButtonClick = (mood: string) => {
+    setSelectedMood(mood);
+    setMoodNotes("");
+    setIsMoodDialogOpen(true);
+  };
+
+  const handleSaveMoodLog = () => {
+    if (selectedMood) {
+      addMoodLog(selectedMood, moodNotes);
+      setIsMoodDialogOpen(false);
+      setSelectedMood(null);
+      setMoodNotes("");
+    }
+  };
   
-  // For "Daily Dashboard", we might filter by current day.
-  // For simplicity, showing all planned items for now.
-  // const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const sortedMoodLogs = React.useMemo(() => {
+    return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [moodLogs]);
 
   return (
     <main className="container mx-auto p-4 sm:p-8">
@@ -134,22 +177,82 @@ export default function DashboardPage() {
         </ScrollArea>
       </SectionCard>
       
-      {/* Placeholder for Mood Log - Future Feature */}
-      <Card className="neumorphic w-full mt-8">
-        <CardHeader>
-          <CardTitle className="text-xl font-medium flex items-center gap-2">Mood Check-in</CardTitle>
-          <CardDescription>How are you feeling today? (Feature coming soon)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-2">
-            {["😊", "🙂", "😐", "😕", "😞"].map(mood => (
-              <Button key={mood} variant="outline" size="icon" className="text-2xl neumorphic-button h-14 w-14" disabled>
-                {mood}
-              </Button>
-            ))}
+      <Dialog open={isMoodDialogOpen} onOpenChange={setIsMoodDialogOpen}>
+        <DialogContent className="neumorphic">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-xl">
+              Log Your Mood: <span className="ml-2 text-3xl">{selectedMood}</span>
+            </DialogTitle>
+            <DialogDescription>
+              How are you feeling right now? Add any notes if you like.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mood-notes" className="text-right sr-only">
+                Notes
+              </Label>
+            </div>
+            <Textarea
+              id="mood-notes"
+              value={moodNotes}
+              onChange={(e) => setMoodNotes(e.target.value)}
+              placeholder="Optional: Add any thoughts or details about your mood..."
+              className="col-span-4 h-24 neumorphic-inset-sm"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="neumorphic-button">Cancel</Button>
+            </DialogClose>
+            <Button type="button" variant="neumorphic-primary" onClick={handleSaveMoodLog}>Save Mood</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-6 w-6 text-accent" />}>
+         <CardDescription className="mb-4">How are you feeling today?</CardDescription>
+        <div className="flex space-x-2 justify-center sm:justify-start">
+          {moodEmojiStrings.map(mood => (
+            <Button 
+              key={mood} 
+              variant="outline" 
+              size="icon" 
+              onClick={() => handleMoodButtonClick(mood)}
+              className="text-2xl neumorphic-button h-14 w-14 hover:neumorphic-inset"
+              aria-label={`Log mood: ${mood}`}
+            >
+              {mood}
+            </Button>
+          ))}
+        </div>
+      </SectionCard>
+
+      {sortedMoodLogs.length > 0 && (
+        <SectionCard title="Mood History" icon={<RotateCcw className="h-6 w-6 text-accent" />} itemsCount={sortedMoodLogs.length}>
+          <ScrollArea className="w-full h-[300px] whitespace-nowrap rounded-md">
+            <div className="flex flex-col space-y-4 p-1">
+              {sortedMoodLogs.map((log: MoodLog) => (
+                <ItemCard key={log.id} className="bg-card w-full min-w-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-lg mb-1 flex items-center gap-2">
+                         <span className="text-3xl">{log.mood}</span>
+                         <span>{moodEmojis[log.mood] ? '' : log.mood}</span> {/* Fallback if emoji not in map for icon */}
+                      </h4>
+                       <p className="text-xs text-muted-foreground">
+                        {format(new Date(log.date), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                  {log.notes && <p className="text-sm mt-2 pt-2 border-t border-border/50 whitespace-pre-wrap">{log.notes}</p>}
+                </ItemCard>
+              ))}
+            </div>
+            <ScrollBar orientation="vertical" />
+          </ScrollArea>
+        </SectionCard>
+      )}
 
     </main>
   );
