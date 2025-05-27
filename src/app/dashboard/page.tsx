@@ -22,6 +22,17 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -73,7 +84,8 @@ export default function DashboardPage() {
     isOnboardedState, 
     clearPlanAndData, 
     isLoadingPlan, 
-    addMoodLog, 
+    addMoodLog,
+    deleteMoodLog, 
     moodLogs,
     groceryList,
     isLoadingGroceryList,
@@ -86,6 +98,7 @@ export default function DashboardPage() {
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -98,11 +111,16 @@ export default function DashboardPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (!isPlanAvailable && !isLoadingPlan) { // User logged in, but no plan
+      } else if (!isPlanAvailable && !isLoadingPlan && !isOnboardedState) { 
         router.replace('/onboarding');
+      } else if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
+         // If onboarded, but plan somehow missing and not loading, maybe prompt to re-generate or go to onboarding to review.
+         // For now, we can direct to onboarding to be safe, or just show dashboard with "no plan" message.
+         // Consider a state where onboarding is done, but plan failed to generate.
+         // Let's keep them on dashboard to see if they can try generating a new plan.
       }
     }
-  }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, router]);
+  }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
 
   const sortedMoodLogs = React.useMemo(() => {
@@ -130,7 +148,7 @@ export default function DashboardPage() {
       };
 
       const handlePlaying = () => {
-        setTimeout(() => { // Add a small delay to ensure dimensions are available
+        setTimeout(() => { 
           if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           } else {
@@ -167,13 +185,11 @@ export default function DashboardPage() {
       video.addEventListener('waiting', handleWaiting);
       video.addEventListener('stalled', handleStalled);
       
-      // Check if video is already playing (e.g., on re-render)
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
          if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           }
       } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
-         // If metadata is loaded but paused, try to play
          video.play().catch(err => console.error("Error attempting to play already loaded video", err));
       }
 
@@ -184,23 +200,22 @@ export default function DashboardPage() {
         video.removeEventListener('canplay', handleCanPlay);
         video.removeEventListener('waiting', handleWaiting);
         video.removeEventListener('stalled', handleStalled);
-        setIsVideoReadyForCapture(false); // Reset on cleanup
+        setIsVideoReadyForCapture(false); 
       };
     } else {
-      setIsVideoReadyForCapture(false); // Ensure it's false if conditions aren't met
+      setIsVideoReadyForCapture(false); 
     }
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
 
   useEffect(() => {
-    // Cleanup stream tracks when selfieStream changes or component unmounts
     const currentStream = selfieStream; 
     return () => {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [selfieStream]); // Only re-run if selfieStream itself changes
+  }, [selfieStream]); 
 
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
@@ -236,26 +251,25 @@ export default function DashboardPage() {
   }, [sortedMoodLogs]);
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); // Reset readiness on toggle
+    setIsVideoReadyForCapture(false); 
 
-    if (isCameraActive && selfieStream) { // Turning camera OFF
-      // selfieStream cleanup is handled by its own useEffect
+    if (isCameraActive && selfieStream) { 
       setSelfieStream(null); 
       setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null; // Explicitly clear srcObject
-    } else { // Turning camera ON
-      setCapturedSelfie(null); // Clear any previous capture
-      setHasCameraPermission(null); // Reset permission state to show loading/prompt
-      setIsCameraActive(true); // Signal intent to activate camera
+      if (videoRef.current) videoRef.current.srcObject = null; 
+    } else { 
+      setCapturedSelfie(null); 
+      setHasCameraPermission(null); 
+      setIsCameraActive(true); 
       
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream); // This will trigger the useEffect to attach stream to video
+        setSelfieStream(stream); 
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); // Ensure camera is marked inactive on error
+        setIsCameraActive(false); 
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -270,13 +284,12 @@ export default function DashboardPage() {
     const video = videoRef.current;
     if (isVideoReadyForCapture && video && selfieStream) {
        if (video.videoWidth === 0 || video.videoHeight === 0) {
-            // This case should ideally be prevented by isVideoReadyForCapture being true
             toast({
                 variant: 'destructive',
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false); // Force re-check
+            setIsVideoReadyForCapture(false); 
             return;
         }
       const canvas = document.createElement('canvas');
@@ -285,13 +298,12 @@ export default function DashboardPage() {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG for smaller size
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
         
-        // Stop camera stream after capture
-        setSelfieStream(null); // This will trigger its cleanup useEffect
-        setIsCameraActive(false); // Mark camera as inactive
-        setIsVideoReadyForCapture(false); // Reset ready state
+        setSelfieStream(null); 
+        setIsCameraActive(false); 
+        setIsVideoReadyForCapture(false); 
       } else {
          toast({
             variant: 'destructive',
@@ -300,7 +312,6 @@ export default function DashboardPage() {
         });
       }
     } else {
-        // Provide more specific feedback if capture is attempted when not ready
         let description = 'Video stream not ready or camera not active.';
         if (!isVideoReadyForCapture && selfieStream) description = 'Video is not ready for capture. Please wait for the feed to stabilize.';
         else if (!selfieStream) description = 'Camera stream is not available.';
@@ -316,19 +327,17 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // Optionally, re-enable camera button if it was disabled by capture
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null); // Clear any existing selfie from previous dialog opening
+    setCapturedSelfie(null); 
     
-    // Ensure camera is reset when opening dialog
-    if (selfieStream) setSelfieStream(null); // Triggers cleanup
+    if (selfieStream) setSelfieStream(null); 
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null); // Reset to allow re-request if needed or show initial state
+    setHasCameraPermission(null); 
     setIsVideoReadyForCapture(false);
 
     setIsMoodDialogOpen(true);
@@ -338,14 +347,12 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
-      // Dialog close will handle further cleanup via onOpenChange
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
-    if (!open) { // When dialog is closed
-        // Ensure camera stream is stopped and states are reset
+    if (!open) { 
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -356,7 +363,7 @@ export default function DashboardPage() {
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null); // Reset permission state
+        setHasCameraPermission(null); 
         setIsVideoReadyForCapture(false);
     }
   }
@@ -383,7 +390,13 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     await logoutUser();
-    // PlanContext's onAuthStateChanged will clear data and router.push to /login
+  };
+
+  const confirmDeleteMoodLog = async () => {
+    if (logToDelete) {
+      await deleteMoodLog(logToDelete);
+      setLogToDelete(null); // Close dialog
+    }
   };
 
 
@@ -397,7 +410,20 @@ export default function DashboardPage() {
     );
   }
   
-  if (isLoadingPlan && !isPlanAvailable) { 
+  // User is logged in, but no plan AND not yet onboarded
+  if (!isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+    router.replace('/onboarding'); // Should be caught by useEffect, but as a safeguard
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Redirecting to onboarding...</p>
+      </div>
+    );
+  }
+  
+  // User is logged in, onboarded, but plan is still loading
+  if (isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -407,16 +433,15 @@ export default function DashboardPage() {
     );
   }
   
-  // This condition covers when a user is logged in, not loading auth, but still doesn't have a plan.
-  // They should have been redirected to /onboarding by the initial useEffect if this is the case.
-  // However, as a fallback or if navigation is slow:
-  if (!isPlanAvailable && !isLoadingPlan) { 
+  // User is logged in, onboarded, plan is not loading, but still no plan available (e.g., generation failed or new user after onboarding)
+  if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
-        <p className="mt-4 text-md sm:text-lg">No wellness plan found.</p>
-        <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
-          Create a Plan
+        <p className="mt-4 text-md sm:text-lg">No wellness plan found or an error occurred.</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">Please try creating a new plan.</p>
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false); router.push('/onboarding');}} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
+          Create a New Plan
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-4 neumorphic-button text-xs sm:text-sm">
             <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -431,7 +456,7 @@ export default function DashboardPage() {
       <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
         <div className="flex items-center gap-2 mt-3 sm:mt-0">
-            <Button variant="outline" onClick={() => { clearPlanAndData(); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <Button variant="outline" onClick={() => { clearPlanAndData(false); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
             New Plan
             </Button>
             <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
@@ -616,6 +641,32 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
+        <AlertDialogContent className="neumorphic">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this mood log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row">
+            <AlertDialogCancel 
+              onClick={() => setLogToDelete(null)} 
+              className="neumorphic-button w-full sm:w-auto text-xs px-3 py-1.5"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteMoodLog} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-xs px-3 py-1.5"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       <SectionCard title="Mood Check-in" icon={<Smile className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} >
          <CardDescription className="mb-3 text-xs sm:text-sm">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 sm:space-x-2 justify-center sm:justify-start">
@@ -652,6 +703,17 @@ export default function DashboardPage() {
                           <span className="text-xl sm:text-2xl">{log.mood}</span>
                           {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                         </h4>
+                        <AlertDialogTrigger asChild>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setLogToDelete(log.id)}
+                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
+                                aria-label="Delete mood log"
+                            >
+                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                        </AlertDialogTrigger>
                       </div>
                        <p className="text-xs text-muted-foreground">
                         {format(new Date(log.date), "MMM d, yy 'at' h:mma")}

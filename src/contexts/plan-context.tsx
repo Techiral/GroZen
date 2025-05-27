@@ -15,7 +15,7 @@ import {
   signInWithEmailAndPassword, 
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface PlanContextType {
@@ -30,12 +30,13 @@ interface PlanContextType {
   isLoadingPlan: boolean;
   errorPlan: string | null;
   generatePlan: (data: OnboardingData) => Promise<void>;
-  clearPlanAndData: (isLogout?: boolean) => void;
+  clearPlanAndData: (isFullLogout?: boolean) => void;
   isPlanAvailable: boolean;
   isOnboardedState: boolean;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
   moodLogs: MoodLog[];
   addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<void>;
+  deleteMoodLog: (logId: string) => Promise<void>;
   groceryList: GroceryList | null;
   isLoadingGroceryList: boolean;
   errorGroceryList: string | null;
@@ -70,7 +71,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const pathname = usePathname();
 
-  const clearPlanAndData = (isLogout: boolean = false) => {
+  const clearPlanAndData = (isFullLogout: boolean = false) => {
     setOnboardingData(defaultOnboardingData);
     setWellnessPlan(null);
     setIsOnboardedState(false);
@@ -79,20 +80,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setGroceryList(null);
     setErrorGroceryList(null);
     
-    // Clear localStorage items, especially on logout or when Firestore takes over.
-    localStorage.removeItem('grozen_wellnessPlan');
-    localStorage.removeItem('grozen_onboardingData');
-    localStorage.removeItem('grozen_moodLogs');
-    localStorage.removeItem('grozen_groceryList');
+    if (isFullLogout) {
+        localStorage.removeItem('grozen_wellnessPlan');
+        localStorage.removeItem('grozen_onboardingData');
+        localStorage.removeItem('grozen_moodLogs');
+        localStorage.removeItem('grozen_groceryList');
+    }
   };
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      clearPlanAndData(true); // Clear all local data on auth change
+      clearPlanAndData(true); 
       setCurrentUser(user);
       
       if (user) {
-        setIsLoadingAuth(true); // Start loading auth/user data
+        setIsLoadingAuth(true); 
         try {
           const userDocRef = doc(db, "users", user.uid);
           const userDocSnap = await getDoc(userDocRef);
@@ -101,7 +103,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const userData = userDocSnap.data();
             if (userData.onboardingData) {
               setOnboardingData(userData.onboardingData);
-              setIsOnboardedState(true); // User has completed onboarding if data exists
+              setIsOnboardedState(true);
+            } else {
+              setIsOnboardedState(false); // Ensure reset if no onboarding data
             }
             if (userData.wellnessPlan) {
               setWellnessPlan(userData.wellnessPlan);
@@ -110,21 +114,17 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setGroceryList(userData.currentGroceryList);
             }
           } else {
-            // New user or no primary data doc yet. Onboarding will create it.
-            setIsOnboardedState(false); // Explicitly false if no user doc/onboardingData
+            setIsOnboardedState(false); 
           }
 
-          // Fetch mood logs from subcollection
           const moodLogsColRef = collection(db, "users", user.uid, "moodLogs");
           const moodLogsQuery = query(moodLogsColRef, orderBy("createdAt", "desc"));
           const moodLogsSnap = await getDocs(moodLogsQuery);
           const fetchedMoodLogs = moodLogsSnap.docs.map(docSnap => {
             const data = docSnap.data();
-            // Convert Firestore Timestamp to ISO string for 'date' if necessary, or ensure type consistency
             return { 
               id: docSnap.id, 
               ...data,
-              // Assuming 'date' is stored as ISO string or needs conversion from Firestore Timestamp
               date: data.date || (data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()) 
             } as MoodLog;
           });
@@ -137,7 +137,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsLoadingAuth(false);
         }
       } else {
-        // No user logged in. isLoadingAuth is false. clearPlanAndData has reset local state.
         setIsLoadingAuth(false);
       }
     });
@@ -149,15 +148,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      // User object will be set by onAuthStateChanged
       toast({ title: "Signup Successful", description: "Welcome to GroZen!" });
       return userCredential.user;
     } catch (error: any) {
       console.error("Signup error", error);
       toast({ variant: "destructive", title: "Signup Failed", description: error.message || "Could not create account." });
       return null;
-    } finally {
-      // onAuthStateChanged will set isLoadingAuth to false after processing
     }
   };
 
@@ -165,15 +161,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // User object will be set by onAuthStateChanged
       toast({ title: "Login Successful", description: "Welcome back!" });
       return userCredential.user;
     } catch (error: any) {
       console.error("Login error", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Invalid email or password." });
       return null;
-    } finally {
-      // onAuthStateChanged will set isLoadingAuth to false after processing
     }
   };
 
@@ -181,7 +174,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true); 
     try {
       await signOut(auth);
-      // clearPlanAndData(true) is called by onAuthStateChanged when user becomes null
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login'); 
     } catch (error: any) {
@@ -197,12 +189,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         router.push('/login');
         return;
     }
-    setOnboardingData(data);
+    setOnboardingData(data); // Optimistic update for local state
     setIsOnboardedState(true);
     try {
       const userDocRef = doc(db, "users", currentUser.uid);
       await setDoc(userDocRef, { onboardingData: data }, { merge: true });
-      // toast({ title: "Onboarding Saved", description: "Your preferences have been saved." }); // Covered by generatePlan toast
     } catch (error) {
       console.error("Error saving onboarding data to Firestore:", error);
       toast({ variant: "destructive", title: "Save Error", description: "Could not save your onboarding preferences." });
@@ -218,7 +209,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingPlan(true);
     setErrorPlan(null);
     try {
-      await completeOnboarding(data); // Saves onboarding data to Firestore
+      // completeOnboarding will save the onboarding data to Firestore.
+      // We await it here to ensure it completes before we try to generate the plan using this data.
+      await completeOnboarding(data); 
 
       const input: GenerateWellnessPlanInput = {
         goals: data.goals,
@@ -253,13 +246,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           toast({ title: "Plan Generated & Saved", description: "Your personalized wellness plan is ready!" });
         } catch (error) {
             console.error("Error saving wellness plan to Firestore:", error);
-            toast({ variant: "destructive", title: "Save Error", description: "Could not save your wellness plan to the cloud, but it's available locally for this session." });
+            toast({ variant: "destructive", title: "Save Error", description: "Could not save your wellness plan to the cloud." });
         }
       } else {
         console.error("Generated plan is incomplete or malformed. Parsed plan:", parsedPlanCandidate);
         setErrorPlan("The AI generated an incomplete plan (e.g., missing essential meal data). Please check your inputs or try again.");
         toast({ variant: "destructive", title: "Plan Generation Incomplete", description: "The AI's plan was incomplete (e.g., missing meals). Please try again." });
-        setWellnessPlan(null); // Ensure plan is null if generation failed validation
+        setWellnessPlan(null);
       }
     } catch (err) {
       console.error("Failed to generate plan:", err);
@@ -290,7 +283,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const newLogBase: Omit<MoodLog, 'id'> = {
-      date: new Date().toISOString(), // Keep ISO string for client-side consistency
+      date: new Date().toISOString(), 
       mood,
       notes,
       selfieDataUri,
@@ -301,10 +294,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const moodLogsColRef = collection(db, "users", currentUser.uid, "moodLogs");
       const docRef = await addDoc(moodLogsColRef, {
         ...newLogBase,
-        createdAt: serverTimestamp() // For Firestore ordering
+        createdAt: serverTimestamp() 
       });
       const newLogForState: MoodLog = { ...newLogBase, id: docRef.id };
-      setMoodLogs(prevLogs => [newLogForState, ...prevLogs]); // Optimistic update
+      setMoodLogs(prevLogs => [newLogForState, ...prevLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       toast({ 
         title: "Mood Logged", 
         description: `Your mood has been recorded. ${aiFeedbackText ? "Here's a thought: " + aiFeedbackText : ""}` 
@@ -312,6 +305,23 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error("Error saving mood log to Firestore:", error);
       toast({ variant: "destructive", title: "Save Error", description: "Could not save your mood log." });
+    }
+  };
+
+  const deleteMoodLog = async (logId: string) => {
+    if (!currentUser) {
+      toast({variant: "destructive", title: "Not Authenticated", description: "Please log in."});
+      router.push('/login');
+      return;
+    }
+    try {
+      const logDocRef = doc(db, "users", currentUser.uid, "moodLogs", logId);
+      await deleteDoc(logDocRef);
+      setMoodLogs(prevLogs => prevLogs.filter(log => log.id !== logId));
+      toast({title: "Mood Log Deleted", description: "Your mood entry has been removed."});
+    } catch (error) {
+      console.error("Error deleting mood log from Firestore:", error);
+      toast({ variant: "destructive", title: "Delete Error", description: "Could not delete your mood log." });
     }
   };
 
@@ -334,19 +344,19 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           breakfast: meal.breakfast,
           lunch: meal.lunch,
           dinner: meal.dinner,
-        })) as Meal[]
+        })) as Meal[] // Type assertion to ensure Meal[] is used
       };
       const result: GenerateGroceryListOutput = await aiGenerateGroceryList(input);
       
       const newGroceryList: GroceryList = {
-        id: crypto.randomUUID(), // This ID is more for local state if needed, Firestore might use its own or none
+        id: crypto.randomUUID(), 
         items: result.items,
         generatedDate: new Date().toISOString(),
       };
       
       const userDocRef = doc(db, "users", currentUser.uid);
       await setDoc(userDocRef, { currentGroceryList: newGroceryList }, { merge: true });
-      setGroceryList(newGroceryList); // Update local state
+      setGroceryList(newGroceryList); 
 
       toast({ title: "Success", description: "Your grocery list has been generated and saved!" });
     } catch (err) {
@@ -380,6 +390,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       completeOnboarding,
       moodLogs,
       addMoodLog,
+      deleteMoodLog,
       groceryList,
       isLoadingGroceryList,
       errorGroceryList,
@@ -397,6 +408,3 @@ export const usePlan = (): PlanContextType => {
   }
   return context;
 };
-
-
-    
