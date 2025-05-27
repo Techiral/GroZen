@@ -32,14 +32,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
   <Card className="neumorphic w-full mb-6">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <CardHeader className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
       <div className="flex flex-row items-center">
-        <CardTitle className="text-xl font-medium flex items-center gap-2">
+        <CardTitle className="text-lg sm:text-xl font-medium flex items-center gap-2">
           {icon} {title}
         </CardTitle>
-        {itemsCount !== undefined && <span className="ml-4 text-sm text-muted-foreground">{itemsCount} items</span>}
+        {itemsCount !== undefined && <span className="ml-2 sm:ml-4 text-xs sm:text-sm text-muted-foreground">{itemsCount} items</span>}
       </div>
-      {action}
+      {action && <div className="w-full sm:w-auto pt-2 sm:pt-0">{action}</div>}
     </CardHeader>
     <CardContent>
       {children}
@@ -48,17 +48,17 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
 );
 
 const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-4 rounded-md min-w-[250px] snap-start", className)}>
+  <div className={cn("neumorphic-sm p-3 sm:p-4 rounded-md min-w-[220px] sm:min-w-[250px] snap-start", className)}>
     {children}
   </div>
 );
 
 const moodEmojis: { [key: string]: string | React.ReactNode } = {
-  "😊": <Laugh className="h-6 w-6 text-green-400" />,
-  "🙂": <Smile className="h-6 w-6 text-blue-400" />,
-  "😐": <Meh className="h-6 w-6 text-yellow-400" />,
-  "😕": <Annoyed className="h-6 w-6 text-orange-400" />,
-  "😞": <Frown className="h-6 w-6 text-red-400" />
+  "😊": <Laugh className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />,
+  "🙂": <Smile className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />,
+  "😐": <Meh className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />,
+  "😕": <Annoyed className="h-5 w-5 sm:h-6 sm:w-6 text-orange-400" />,
+  "😞": <Frown className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
 };
 const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
 
@@ -148,11 +148,10 @@ export default function DashboardPage() {
         video.removeEventListener('playing', handlePlaying);
         video.removeEventListener('waiting', handleWaitingOrStalled);
         video.removeEventListener('stalled', handleWaitingOrStalled);
-        // Ensure ready state is false when effect cleans up
         setIsVideoReadyForCapture(false); 
       };
     } else if (!isCameraActive || !selfieStream) {
-      setIsVideoReadyForCapture(false); // Ensure readiness is false if camera not active or no stream
+      setIsVideoReadyForCapture(false); 
     }
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
@@ -201,7 +200,7 @@ export default function DashboardPage() {
   }, [sortedMoodLogs]);
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); // Reset readiness on toggle
+    setIsVideoReadyForCapture(false); 
     if (isCameraActive && selfieStream) { 
       setSelfieStream(null); 
       setIsCameraActive(false);
@@ -237,7 +236,7 @@ export default function DashboardPage() {
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Please try again.',
             });
-            setIsVideoReadyForCapture(false); // Mark as not ready if dimensions are bad
+            setIsVideoReadyForCapture(false); 
             return;
         }
       const canvas = document.createElement('canvas');
@@ -248,7 +247,7 @@ export default function DashboardPage() {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
-        setSelfieStream(null); // Stop stream after capture
+        setSelfieStream(null); 
         setIsCameraActive(false); 
         setIsVideoReadyForCapture(false);
       } else {
@@ -269,7 +268,7 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    setIsVideoReadyForCapture(false); // Camera not active if selfie cleared
+    setIsVideoReadyForCapture(false); 
   }
 
   const handleMoodButtonClick = (mood: string) => {
@@ -288,14 +287,13 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
-      // Dialog close will also trigger cleanup via onOpenChange
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) { 
-        if (selfieStream) setSelfieStream(null); // Triggers cleanup effect
+        if (selfieStream) setSelfieStream(null); 
         if (videoRef.current) videoRef.current.srcObject = null;
         setIsCameraActive(false);
         setCapturedSelfie(null);
@@ -329,20 +327,20 @@ export default function DashboardPage() {
 
   if (isLoadingPlan && !wellnessPlan) { 
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
-        <Logo size="text-4xl" />
-        <p className="mt-4 text-xl">Generating your personalized plan...</p>
-        <RotateCcw className="mt-4 h-12 w-12 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 text-center">
+        <Logo size="text-3xl sm:text-4xl" />
+        <p className="mt-4 text-lg sm:text-xl">Generating your personalized plan...</p>
+        <RotateCcw className="mt-4 h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
       </div>
     );
   }
   
   if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { 
      return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
-        <Logo size="text-4xl" />
-        <p className="mt-4 text-xl">No wellness plan found.</p>
-        <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 text-center">
+        <Logo size="text-3xl sm:text-4xl" />
+        <p className="mt-4 text-lg sm:text-xl">No wellness plan found.</p>
+        <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4 text-base sm:text-lg px-6 py-3 sm:px-8 sm:py-4">
           Create a Plan
         </Button>
       </div>
@@ -351,37 +349,37 @@ export default function DashboardPage() {
 
 
   return (
-    <main className="container mx-auto p-4 sm:p-8">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-8">
-        <Logo size="text-4xl" />
-        <Button variant="outline" onClick={() => { clearPlan(); router.push('/'); }} className="mt-4 sm:mt-0 neumorphic-button">
+    <main className="container mx-auto p-4 sm:p-6 md:p-8">
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Button variant="outline" onClick={() => { clearPlan(); router.push('/'); }} className="mt-4 sm:mt-0 neumorphic-button text-sm sm:text-base">
           Start Over
         </Button>
       </header>
 
       {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-          <RotateCcw className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-lg">Updating your plan...</p>
+          <RotateCcw className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
+          <p className="mt-4 text-md sm:text-lg">Updating your plan...</p>
         </div>
       )}
       
       {wellnessPlan && (
         <>
           <div className="mb-6 p-4 neumorphic rounded-lg">
-            <h2 className="text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
-            <p className="text-muted-foreground">Here's your personalized guide to a healthier you. Stay consistent!</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">Here's your personalized guide to a healthier you. Stay consistent!</p>
           </div>
 
-          <SectionCard title="Meals" icon={<Utensils className="h-6 w-6 text-accent" />} itemsCount={wellnessPlan.meals.length}>
+          <SectionCard title="Meals" icon={<Utensils className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-4 pb-4">
+              <div className="flex space-x-3 sm:space-x-4 pb-4">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-lg mb-1 flex items-center gap-2"><CalendarDays size={18}/> {meal.day}</h4>
-                    <p className="text-sm"><strong>Breakfast:</strong> {meal.breakfast}</p>
-                    <p className="text-sm"><strong>Lunch:</strong> {meal.lunch}</p>
-                    <p className="text-sm"><strong>Dinner:</strong> {meal.dinner}</p>
+                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {meal.day}</h4>
+                    <p className="text-xs sm:text-sm"><strong>Breakfast:</strong> {meal.breakfast}</p>
+                    <p className="text-xs sm:text-sm"><strong>Lunch:</strong> {meal.lunch}</p>
+                    <p className="text-xs sm:text-sm"><strong>Dinner:</strong> {meal.dinner}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -389,14 +387,14 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-6 w-6 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
+          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-4 pb-4">
+              <div className="flex space-x-3 sm:space-x-4 pb-4">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-lg mb-1 flex items-center gap-2"><CalendarDays size={18}/> {ex.day}</h4>
-                    <p className="text-sm"><strong>Activity:</strong> {ex.activity}</p>
-                    <p className="text-sm"><strong>Duration:</strong> {ex.duration}</p>
+                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {ex.day}</h4>
+                    <p className="text-xs sm:text-sm"><strong>Activity:</strong> {ex.activity}</p>
+                    <p className="text-xs sm:text-sm"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -404,14 +402,14 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-6 w-6 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
+          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-4 pb-4">
+              <div className="flex space-x-3 sm:space-x-4 pb-4">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-lg mb-1 flex items-center gap-2"><CalendarDays size={18}/> {mind.day}</h4>
-                    <p className="text-sm"><strong>Practice:</strong> {mind.practice}</p>
-                    <p className="text-sm"><strong>Duration:</strong> {mind.duration}</p>
+                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {mind.day}</h4>
+                    <p className="text-xs sm:text-sm"><strong>Practice:</strong> {mind.practice}</p>
+                    <p className="text-xs sm:text-sm"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -422,34 +420,34 @@ export default function DashboardPage() {
       )}
       
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="neumorphic sm:max-w-md">
+        <DialogContent className="neumorphic w-[90vw] max-w-md sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              Log Your Mood: <span className="ml-2 text-3xl">{selectedMood}</span>
+            <DialogTitle className="flex items-center text-lg sm:text-xl">
+              Log Your Mood: <span className="ml-2 text-2xl sm:text-3xl">{selectedMood}</span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="mood-notes">Notes (Optional)</Label>
+              <Label htmlFor="mood-notes" className="text-sm sm:text-base">Notes (Optional)</Label>
               <Textarea
                 id="mood-notes"
                 value={moodNotes}
                 onChange={(e) => setMoodNotes(e.target.value)}
                 placeholder="Any thoughts or details about your mood..."
-                className="h-24 neumorphic-inset-sm"
+                className="h-20 sm:h-24 neumorphic-inset-sm text-sm sm:text-base"
               />
             </div>
             <div className="space-y-2">
-                <Label>Selfie (Optional)</Label>
-                <div className="flex items-center gap-2">
+                <Label className="text-sm sm:text-base">Selfie (Optional)</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={handleToggleCamera}
-                        className="neumorphic-button"
+                        className="neumorphic-button w-full sm:w-auto text-sm"
                         disabled={!!capturedSelfie} 
                     >
                         {isCameraActive ? <VideoOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
@@ -461,13 +459,14 @@ export default function DashboardPage() {
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
                             disabled={!selfieStream || !isVideoReadyForCapture}
+                            className="w-full sm:w-auto text-sm"
                         >
                             <Camera className="mr-2 h-4 w-4" /> Capture
                         </Button>
                     )}
                 </div>
                 
-                <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center">
+                <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-2">
                   {isCameraActive && selfieStream && hasCameraPermission === true ? (
                     <video 
                         ref={videoRef} 
@@ -477,27 +476,27 @@ export default function DashboardPage() {
                         playsInline 
                      />
                   ) : capturedSelfie ? (
-                    <div className="p-4 text-muted-foreground">
-                      <Sparkles className="h-10 w-10 mx-auto mb-2 text-accent" />
-                      <p>Selfie captured!</p>
+                    <div className="p-2 sm:p-4 text-muted-foreground">
+                      <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 text-accent" />
+                      <p className="text-xs sm:text-sm">Selfie captured!</p>
                       <p className="text-xs">Preview below. You can clear it or save your mood.</p>
                     </div>
                   ) : hasCameraPermission === false ? (
-                    <div className="p-4">
-                      <VideoOff className="h-10 w-10 mx-auto mb-2 text-destructive" />
-                      <p className="font-semibold text-destructive">Camera Access Denied</p>
+                    <div className="p-2 sm:p-4">
+                      <VideoOff className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 text-destructive" />
+                      <p className="font-semibold text-destructive text-xs sm:text-sm">Camera Access Denied</p>
                       <p className="text-xs">Enable camera permissions in browser settings. You might need to refresh.</p>
                     </div>
                   ) : isCameraActive && hasCameraPermission === null ? ( 
-                    <div className="p-4">
-                      <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin" />
-                      <p>Requesting camera access...</p>
+                    <div className="p-2 sm:p-4">
+                      <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 animate-spin" />
+                      <p className="text-xs sm:text-sm">Requesting camera access...</p>
                       <p className="text-xs">Please allow in your browser.</p>
                     </div>
                   ) : ( 
-                    <div className="p-4">
-                      <Camera className="h-10 w-10 mx-auto mb-2" />
-                      <p>Camera is off.</p>
+                    <div className="p-2 sm:p-4">
+                      <Camera className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2" />
+                      <p className="text-xs sm:text-sm">Camera is off.</p>
                       <p className="text-xs">Click 'Open Camera' to add a selfie.</p>
                     </div>
                   )}
@@ -505,8 +504,8 @@ export default function DashboardPage() {
 
                 {capturedSelfie && (
                     <div className="mt-4 space-y-2">
-                        <p className="text-sm font-medium">Selfie Preview:</p>
-                        <div className="relative aspect-video w-full max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium">Selfie Preview:</p>
+                        <div className="relative aspect-video w-full max-w-[150px] sm:max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
                              <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                         </div>
                         <Button 
@@ -514,33 +513,33 @@ export default function DashboardPage() {
                             variant="outline" 
                             size="sm" 
                             onClick={clearCapturedSelfie} 
-                            className="neumorphic-button items-center"
+                            className="neumorphic-button items-center text-xs"
                         >
-                            <Trash2 className="mr-1 h-4 w-4 text-destructive" /> Clear Selfie
+                            <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4 text-destructive" /> Clear Selfie
                         </Button>
                     </div>
                 )}
             </div>
           </div>
-          <DialogFooter className="sm:justify-between">
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
              <DialogClose asChild>
-              <Button type="button" variant="outline" className="neumorphic-button">Cancel</Button>
+              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-sm">Cancel</Button>
             </DialogClose>
-            <Button type="button" variant="neumorphic-primary" onClick={handleSaveMoodLog} disabled={!selectedMood}>Save Mood</Button>
+            <Button type="button" variant="neumorphic-primary" onClick={handleSaveMoodLog} disabled={!selectedMood} className="w-full sm:w-auto text-sm">Save Mood</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-6 w-6 text-accent" />} >
-         <CardDescription className="mb-4">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
-        <div className="flex space-x-2 justify-center sm:justify-start">
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} >
+         <CardDescription className="mb-4 text-sm sm:text-base">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
+        <div className="flex space-x-1 sm:space-x-2 justify-center sm:justify-start">
           {moodEmojiStrings.map(mood => (
             <Button 
               key={mood} 
               variant="outline" 
               size="icon" 
               onClick={() => handleMoodButtonClick(mood)}
-              className="text-2xl neumorphic-button h-14 w-14 hover:neumorphic-inset"
+              className="text-xl sm:text-2xl neumorphic-button h-12 w-12 sm:h-14 sm:w-14 hover:neumorphic-inset"
               aria-label={`Log mood: ${mood}`}
             >
               {mood}
@@ -550,34 +549,34 @@ export default function DashboardPage() {
       </SectionCard>
 
       {sortedMoodLogs.length > 0 && (
-        <SectionCard title="Mood History" icon={<RotateCcw className="h-6 w-6 text-accent" />} itemsCount={sortedMoodLogs.length}>
-          <ScrollArea className="w-full h-[400px] whitespace-nowrap rounded-md">
-            <div className="flex flex-col space-y-4 p-1">
+        <SectionCard title="Mood History" icon={<RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={sortedMoodLogs.length}>
+          <ScrollArea className="w-full h-[300px] sm:h-[400px] whitespace-nowrap rounded-md">
+            <div className="flex flex-col space-y-3 sm:space-y-4 p-1">
               {sortedMoodLogs.map((log: MoodLog) => (
                 <ItemCard key={log.id} className="bg-card w-full min-w-0">
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     {log.selfieDataUri && (
-                      <div className="relative w-full sm:w-32 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                      <div className="relative w-full sm:w-24 md:w-32 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
                         <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                       </div>
                     )}
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <span className="text-3xl">{log.mood}</span>
+                        <h4 className="font-semibold text-md sm:text-lg flex items-center gap-2">
+                          <span className="text-2xl sm:text-3xl">{log.mood}</span>
                           {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                         </h4>
                       </div>
                        <p className="text-xs text-muted-foreground">
                         {format(new Date(log.date), "MMM d, yyyy 'at' h:mm a")}
                       </p>
-                      {log.notes && <p className="text-sm mt-2 pt-2 border-t border-border/50 whitespace-pre-wrap">{log.notes}</p>}
+                      {log.notes && <p className="text-xs sm:text-sm mt-2 pt-2 border-t border-border/50 whitespace-pre-wrap">{log.notes}</p>}
                        {log.aiFeedback && (
                         <div className="mt-2 pt-2 border-t border-border/50">
-                            <p className="text-sm flex items-center gap-1 text-primary/90">
-                                <Sparkles size={16} className="text-accent" /> <em>GroZen Insight:</em>
+                            <p className="text-xs sm:text-sm flex items-center gap-1 text-primary/90">
+                                <Sparkles size={14} className="sm:size-16 text-accent" /> <em>GroZen Insight:</em>
                             </p>
-                            <p className="text-sm italic text-muted-foreground/90 whitespace-pre-wrap">{log.aiFeedback}</p>
+                            <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap">{log.aiFeedback}</p>
                         </div>
                       )}
                     </div>
@@ -590,26 +589,26 @@ export default function DashboardPage() {
         </SectionCard>
       )}
       
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-6 w-6 text-accent" />}>
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
-          <CardDescription>
+          <CardDescription className="text-sm sm:text-base">
             Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your 'Before & After' share card will appear here.
           </CardDescription>
         )}
       </SectionCard>
 
 
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-6 w-6 text-accent" />}>
-        <CardDescription className="mb-4">
+      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />}>
+        <CardDescription className="mb-4 text-sm sm:text-base">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button 
           onClick={handleGenerateGroceryList} 
           disabled={isLoadingGroceryList || !wellnessPlan}
           variant="neumorphic-primary"
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto text-sm sm:text-base"
         >
           {isLoadingGroceryList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
           Generate Grocery List
@@ -617,25 +616,25 @@ export default function DashboardPage() {
 
         {errorGroceryList && (
           <Alert variant="destructive" className="mt-4">
-            <AlertTitle>Error Generating List</AlertTitle>
-            <AlertDescription>{errorGroceryList}</AlertDescription>
+            <AlertTitle className="text-sm sm:text-base">Error Generating List</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm">{errorGroceryList}</AlertDescription>
           </Alert>
         )}
 
         {groceryList && !isLoadingGroceryList && (
           <div className="mt-6 space-y-4">
-            <h3 className="text-lg font-semibold">
-              Your Grocery List <span className="text-sm text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
+            <h3 className="text-md sm:text-lg font-semibold">
+              Your Grocery List <span className="text-xs sm:text-sm text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
             </h3>
-            {Object.keys(groupedGroceryItems).length === 0 && <p>Your grocery list is empty or could not be generated.</p>}
+            {Object.keys(groupedGroceryItems).length === 0 && <p className="text-sm sm:text-base">Your grocery list is empty or could not be generated.</p>}
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems)}>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
                 <AccordionItem value={category} key={category} className="neumorphic-sm mb-2">
-                  <AccordionTrigger className="p-3 text-md hover:no-underline">
+                  <AccordionTrigger className="p-3 text-sm sm:text-md hover:no-underline">
                     {category} ({items.length})
                   </AccordionTrigger>
                   <AccordionContent className="p-3">
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-xs sm:text-sm">
                       {items.map((item, index) => (
                         <li key={`${item.name}-${index}`}>
                           <strong>{item.name}</strong>
@@ -658,3 +657,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    
