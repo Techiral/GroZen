@@ -34,10 +34,10 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
   <Card className="neumorphic w-full mb-6">
     <CardHeader className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
       <div className="flex flex-row items-center">
-        <CardTitle className="text-lg sm:text-xl font-medium flex items-center gap-2">
+        <CardTitle className="text-md sm:text-lg md:text-xl font-medium flex items-center gap-2">
           {icon} {title}
         </CardTitle>
-        {itemsCount !== undefined && <span className="ml-2 sm:ml-4 text-xs sm:text-sm text-muted-foreground">{itemsCount} items</span>}
+        {itemsCount !== undefined && <span className="ml-2 sm:ml-3 text-2xs sm:text-xs text-muted-foreground">{itemsCount} items</span>}
       </div>
       {action && <div className="w-full sm:w-auto pt-2 sm:pt-0">{action}</div>}
     </CardHeader>
@@ -48,17 +48,17 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
 );
 
 const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-3 sm:p-4 rounded-md min-w-[220px] sm:min-w-[250px] snap-start", className)}>
+  <div className={cn("neumorphic-sm p-3 sm:p-4 rounded-md min-w-[180px] xs:min-w-[200px] sm:min-w-[220px] md:min-w-[250px] snap-start", className)}>
     {children}
   </div>
 );
 
 const moodEmojis: { [key: string]: string | React.ReactNode } = {
-  "😊": <Laugh className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />,
-  "🙂": <Smile className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />,
-  "😐": <Meh className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />,
-  "😕": <Annoyed className="h-5 w-5 sm:h-6 sm:w-6 text-orange-400" />,
-  "😞": <Frown className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
+  "😊": <Laugh className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />,
+  "🙂": <Smile className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />,
+  "😐": <Meh className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />,
+  "😕": <Annoyed className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />,
+  "😞": <Frown className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
 };
 const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
 
@@ -106,7 +106,6 @@ export default function DashboardPage() {
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
 
-  // Effect for attaching stream, playing video, and managing ready state
   useEffect(() => {
     const video = videoRef.current;
     if (video && selfieStream && isCameraActive && hasCameraPermission === true) {
@@ -116,7 +115,6 @@ export default function DashboardPage() {
         if (video.videoWidth > 0) {
           setIsVideoReadyForCapture(true);
         } else {
-          // Fallback check if videoWidth is not immediately available
           setTimeout(() => {
             if (video.videoWidth > 0) setIsVideoReadyForCapture(true);
             else setIsVideoReadyForCapture(false);
@@ -143,7 +141,7 @@ export default function DashboardPage() {
         setIsVideoReadyForCapture(false);
       });
 
-      return () => { // Cleanup
+      return () => { 
         video.removeEventListener('canplay', handleCanPlay);
         video.removeEventListener('playing', handlePlaying);
         video.removeEventListener('waiting', handleWaitingOrStalled);
@@ -156,7 +154,6 @@ export default function DashboardPage() {
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
 
-  // Effect for cleaning up the selfieStream tracks (stopping tracks)
   useEffect(() => {
     const currentStream = selfieStream; 
     return () => {
@@ -327,20 +324,20 @@ export default function DashboardPage() {
 
   if (isLoadingPlan && !wellnessPlan) { 
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
-        <p className="mt-4 text-lg sm:text-xl">Generating your personalized plan...</p>
-        <RotateCcw className="mt-4 h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
+        <p className="mt-4 text-md sm:text-lg">Generating your personalized plan...</p>
+        <RotateCcw className="mt-4 h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
       </div>
     );
   }
   
   if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { 
      return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
-        <p className="mt-4 text-lg sm:text-xl">No wellness plan found.</p>
-        <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4 text-base sm:text-lg px-6 py-3 sm:px-8 sm:py-4">
+        <p className="mt-4 text-md sm:text-lg">No wellness plan found.</p>
+        <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
           Create a Plan
         </Button>
       </div>
@@ -349,37 +346,37 @@ export default function DashboardPage() {
 
 
   return (
-    <main className="container mx-auto p-4 sm:p-6 md:p-8">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Button variant="outline" onClick={() => { clearPlan(); router.push('/'); }} className="mt-4 sm:mt-0 neumorphic-button text-sm sm:text-base">
+    <main className="container mx-auto p-3 sm:p-4 md:p-6">
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Button variant="outline" onClick={() => { clearPlan(); router.push('/'); }} className="mt-3 sm:mt-0 neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
           Start Over
         </Button>
       </header>
 
       {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-          <RotateCcw className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
-          <p className="mt-4 text-md sm:text-lg">Updating your plan...</p>
+          <RotateCcw className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
+          <p className="mt-3 text-sm sm:text-md">Updating your plan...</p>
         </div>
       )}
       
       {wellnessPlan && (
         <>
-          <div className="mb-6 p-4 neumorphic rounded-lg">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
-            <p className="text-sm sm:text-base text-muted-foreground">Here's your personalized guide to a healthier you. Stay consistent!</p>
+          <div className="mb-5 p-3 sm:p-4 neumorphic rounded-lg">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">Here's your personalized guide to a healthier you. Stay consistent!</p>
           </div>
 
-          <SectionCard title="Meals" icon={<Utensils className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.meals.length}>
+          <SectionCard title="Meals" icon={<Utensils className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-3 sm:space-x-4 pb-4">
+              <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {meal.day}</h4>
-                    <p className="text-xs sm:text-sm"><strong>Breakfast:</strong> {meal.breakfast}</p>
-                    <p className="text-xs sm:text-sm"><strong>Lunch:</strong> {meal.lunch}</p>
-                    <p className="text-xs sm:text-sm"><strong>Dinner:</strong> {meal.dinner}</p>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {meal.day}</h4>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Breakfast:</strong> {meal.breakfast}</p>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Lunch:</strong> {meal.lunch}</p>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Dinner:</strong> {meal.dinner}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -387,14 +384,14 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
+          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-3 sm:space-x-4 pb-4">
+              <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {ex.day}</h4>
-                    <p className="text-xs sm:text-sm"><strong>Activity:</strong> {ex.activity}</p>
-                    <p className="text-xs sm:text-sm"><strong>Duration:</strong> {ex.duration}</p>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {ex.day}</h4>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -402,14 +399,14 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
+          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-3 sm:space-x-4 pb-4">
+              <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-md sm:text-lg mb-1 flex items-center gap-2"><CalendarDays size={16} className="sm:size-18"/> {mind.day}</h4>
-                    <p className="text-xs sm:text-sm"><strong>Practice:</strong> {mind.practice}</p>
-                    <p className="text-xs sm:text-sm"><strong>Duration:</strong> {mind.duration}</p>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {mind.day}</h4>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
+                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -420,37 +417,37 @@ export default function DashboardPage() {
       )}
       
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="neumorphic w-[90vw] max-w-md sm:max-w-md">
+        <DialogContent className="neumorphic w-[90vw] max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-lg sm:text-xl">
-              Log Your Mood: <span className="ml-2 text-2xl sm:text-3xl">{selectedMood}</span>
+            <DialogTitle className="flex items-center text-md sm:text-lg">
+              Log Your Mood: <span className="ml-2 text-xl sm:text-2xl">{selectedMood}</span>
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
+            <DialogDescription className="text-2xs sm:text-xs">
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="mood-notes" className="text-sm sm:text-base">Notes (Optional)</Label>
+          <div className="grid gap-3 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="mood-notes" className="text-xs sm:text-sm">Notes (Optional)</Label>
               <Textarea
                 id="mood-notes"
                 value={moodNotes}
                 onChange={(e) => setMoodNotes(e.target.value)}
                 placeholder="Any thoughts or details about your mood..."
-                className="h-20 sm:h-24 neumorphic-inset-sm text-sm sm:text-base"
+                className="h-16 sm:h-20 neumorphic-inset-sm text-xs sm:text-sm"
               />
             </div>
-            <div className="space-y-2">
-                <Label className="text-sm sm:text-base">Selfie (Optional)</Label>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <div className="space-y-1.5">
+                <Label className="text-xs sm:text-sm">Selfie (Optional)</Label>
+                <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={handleToggleCamera}
-                        className="neumorphic-button w-full sm:w-auto text-sm"
+                        className="neumorphic-button w-full xs:w-auto text-xs px-3 py-1.5"
                         disabled={!!capturedSelfie} 
                     >
-                        {isCameraActive ? <VideoOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
+                        {isCameraActive ? <VideoOff className="mr-1 h-3 w-3" /> : <Camera className="mr-1 h-3 w-3" />}
                         {isCameraActive ? 'Close Camera' : 'Open Camera'}
                     </Button>
                     {isCameraActive && selfieStream && hasCameraPermission === true && (
@@ -459,14 +456,14 @@ export default function DashboardPage() {
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
                             disabled={!selfieStream || !isVideoReadyForCapture}
-                            className="w-full sm:w-auto text-sm"
+                            className="w-full xs:w-auto text-xs px-3 py-1.5"
                         >
-                            <Camera className="mr-2 h-4 w-4" /> Capture
+                            <Camera className="mr-1 h-3 w-3" /> Capture
                         </Button>
                     )}
                 </div>
                 
-                <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-2">
+                <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-1.5">
                   {isCameraActive && selfieStream && hasCameraPermission === true ? (
                     <video 
                         ref={videoRef} 
@@ -476,36 +473,34 @@ export default function DashboardPage() {
                         playsInline 
                      />
                   ) : capturedSelfie ? (
-                    <div className="p-2 sm:p-4 text-muted-foreground">
-                      <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 text-accent" />
-                      <p className="text-xs sm:text-sm">Selfie captured!</p>
-                      <p className="text-xs">Preview below. You can clear it or save your mood.</p>
+                    <div className="p-1.5 sm:p-2 text-muted-foreground">
+                      <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 text-accent" />
+                      <p className="text-2xs sm:text-xs">Selfie captured!</p>
+                      <p className="text-2xs">Preview below.</p>
                     </div>
                   ) : hasCameraPermission === false ? (
-                    <div className="p-2 sm:p-4">
-                      <VideoOff className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 text-destructive" />
-                      <p className="font-semibold text-destructive text-xs sm:text-sm">Camera Access Denied</p>
-                      <p className="text-xs">Enable camera permissions in browser settings. You might need to refresh.</p>
+                    <div className="p-1.5 sm:p-2">
+                      <VideoOff className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 text-destructive" />
+                      <p className="font-semibold text-destructive text-2xs sm:text-xs">Camera Access Denied</p>
+                      <p className="text-2xs">Enable permissions in browser.</p>
                     </div>
                   ) : isCameraActive && hasCameraPermission === null ? ( 
-                    <div className="p-2 sm:p-4">
-                      <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 animate-spin" />
-                      <p className="text-xs sm:text-sm">Requesting camera access...</p>
-                      <p className="text-xs">Please allow in your browser.</p>
+                    <div className="p-1.5 sm:p-2">
+                      <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 animate-spin" />
+                      <p className="text-2xs sm:text-xs">Requesting camera...</p>
                     </div>
                   ) : ( 
-                    <div className="p-2 sm:p-4">
-                      <Camera className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2" />
-                      <p className="text-xs sm:text-sm">Camera is off.</p>
-                      <p className="text-xs">Click 'Open Camera' to add a selfie.</p>
+                    <div className="p-1.5 sm:p-2">
+                      <Camera className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1" />
+                      <p className="text-2xs sm:text-xs">Camera is off.</p>
                     </div>
                   )}
                 </div>
 
                 {capturedSelfie && (
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-3 space-y-1.5">
                         <p className="text-xs sm:text-sm font-medium">Selfie Preview:</p>
-                        <div className="relative aspect-video w-full max-w-[150px] sm:max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
+                        <div className="relative aspect-video w-full max-w-[120px] sm:max-w-[150px] neumorphic-sm rounded-md overflow-hidden">
                              <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                         </div>
                         <Button 
@@ -513,25 +508,25 @@ export default function DashboardPage() {
                             variant="outline" 
                             size="sm" 
                             onClick={clearCapturedSelfie} 
-                            className="neumorphic-button items-center text-xs"
+                            className="neumorphic-button items-center text-2xs px-2 py-1"
                         >
-                            <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4 text-destructive" /> Clear Selfie
+                            <Trash2 className="mr-1 h-3 w-3 text-destructive" /> Clear Selfie
                         </Button>
                     </div>
                 )}
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
+          <DialogFooter className="flex flex-col xs:flex-row xs:justify-between gap-2 xs:gap-0">
              <DialogClose asChild>
-              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-sm">Cancel</Button>
+              <Button type="button" variant="outline" className="neumorphic-button w-full xs:w-auto text-xs px-3 py-1.5">Cancel</Button>
             </DialogClose>
-            <Button type="button" variant="neumorphic-primary" onClick={handleSaveMoodLog} disabled={!selectedMood} className="w-full sm:w-auto text-sm">Save Mood</Button>
+            <Button type="button" variant="neumorphic-primary" onClick={handleSaveMoodLog} disabled={!selectedMood} className="w-full xs:w-auto text-xs px-3 py-1.5">Save Mood</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} >
-         <CardDescription className="mb-4 text-sm sm:text-base">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} >
+         <CardDescription className="mb-3 text-xs sm:text-sm">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 sm:space-x-2 justify-center sm:justify-start">
           {moodEmojiStrings.map(mood => (
             <Button 
@@ -539,7 +534,7 @@ export default function DashboardPage() {
               variant="outline" 
               size="icon" 
               onClick={() => handleMoodButtonClick(mood)}
-              className="text-xl sm:text-2xl neumorphic-button h-12 w-12 sm:h-14 sm:w-14 hover:neumorphic-inset"
+              className="text-lg sm:text-xl md:text-2xl neumorphic-button h-10 w-10 sm:h-12 sm:w-12 hover:neumorphic-inset"
               aria-label={`Log mood: ${mood}`}
             >
               {mood}
@@ -549,34 +544,34 @@ export default function DashboardPage() {
       </SectionCard>
 
       {sortedMoodLogs.length > 0 && (
-        <SectionCard title="Mood History" icon={<RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />} itemsCount={sortedMoodLogs.length}>
-          <ScrollArea className="w-full h-[300px] sm:h-[400px] whitespace-nowrap rounded-md">
-            <div className="flex flex-col space-y-3 sm:space-y-4 p-1">
+        <SectionCard title="Mood History" icon={<RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={sortedMoodLogs.length}>
+          <ScrollArea className="w-full h-[250px] sm:h-[300px] md:h-[400px] whitespace-nowrap rounded-md">
+            <div className="flex flex-col space-y-2 sm:space-y-3 p-1">
               {sortedMoodLogs.map((log: MoodLog) => (
                 <ItemCard key={log.id} className="bg-card w-full min-w-0">
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     {log.selfieDataUri && (
-                      <div className="relative w-full sm:w-24 md:w-32 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                      <div className="relative w-full sm:w-20 md:w-24 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
                         <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                       </div>
                     )}
                     <div className="flex-1">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-semibold text-md sm:text-lg flex items-center gap-2">
-                          <span className="text-2xl sm:text-3xl">{log.mood}</span>
+                      <div className="flex justify-between items-start mb-0.5">
+                        <h4 className="font-semibold text-md sm:text-lg flex items-center gap-1 sm:gap-2">
+                          <span className="text-xl sm:text-2xl">{log.mood}</span>
                           {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                         </h4>
                       </div>
                        <p className="text-xs text-muted-foreground">
-                        {format(new Date(log.date), "MMM d, yyyy 'at' h:mm a")}
+                        {format(new Date(log.date), "MMM d, yy 'at' h:mma")}
                       </p>
-                      {log.notes && <p className="text-xs sm:text-sm mt-2 pt-2 border-t border-border/50 whitespace-pre-wrap">{log.notes}</p>}
+                      {log.notes && <p className="text-xs sm:text-sm mt-1.5 pt-1.5 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                        {log.aiFeedback && (
-                        <div className="mt-2 pt-2 border-t border-border/50">
+                        <div className="mt-1.5 pt-1.5 border-t border-border/50">
                             <p className="text-xs sm:text-sm flex items-center gap-1 text-primary/90">
-                                <Sparkles size={14} className="sm:size-16 text-accent" /> <em>GroZen Insight:</em>
+                                <Sparkles size={12} className="sm:size-14 text-accent" /> <em>GroZen Insight:</em>
                             </p>
-                            <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap">{log.aiFeedback}</p>
+                            <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                         </div>
                       )}
                     </div>
@@ -589,57 +584,57 @@ export default function DashboardPage() {
         </SectionCard>
       )}
       
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />}>
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
-          <CardDescription className="text-sm sm:text-base">
+          <CardDescription className="text-xs sm:text-sm">
             Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your 'Before & After' share card will appear here.
           </CardDescription>
         )}
       </SectionCard>
 
 
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />}>
-        <CardDescription className="mb-4 text-sm sm:text-base">
+      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
+        <CardDescription className="mb-3 text-xs sm:text-sm">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button 
           onClick={handleGenerateGroceryList} 
           disabled={isLoadingGroceryList || !wellnessPlan}
           variant="neumorphic-primary"
-          className="w-full sm:w-auto text-sm sm:text-base"
+          className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5"
         >
-          {isLoadingGroceryList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+          {isLoadingGroceryList ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShoppingCart className="mr-1 h-3 w-3" />}
           Generate Grocery List
         </Button>
 
         {errorGroceryList && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertTitle className="text-sm sm:text-base">Error Generating List</AlertTitle>
-            <AlertDescription className="text-xs sm:text-sm">{errorGroceryList}</AlertDescription>
+          <Alert variant="destructive" className="mt-3">
+            <AlertTitle className="text-xs sm:text-sm">Error Generating List</AlertTitle>
+            <AlertDescription className="text-2xs sm:text-xs">{errorGroceryList}</AlertDescription>
           </Alert>
         )}
 
         {groceryList && !isLoadingGroceryList && (
-          <div className="mt-6 space-y-4">
-            <h3 className="text-md sm:text-lg font-semibold">
-              Your Grocery List <span className="text-xs sm:text-sm text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
+          <div className="mt-4 space-y-3">
+            <h3 className="text-sm sm:text-md font-semibold">
+              Your Grocery List <span className="text-2xs sm:text-xs text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
             </h3>
-            {Object.keys(groupedGroceryItems).length === 0 && <p className="text-sm sm:text-base">Your grocery list is empty or could not be generated.</p>}
+            {Object.keys(groupedGroceryItems).length === 0 && <p className="text-xs sm:text-sm">Your grocery list is empty or could not be generated.</p>}
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems)}>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
-                <AccordionItem value={category} key={category} className="neumorphic-sm mb-2">
-                  <AccordionTrigger className="p-3 text-sm sm:text-md hover:no-underline">
+                <AccordionItem value={category} key={category} className="neumorphic-sm mb-1.5">
+                  <AccordionTrigger className="p-2.5 text-xs sm:text-sm hover:no-underline">
                     {category} ({items.length})
                   </AccordionTrigger>
-                  <AccordionContent className="p-3">
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-xs sm:text-sm">
+                  <AccordionContent className="p-2.5">
+                    <ul className="list-disc pl-3.5 sm:pl-4 space-y-1 text-2xs sm:text-xs">
                       {items.map((item, index) => (
-                        <li key={`${item.name}-${index}`}>
+                        <li key={`${item.name}-${index}`} className="break-words">
                           <strong>{item.name}</strong>
                           {item.quantity && <span className="text-muted-foreground"> ({item.quantity})</span>}
-                          {item.notes && <em className="text-muted-foreground text-xs block"> - {item.notes}</em>}
+                          {item.notes && <em className="text-muted-foreground text-2xs block"> - {item.notes}</em>}
                         </li>
                       ))}
                     </ul>
@@ -647,8 +642,8 @@ export default function DashboardPage() {
                 </AccordionItem>
               ))}
             </Accordion>
-            <p className="text-xs text-muted-foreground mt-4">
-              Note: This is an AI-generated list. Please review for accuracy and adjust quantities as needed. Future versions will allow direct export.
+            <p className="text-2xs text-muted-foreground mt-3">
+              Note: This is an AI-generated list. Please review for accuracy and adjust quantities as needed.
             </p>
           </div>
         )}
@@ -657,5 +652,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    

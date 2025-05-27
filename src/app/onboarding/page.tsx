@@ -7,7 +7,7 @@ import { useForm, FormProvider, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input'; // Input not used, but keep for potential future
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -75,29 +75,29 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 md:p-8">
+    <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 md:p-6">
       <Card className="w-full max-w-md sm:max-w-lg neumorphic shadow-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
-            <Logo size="text-2xl sm:text-3xl" />
+          <div className="mx-auto mb-3 sm:mb-4">
+            <Logo size="text-xl sm:text-2xl md:text-3xl" />
           </div>
-          <CardTitle className="text-xl sm:text-2xl">{steps[currentStep].title}</CardTitle>
-          <CardDescription className="text-sm sm:text-base">{steps[currentStep].description}</CardDescription>
+          <CardTitle className="text-lg sm:text-xl md:text-2xl">{steps[currentStep].title}</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">{steps[currentStep].description}</CardDescription>
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               {currentStep === 0 && (
                 <FormField
                   control={control}
                   name="goals"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm sm:text-base">Goals</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Goals</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[80px] sm:min-h-[100px] neumorphic-inset-sm text-sm sm:text-base" />
+                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[70px] sm:min-h-[80px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
-                      <FormMessage className="text-xs sm:text-sm"/>
+                      <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
                   )}
                 />
@@ -108,11 +108,11 @@ export default function OnboardingPage() {
                   name="dietPreferences"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm sm:text-base">Dietary Preferences</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Dietary Preferences</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[80px] sm:min-h-[100px] neumorphic-inset-sm text-sm sm:text-base" />
+                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[70px] sm:min-h-[80px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
-                      <FormMessage className="text-xs sm:text-sm"/>
+                      <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
                   )}
                 />
@@ -122,54 +122,56 @@ export default function OnboardingPage() {
                   control={control}
                   name="budget"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel className="text-sm sm:text-base">Weekly Budget</FormLabel>
+                    <FormItem className="space-y-2 sm:space-y-3">
+                      <FormLabel className="text-xs sm:text-sm">Weekly Budget</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
                           defaultValue={field.value}
-                          className="flex flex-col space-y-2"
+                          className="flex flex-col space-y-1.5 sm:space-y-2"
                         >
                           {['low', 'medium', 'high'].map(value => (
-                            <FormItem key={value} className="flex items-center space-x-3 space-y-0 p-2 sm:p-3 neumorphic-sm hover:neumorphic-inset-sm">
+                            <FormItem key={value} className="flex items-center space-x-2 sm:space-x-3 space-y-0 p-2 sm:p-2.5 neumorphic-sm hover:neumorphic-inset-sm">
                               <FormControl>
                                 <RadioGroupItem value={value} />
                               </FormControl>
-                              <FormLabel className="font-normal capitalize text-sm sm:text-base">
+                              <FormLabel className="font-normal capitalize text-xs sm:text-sm">
                                 {value}
                               </FormLabel>
                             </FormItem>
                           ))}
                         </RadioGroup>
                       </FormControl>
-                      <FormMessage className="text-xs sm:text-sm"/>
+                      <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
                   )}
                 />
               )}
               {currentStep === 3 && (
-                <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 neumorphic-sm rounded-md">
-                  <h4 className="font-semibold text-md sm:text-lg mb-2">Review Your Information:</h4>
-                  <p className="text-sm sm:text-base"><strong>Goals:</strong> {getValues("goals")}</p>
-                  <p className="text-sm sm:text-base"><strong>Diet:</strong> {getValues("dietPreferences")}</p>
-                  <p className="text-sm sm:text-base"><strong>Budget:</strong> <span className="capitalize">{getValues("budget")}</span></p>
+                <div className="space-y-2 sm:space-y-3 p-2.5 sm:p-3 neumorphic-sm rounded-md">
+                  <h4 className="font-semibold text-sm sm:text-md mb-1.5">Review Your Information:</h4>
+                  <p className="text-xs sm:text-sm break-words"><strong>Goals:</strong> {getValues("goals")}</p>
+                  <p className="text-xs sm:text-sm break-words"><strong>Diet:</strong> {getValues("dietPreferences")}</p>
+                  <p className="text-xs sm:text-sm"><strong>Budget:</strong> <span className="capitalize">{getValues("budget")}</span></p>
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row justify-between pt-4 gap-3 sm:gap-0">
+              <div className="flex flex-col sm:flex-row justify-between pt-3 gap-2 sm:gap-3">
                 {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-sm sm:text-base">
+                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
                     Previous
                   </Button>
                 )}
+                 {/* Spacer to push next/submit to the right if no prev button */}
+                {currentStep === 0 && <div className="sm:flex-grow"></div>}
                 {currentStep < steps.length - 1 && (
-                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="sm:ml-auto w-full sm:w-auto text-sm sm:text-base">
+                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
                     Next
                   </Button>
                 )}
                 {currentStep === steps.length - 1 && (
-                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan} className="sm:ml-auto w-full sm:w-auto text-sm sm:text-base">
-                    {isLoadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
+                    {isLoadingPlan ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
                     Generate My Plan
                   </Button>
                 )}
@@ -177,11 +179,11 @@ export default function OnboardingPage() {
             </form>
           </FormProvider>
           {/* Progress Indicator */}
-          <div className="flex justify-center mt-6 space-x-2">
+          <div className="flex justify-center mt-4 sm:mt-5 space-x-1.5 sm:space-x-2">
             {steps.map((_, index) => (
               <div
                 key={index}
-                className={`h-2 w-6 sm:w-8 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
+                className={`h-1.5 w-5 sm:w-6 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
               />
             ))}
           </div>
@@ -190,5 +192,3 @@ export default function OnboardingPage() {
     </main>
   );
 }
-
-    
