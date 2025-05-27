@@ -75,7 +75,7 @@ export default function DashboardPage() {
     groceryList,
     isLoadingGroceryList,
     errorGroceryList,
-    generateGroceryList // This is the context function
+    generateGroceryList
   } = usePlan();
   const { toast } = useToast();
 
@@ -117,20 +117,18 @@ export default function DashboardPage() {
           toast({
             variant: "destructive",
             title: "Camera Error",
-            description: "Could not start video playback. Please ensure your camera is not in use by another application."
+            description: "Could not start video playback. Ensure your camera is not in use."
           });
           setIsVideoReadyForCapture(false);
         });
       };
 
       const handlePlaying = () => {
-         // Check dimensions with a slight delay, as 'playing' can fire before dimensions are available
         setTimeout(() => {
           if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           } else {
             console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
-            // It can sometimes take a moment for dimensions to be reported even after 'playing'
             setTimeout(() => {
               if (video.videoWidth > 0 && video.videoHeight > 0) {
                 setIsVideoReadyForCapture(true);
@@ -143,9 +141,9 @@ export default function DashboardPage() {
                 });
                 setIsVideoReadyForCapture(false);
               }
-            }, 200); // A bit longer delay for the second check
+            }, 200); 
           }
-        }, 100); // Initial delay after 'playing'
+        }, 100); 
       };
 
       const handleWaiting = () => setIsVideoReadyForCapture(false);
@@ -157,12 +155,10 @@ export default function DashboardPage() {
       video.addEventListener('stalled', handleStalled);
       
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
-        // Already playing or played, check dimensions
          if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           }
       } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
-        // Metadata loaded but paused, try to play.
          video.play().catch(err => console.error("Error attempting to play already loaded video", err));
       }
 
@@ -298,7 +294,6 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // setIsVideoReadyForCapture(false); // Redundant as camera will be off or re-opened
   }
 
   const handleMoodButtonClick = (mood: string) => {
@@ -342,7 +337,7 @@ export default function DashboardPage() {
 
   const handleGenerateGroceryListClick = async () => {
     if (wellnessPlan && wellnessPlan.meals && wellnessPlan.meals.length > 0) {
-      await generateGroceryList(wellnessPlan); // Pass the whole wellnessPlan object
+      await generateGroceryList(wellnessPlan);
     } else {
       toast({ variant: "destructive", title: "Error", description: "No wellness plan with meals available to generate groceries from." });
     }
@@ -412,7 +407,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {meal.day}</h4>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}</h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Breakfast:</strong> {meal.breakfast}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Lunch:</strong> {meal.lunch}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Dinner:</strong> {meal.dinner}</p>
@@ -428,7 +423,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {ex.day}</h4>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}</h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
@@ -443,7 +438,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center gap-1 sm:gap-2"><CalendarDays size={14} className="sm:size-16"/> {mind.day}</h4>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}</h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
@@ -607,7 +602,7 @@ export default function DashboardPage() {
                        {log.aiFeedback && (
                         <div className="mt-1.5 pt-1.5 border-t border-border/50">
                             <p className="text-xs sm:text-sm flex items-center gap-1 text-primary/90">
-                                <Sparkles size={12} className="sm:size-14 text-accent" /> <em>GroZen Insight:</em>
+                                <Sparkles className="h-3 w-3 text-accent" /> <em>GroZen Insight:</em>
                             </p>
                             <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                         </div>

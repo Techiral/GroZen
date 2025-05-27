@@ -67,7 +67,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
               />
             </div>
             <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-              <CalendarDays size={12} className="sm:size-14" /> {format(new Date(beforeLog.date), 'MMM d, yy')}
+              <CalendarDays className="h-3 w-3" /> {format(new Date(beforeLog.date), 'MMM d, yy')}
             </p>
           </div>
           <div className="space-y-1.5">
@@ -85,7 +85,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
               />
             </div>
              <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-              <CalendarDays size={12} className="sm:size-14" /> {format(new Date(afterLog.date), 'MMM d, yy')}
+              <CalendarDays className="h-3 w-3" /> {format(new Date(afterLog.date), 'MMM d, yy')}
             </p>
           </div>
         </div>
