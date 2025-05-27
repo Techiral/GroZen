@@ -1,10 +1,11 @@
 
 "use client";
 
-import type { WellnessPlan, OnboardingData, MoodLog } from '@/types/wellness';
+import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, GroceryItem } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
+import { generateGroceryList as aiGenerateGroceryList, type GenerateGroceryListInput, type GenerateGroceryListOutput } from '@/ai/flows/generate-grocery-list';
 import { useToast } from "@/hooks/use-toast";
 
 interface PlanContextType {
@@ -20,6 +21,10 @@ interface PlanContextType {
   completeOnboarding: (data: OnboardingData) => void;
   moodLogs: MoodLog[];
   addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<void>;
+  groceryList: GroceryList | null;
+  isLoadingGroceryList: boolean;
+  errorGroceryList: string | null;
+  generateGroceryList: (currentPlan: WellnessPlan) => Promise<void>;
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
@@ -37,6 +42,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [errorPlan, setErrorPlan] = useState<string | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
+  const [groceryList, setGroceryList] = useState<GroceryList | null>(null);
+  const [isLoadingGroceryList, setIsLoadingGroceryList] = useState(false);
+  const [errorGroceryList, setErrorGroceryList] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,6 +61,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedMoodLogs = localStorage.getItem('grozen_moodLogs');
     if (storedMoodLogs) {
       setMoodLogs(JSON.parse(storedMoodLogs));
+    }
+    const storedGroceryList = localStorage.getItem('grozen_groceryList');
+    if (storedGroceryList) {
+      setGroceryList(JSON.parse(storedGroceryList));
     }
   }, []);
 
@@ -89,7 +101,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string) => {
     let aiFeedbackText: string | undefined = undefined;
     try {
-      // Don't send selfieDataUri to this AI flow, it's not designed for image input yet
       const feedbackInput: ProvideMoodFeedbackInput = { mood, notes };
       const feedbackResponse = await aiProvideMoodFeedback(feedbackInput);
       aiFeedbackText = feedbackResponse.feedback;
@@ -118,14 +129,45 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const generateGroceryList = async (currentPlan: WellnessPlan) => {
+    if (!currentPlan || !currentPlan.meals || currentPlan.meals.length === 0) {
+      toast({ variant: "destructive", title: "Error", description: "Cannot generate grocery list without a meal plan." });
+      return;
+    }
+    setIsLoadingGroceryList(true);
+    setErrorGroceryList(null);
+    try {
+      const input: GenerateGroceryListInput = { meals: currentPlan.meals };
+      const result: GenerateGroceryListOutput = await aiGenerateGroceryList(input);
+      
+      const newGroceryList: GroceryList = {
+        id: crypto.randomUUID(),
+        items: result.items,
+        generatedDate: new Date().toISOString(),
+      };
+      setGroceryList(newGroceryList);
+      localStorage.setItem('grozen_groceryList', JSON.stringify(newGroceryList));
+      toast({ title: "Success", description: "Your grocery list has been generated!" });
+    } catch (err) {
+      console.error("Failed to generate grocery list:", err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      setErrorGroceryList(errorMessage);
+      toast({ variant: "destructive", title: "Error", description: `Failed to generate grocery list: ${errorMessage}` });
+    } finally {
+      setIsLoadingGroceryList(false);
+    }
+  };
+
   const clearPlan = () => {
     setWellnessPlan(null);
     setOnboardingData(defaultOnboardingData);
     setIsOnboarded(false);
     setMoodLogs([]);
+    setGroceryList(null);
     localStorage.removeItem('grozen_wellnessPlan');
     localStorage.removeItem('grozen_onboardingData');
     localStorage.removeItem('grozen_moodLogs');
+    localStorage.removeItem('grozen_groceryList');
   };
 
   const isPlanAvailable = !!wellnessPlan;
@@ -143,7 +185,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isOnboarded,
       completeOnboarding,
       moodLogs,
-      addMoodLog
+      addMoodLog,
+      groceryList,
+      isLoadingGroceryList,
+      errorGroceryList,
+      generateGroceryList
     }}>
       {children}
     </PlanContext.Provider>

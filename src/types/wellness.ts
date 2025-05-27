@@ -39,3 +39,15 @@ export interface MoodLog {
   aiFeedback?: string; // To store AI's feedback on the mood
 }
 
+export interface GroceryItem {
+  name: string;
+  category: string; // e.g., "Produce", "Dairy", "Pantry", "Meats"
+  quantity?: string; // e.g., "1 lb", "2 cans", "1 gallon"
+  notes?: string; // e.g., "ripe", "low-sodium"
+}
+
+export interface GroceryList {
+  id: string;
+  items: GroceryItem[];
+  generatedDate: string; // ISO string
+}
