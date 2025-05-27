@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import Logo from '@/components/logo';
 import { Loader2 } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast"; // Added import
 
 export default function SignupPage() {
   const router = useRouter();
@@ -19,8 +20,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
+  const { toast } = useToast(); // Correctly initialize toast
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
@@ -116,4 +116,3 @@ export default function SignupPage() {
     </main>
   );
 }
-
