@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Keep this import if used elsewhere, but the error is for a specific usage
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -115,9 +114,6 @@ export default function DashboardPage() {
         router.replace('/onboarding');
       } else if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
          // User is onboarded, but no plan is available, and it's not currently loading.
-         // This state could occur if plan generation failed or was interrupted.
-         // They should stay on the dashboard to potentially try generating a new plan
-         // or see a message. The `return` block below handles this specific UI.
       }
     }
   }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
@@ -301,7 +297,6 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
         
-        // Stop camera after capture
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null); 
         setIsCameraActive(false); 
@@ -336,7 +331,7 @@ export default function DashboardPage() {
     setMoodNotes("");
     setCapturedSelfie(null); 
     
-    if (selfieStream) { // Ensure any active stream is stopped
+    if (selfieStream) { 
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
     }
@@ -352,7 +347,6 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
-      // Dialog close will handle further cleanup via onOpenChange
     }
   };
   
@@ -401,12 +395,12 @@ export default function DashboardPage() {
   const confirmDeleteMoodLog = async () => {
     if (logToDelete) {
       await deleteMoodLog(logToDelete);
-      setLogToDelete(null); // Close dialog
+      setLogToDelete(null); 
     }
   };
 
 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup'].includes(router.pathname))) { // Added pathname check
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.pathname !== '/login' && router.pathname !== '/signup')) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -416,9 +410,8 @@ export default function DashboardPage() {
     );
   }
   
-  // User is logged in, but no plan AND not yet onboarded
-  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') { // Added pathname check
-    router.replace('/onboarding'); // Should be caught by useEffect, but as a safeguard
+  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') { 
+    router.replace('/onboarding'); 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -428,7 +421,6 @@ export default function DashboardPage() {
     );
   }
   
-  // User is logged in, onboarded, but plan is still loading
   if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
@@ -439,14 +431,13 @@ export default function DashboardPage() {
     );
   }
   
-  // User is logged in, onboarded, plan is not loading, but still no plan available (e.g., generation failed or new user after onboarding)
   if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
         <p className="mt-4 text-md sm:text-lg">No wellness plan found or an error occurred.</p>
         <p className="text-xs sm:text-sm text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false); router.push('/onboarding');}} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
           Create a New Plan
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-4 neumorphic-button text-xs sm:text-sm">
@@ -456,13 +447,8 @@ export default function DashboardPage() {
     );
   }
 
-  // If none of the above loading/redirect/error states are met, and we don't have a current user
-  // This can happen briefly or if routing logic is still settling.
-  // If they are on login/signup, this block shouldn't execute due to earlier checks.
   if (!currentUser && !isLoadingAuth) {
-    // This check is a safeguard, useEffect should handle redirection to login/signup if not on those pages
-    // console.log("Dashboard: No current user, not loading auth. Current path:", router.pathname);
-    if (!['/login', '/signup', '/'].includes(router.pathname)) { // Allow landing page as well
+    if (!['/login', '/signup', '/'].includes(router.pathname)) { 
          router.replace('/login'); 
          return (
              <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -472,9 +458,7 @@ export default function DashboardPage() {
             </div>
         );
     }
-    // If on login/signup, it's fine, those pages will render. If on landing page, it's also fine.
-    // For other paths, they might see a flash of this before redirect.
-    return null; // Or a minimal loader if preferred, but usually redirect is fast
+    return null; 
   }
   
 
@@ -483,8 +467,8 @@ export default function DashboardPage() {
       <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
         <div className="flex items-center gap-2 mt-3 sm:mt-0">
-            <Button variant="outline" onClick={() => { clearPlanAndData(false); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
-            New Plan
+            <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            New Plan / Edit Preferences
             </Button>
             <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
                 <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Logout
@@ -830,6 +814,5 @@ export default function DashboardPage() {
     </main>
   );
 }
-
 
     
