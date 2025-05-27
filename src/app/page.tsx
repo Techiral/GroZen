@@ -11,7 +11,7 @@ import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isPlanAvailable, isOnboarded, isLoadingPlan } = usePlan();
+  const { currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState } = usePlan();
   const [isClient, setIsClient] = React.useState(false);
 
   useEffect(() => {
@@ -19,16 +19,21 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (isClient && !isLoadingPlan) {
-      if (isPlanAvailable) {
-        router.replace('/dashboard');
-      } else if (isOnboarded) {
-        router.replace('/onboarding'); 
+    if (isClient && !isLoadingAuth) {
+      if (currentUser) {
+        if (isPlanAvailable) {
+          router.replace('/dashboard');
+        } else { // User is logged in but no plan or not fully onboarded yet by our app's logic
+          router.replace('/onboarding');
+        }
+      } else {
+        // No current user, stay on home page or redirect to login/signup explicitly if desired.
+        // For now, home page offers "Get Started" which leads to onboarding, which will redirect to login.
       }
     }
-  }, [isClient, isPlanAvailable, isOnboarded, isLoadingPlan, router]);
+  }, [isClient, currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, router]);
 
-  if (!isClient || isLoadingPlan) {
+  if (!isClient || isLoadingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl md:text-5xl" />
@@ -38,14 +43,18 @@ export default function HomePage() {
     );
   }
   
-  if (isPlanAvailable || isOnboarded) {
-    return ( 
+  // If user is logged in, they should have been redirected by the useEffect above.
+  // This content is for non-logged-in users.
+  if (currentUser) {
+     return ( 
        <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl md:text-5xl" />
         <Loader2 className="mt-5 h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
+        <p className="mt-3 text-sm sm:text-md">Redirecting...</p>
       </div>
     );
   }
+
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen text-center p-3 sm:p-4 md:p-6">
@@ -72,14 +81,19 @@ export default function HomePage() {
         <Button 
           variant="neumorphic-primary" 
           size="lg" 
-          onClick={() => router.push('/onboarding')}
+          onClick={() => router.push('/signup')} // Direct to signup, then login, then onboarding
           className="text-sm sm:text-base px-5 py-2.5 sm:px-6 sm:py-3"
         >
           Get Started
         </Button>
-        <p className="mt-4 text-xs sm:text-sm text-muted-foreground">
-          Already have a plan? It will load automatically if available.
-        </p>
+         <Button 
+          variant="outline" 
+          size="lg" 
+          onClick={() => router.push('/login')}
+          className="mt-3 text-sm sm:text-base px-5 py-2.5 sm:px-6 sm:py-3 neumorphic-button"
+        >
+          Login
+        </Button>
       </div>
     </main>
   );

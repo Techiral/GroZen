@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift } from 'lucide-react';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -66,16 +66,20 @@ const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
 export default function DashboardPage() {
   const router = useRouter();
   const { 
+    currentUser,
+    isLoadingAuth,
+    logoutUser,
     wellnessPlan, 
-    isOnboarded, 
-    clearPlan, 
+    isOnboardedState, 
+    clearPlanAndData, 
     isLoadingPlan, 
     addMoodLog, 
     moodLogs,
     groceryList,
     isLoadingGroceryList,
     errorGroceryList,
-    generateGroceryList
+    generateGroceryList,
+    isPlanAvailable
   } = usePlan();
   const { toast } = useToast();
 
@@ -90,6 +94,16 @@ export default function DashboardPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
 
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!currentUser) {
+        router.replace('/login');
+      } else if (!isPlanAvailable && !isLoadingPlan) { // User logged in, but no plan
+        router.replace('/onboarding');
+      }
+    }
+  }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, router]);
+
 
   const sortedMoodLogs = React.useMemo(() => {
     return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -99,20 +113,12 @@ export default function DashboardPage() {
   const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
 
   useEffect(() => {
-    if (!isLoadingPlan && !isOnboarded) {
-      router.push('/onboarding');
-    } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
-      router.push('/onboarding');
-    }
-  }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
-
-  useEffect(() => {
     const video = videoRef.current;
     if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
       video.srcObject = selfieStream;
 
       const handleLoadedMetadata = () => {
-        video.play().catch(err => {
+         video.play().catch(err => {
           console.error("Error playing video stream:", err);
           toast({
             variant: "destructive",
@@ -124,7 +130,7 @@ export default function DashboardPage() {
       };
 
       const handlePlaying = () => {
-        setTimeout(() => {
+        setTimeout(() => { // Add a small delay to ensure dimensions are available
           if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           } else {
@@ -145,44 +151,56 @@ export default function DashboardPage() {
           }
         }, 100); 
       };
+      
+      const handleCanPlay = () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setIsVideoReadyForCapture(true);
+        }
+      }
 
       const handleWaiting = () => setIsVideoReadyForCapture(false);
       const handleStalled = () => setIsVideoReadyForCapture(false);
       
       video.addEventListener('loadedmetadata', handleLoadedMetadata);
       video.addEventListener('playing', handlePlaying);
+      video.addEventListener('canplay', handleCanPlay);
       video.addEventListener('waiting', handleWaiting);
       video.addEventListener('stalled', handleStalled);
       
+      // Check if video is already playing (e.g., on re-render)
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
          if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           }
       } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
+         // If metadata is loaded but paused, try to play
          video.play().catch(err => console.error("Error attempting to play already loaded video", err));
       }
+
 
       return () => {
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('playing', handlePlaying);
+        video.removeEventListener('canplay', handleCanPlay);
         video.removeEventListener('waiting', handleWaiting);
         video.removeEventListener('stalled', handleStalled);
-        setIsVideoReadyForCapture(false);
+        setIsVideoReadyForCapture(false); // Reset on cleanup
       };
     } else {
-      setIsVideoReadyForCapture(false);
+      setIsVideoReadyForCapture(false); // Ensure it's false if conditions aren't met
     }
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
 
   useEffect(() => {
+    // Cleanup stream tracks when selfieStream changes or component unmounts
     const currentStream = selfieStream; 
     return () => {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [selfieStream]); 
+  }, [selfieStream]); // Only re-run if selfieStream itself changes
 
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
@@ -218,25 +236,26 @@ export default function DashboardPage() {
   }, [sortedMoodLogs]);
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); 
+    setIsVideoReadyForCapture(false); // Reset readiness on toggle
 
-    if (isCameraActive && selfieStream) { 
+    if (isCameraActive && selfieStream) { // Turning camera OFF
+      // selfieStream cleanup is handled by its own useEffect
       setSelfieStream(null); 
       setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null; 
-    } else { 
-      setCapturedSelfie(null); 
-      setHasCameraPermission(null); 
-      setIsCameraActive(true); 
+      if (videoRef.current) videoRef.current.srcObject = null; // Explicitly clear srcObject
+    } else { // Turning camera ON
+      setCapturedSelfie(null); // Clear any previous capture
+      setHasCameraPermission(null); // Reset permission state to show loading/prompt
+      setIsCameraActive(true); // Signal intent to activate camera
       
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream); 
+        setSelfieStream(stream); // This will trigger the useEffect to attach stream to video
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); 
+        setIsCameraActive(false); // Ensure camera is marked inactive on error
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -251,12 +270,13 @@ export default function DashboardPage() {
     const video = videoRef.current;
     if (isVideoReadyForCapture && video && selfieStream) {
        if (video.videoWidth === 0 || video.videoHeight === 0) {
+            // This case should ideally be prevented by isVideoReadyForCapture being true
             toast({
                 variant: 'destructive',
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false); 
+            setIsVideoReadyForCapture(false); // Force re-check
             return;
         }
       const canvas = document.createElement('canvas');
@@ -265,12 +285,13 @@ export default function DashboardPage() {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG for smaller size
         setCapturedSelfie(dataUri);
         
-        setSelfieStream(null); 
-        setIsCameraActive(false); 
-        setIsVideoReadyForCapture(false); 
+        // Stop camera stream after capture
+        setSelfieStream(null); // This will trigger its cleanup useEffect
+        setIsCameraActive(false); // Mark camera as inactive
+        setIsVideoReadyForCapture(false); // Reset ready state
       } else {
          toast({
             variant: 'destructive',
@@ -279,6 +300,7 @@ export default function DashboardPage() {
         });
       }
     } else {
+        // Provide more specific feedback if capture is attempted when not ready
         let description = 'Video stream not ready or camera not active.';
         if (!isVideoReadyForCapture && selfieStream) description = 'Video is not ready for capture. Please wait for the feed to stabilize.';
         else if (!selfieStream) description = 'Camera stream is not available.';
@@ -294,17 +316,19 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
+    // Optionally, re-enable camera button if it was disabled by capture
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null); 
+    setCapturedSelfie(null); // Clear any existing selfie from previous dialog opening
     
-    if (selfieStream) setSelfieStream(null); 
+    // Ensure camera is reset when opening dialog
+    if (selfieStream) setSelfieStream(null); // Triggers cleanup
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null); 
+    setHasCameraPermission(null); // Reset to allow re-request if needed or show initial state
     setIsVideoReadyForCapture(false);
 
     setIsMoodDialogOpen(true);
@@ -314,12 +338,14 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
+      // Dialog close will handle further cleanup via onOpenChange
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
-    if (!open) { 
+    if (!open) { // When dialog is closed
+        // Ensure camera stream is stopped and states are reset
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -330,17 +356,17 @@ export default function DashboardPage() {
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null); 
+        setHasCameraPermission(null); // Reset permission state
         setIsVideoReadyForCapture(false);
     }
   }
 
   const handleGenerateGroceryListClick = async () => {
-    if (wellnessPlan && wellnessPlan.meals && wellnessPlan.meals.length > 0) {
-      await generateGroceryList(wellnessPlan);
-    } else {
+    if (!wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0) {
       toast({ variant: "destructive", title: "Error", description: "No wellness plan with meals available to generate groceries from." });
+      return;
     }
+    await generateGroceryList(wellnessPlan);
   };
 
   const groupedGroceryItems = React.useMemo(() => {
@@ -355,8 +381,23 @@ export default function DashboardPage() {
     }, {} as Record<string, GroceryItem[]>);
   }, [groceryList]);
 
+  const handleLogout = async () => {
+    await logoutUser();
+    // PlanContext's onAuthStateChanged will clear data and router.push to /login
+  };
 
-  if (isLoadingPlan && !wellnessPlan) { 
+
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading user data...</p>
+      </div>
+    );
+  }
+  
+  if (isLoadingPlan && !isPlanAvailable) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -366,13 +407,19 @@ export default function DashboardPage() {
     );
   }
   
-  if (!wellnessPlan && !isOnboarded && !isLoadingPlan) { 
+  // This condition covers when a user is logged in, not loading auth, but still doesn't have a plan.
+  // They should have been redirected to /onboarding by the initial useEffect if this is the case.
+  // However, as a fallback or if navigation is slow:
+  if (!isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
         <p className="mt-4 text-md sm:text-lg">No wellness plan found.</p>
         <Button variant="neumorphic-primary" onClick={() => router.push('/onboarding')} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
           Create a Plan
+        </Button>
+         <Button variant="outline" onClick={handleLogout} className="mt-4 neumorphic-button text-xs sm:text-sm">
+            <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
     );
@@ -383,9 +430,14 @@ export default function DashboardPage() {
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-        <Button variant="outline" onClick={() => { clearPlan(); router.push('/'); }} className="mt-3 sm:mt-0 neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
-          Start Over
-        </Button>
+        <div className="flex items-center gap-2 mt-3 sm:mt-0">
+            <Button variant="outline" onClick={() => { clearPlanAndData(); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            New Plan
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+                <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Logout
+            </Button>
+        </div>
       </header>
 
       {isLoadingPlan && wellnessPlan && ( 
@@ -399,7 +451,7 @@ export default function DashboardPage() {
         <>
           <div className="mb-5 p-3 sm:p-4 neumorphic rounded-lg">
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Here's your personalized guide to a healthier you. Stay consistent!</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Here&apos;s your personalized guide to a healthier you. Stay consistent!</p>
           </div>
 
           <SectionCard title="Meals" icon={<Utensils className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.meals.length}>
@@ -407,7 +459,9 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}</h4>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
+                    </h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Breakfast:</strong> {meal.breakfast}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Lunch:</strong> {meal.lunch}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Dinner:</strong> {meal.dinner}</p>
@@ -423,7 +477,9 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}</h4>
+                     <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
+                    </h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
@@ -438,7 +494,9 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-3 pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center"><CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}</h4>
+                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
+                    </h4>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
@@ -602,7 +660,7 @@ export default function DashboardPage() {
                        {log.aiFeedback && (
                         <div className="mt-1.5 pt-1.5 border-t border-border/50">
                             <p className="text-xs sm:text-sm flex items-center gap-1 text-primary/90">
-                                <Sparkles className="h-3 w-3 text-accent" /> <em>GroZen Insight:</em>
+                                <Sparkles className="h-3 w-3 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
                             </p>
                             <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                         </div>
@@ -622,7 +680,7 @@ export default function DashboardPage() {
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
           <CardDescription className="text-xs sm:text-sm">
-            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your 'Before & After' share card will appear here.
+            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your &apos;Before & After&apos; share card will appear here.
           </CardDescription>
         )}
       </SectionCard>

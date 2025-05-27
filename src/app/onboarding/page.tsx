@@ -1,16 +1,15 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, FormProvider, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Input not used, but keep for potential future
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Keep Label import
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Logo from '@/components/logo';
@@ -35,8 +34,27 @@ const steps = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { completeOnboarding, generatePlan, isLoadingPlan, onboardingData: initialData } = usePlan();
+  const { 
+    currentUser, 
+    isLoadingAuth, 
+    completeOnboarding, 
+    generatePlan, 
+    isLoadingPlan, 
+    onboardingData: initialData,
+    isPlanAvailable 
+  } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!currentUser) {
+        router.replace('/login');
+      } else if (isPlanAvailable) {
+        // If user is logged in and already has a plan, redirect to dashboard
+        router.replace('/dashboard');
+      }
+    }
+  }, [currentUser, isLoadingAuth, isPlanAvailable, router]);
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
@@ -54,7 +72,7 @@ export default function OnboardingPage() {
     if (currentStep === 0) isValid = await trigger("goals");
     else if (currentStep === 1) isValid = await trigger("dietPreferences");
     else if (currentStep === 2) isValid = await trigger("budget");
-    else isValid = true; // Summary step
+    else isValid = true; 
 
     if (isValid && currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -68,11 +86,25 @@ export default function OnboardingPage() {
   };
 
   const onSubmit: SubmitHandler<OnboardingFormValues> = async (data) => {
+    if (!currentUser) {
+        router.push('/login'); // Should not happen if useEffect works
+        return;
+    }
     const fullData: OnboardingData = { ...data };
-    completeOnboarding(fullData);
-    await generatePlan(fullData);
+    completeOnboarding(fullData); // This will save to LS for now
+    await generatePlan(fullData); // This will save to LS for now
     router.push('/dashboard');
   };
+  
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser) || (!isLoadingAuth && currentUser && isPlanAvailable)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 md:p-6">
@@ -156,13 +188,12 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row justify-between pt-3 gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row justify-between pt-3 gap-3 sm:gap-0">
                 {currentStep > 0 && (
                   <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
                     Previous
                   </Button>
                 )}
-                 {/* Spacer to push next/submit to the right if no prev button */}
                 {currentStep === 0 && <div className="sm:flex-grow"></div>}
                 {currentStep < steps.length - 1 && (
                   <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
@@ -170,15 +201,14 @@ export default function OnboardingPage() {
                   </Button>
                 )}
                 {currentStep === steps.length - 1 && (
-                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
-                    {isLoadingPlan ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan || isSubmitting} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
+                    {(isLoadingPlan || isSubmitting) ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
                     Generate My Plan
                   </Button>
                 )}
               </div>
             </form>
           </FormProvider>
-          {/* Progress Indicator */}
           <div className="flex justify-center mt-4 sm:mt-5 space-x-1.5 sm:space-x-2">
             {steps.map((_, index) => (
               <div
