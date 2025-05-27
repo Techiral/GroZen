@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link'; // Added for Admin Dashboard link
+// import Link from 'next/link'; // No longer explicitly needed for admin link, router.push used
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import SocialShareCard from '@/components/social-share-card';
@@ -42,34 +42,34 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
-  <Card className="neumorphic w-full mb-6">
-    <CardHeader className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
+  <Card className="neumorphic w-full mb-4 sm:mb-6">
+    <CardHeader className="flex flex-col space-y-1.5 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2 px-3 py-2.5 sm:px-4 sm:py-3">
       <div className="flex flex-row items-center">
-        <CardTitle className="text-md sm:text-lg md:text-xl font-medium flex items-center gap-2">
+        <CardTitle className="text-sm sm:text-md md:text-lg font-medium flex items-center gap-1.5 sm:gap-2">
           {icon} {title}
         </CardTitle>
-        {itemsCount !== undefined && <span className="ml-2 sm:ml-3 text-2xs sm:text-xs text-muted-foreground">{itemsCount} items</span>}
+        {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-2xs sm:text-xs text-muted-foreground">({itemsCount} items)</span>}
       </div>
-      {action && <div className="w-full sm:w-auto pt-2 sm:pt-0">{action}</div>}
+      {action && <div className="w-full sm:w-auto pt-1.5 sm:pt-0">{action}</div>}
     </CardHeader>
-    <CardContent>
+    <CardContent className="px-3 pt-0 pb-3 sm:px-4 sm:pb-4">
       {children}
     </CardContent>
   </Card>
 );
 
 const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-3 sm:p-4 rounded-md min-w-[180px] xs:min-w-[200px] sm:min-w-[220px] md:min-w-[250px] snap-start", className)}>
+  <div className={cn("neumorphic-sm p-2.5 sm:p-3 rounded-md min-w-[170px] xs:min-w-[190px] sm:min-w-[210px] md:min-w-[240px] snap-start", className)}>
     {children}
   </div>
 );
 
 const moodEmojis: { [key: string]: string | React.ReactNode } = {
-  "😊": <Laugh className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />,
-  "🙂": <Smile className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />,
-  "😐": <Meh className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />,
-  "😕": <Annoyed className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />,
-  "😞": <Frown className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
+  "😊": <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />,
+  "🙂": <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" />,
+  "😐": <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />,
+  "😕": <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" />,
+  "😞": <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
 };
 const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
 
@@ -114,14 +114,12 @@ export default function DashboardPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
-        // Non-admin user is logged in but not onboarded and no plan is loading.
-        // This could happen if they land here directly or after signup.
+      } else if (!isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+        // Regular user, not onboarded, no plan, not loading -> onboarding
         router.replace('/onboarding');
       }
-      // Admin users are not auto-redirected from dashboard to onboarding if they lack a plan,
-      // as their primary interaction might be via the admin panel.
-      // Other cases (like admin with plan, or non-admin with plan) will render the dashboard.
+      // Admin users are not auto-redirected from dashboard
+      // Regular users with plan or onboarding data will stay or be handled by specific loading states below
     }
   }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
@@ -259,13 +257,13 @@ export default function DashboardPage() {
     setIsVideoReadyForCapture(false);
 
     if (isCameraActive && selfieStream) {
-      setSelfieStream(null); // Triggers useEffect to stop tracks
+      setSelfieStream(null); 
       setIsCameraActive(false);
       if (videoRef.current) videoRef.current.srcObject = null;
     } else {
       setCapturedSelfie(null);
-      setHasCameraPermission(null); // Reset permission state
-      setIsCameraActive(true); // This will trigger the useEffect to attach stream
+      setHasCameraPermission(null); 
+      setIsCameraActive(true);
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
@@ -294,7 +292,7 @@ export default function DashboardPage() {
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false); // Reset ready state
+            setIsVideoReadyForCapture(false); 
             return;
         }
       const canvas = document.createElement('canvas');
@@ -305,12 +303,11 @@ export default function DashboardPage() {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
+        setIsVideoReadyForCapture(false); 
 
-        // Stop camera after capture
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
         setIsCameraActive(false);
-        setIsVideoReadyForCapture(false);
       } else {
          toast({
             variant: 'destructive',
@@ -334,15 +331,13 @@ export default function DashboardPage() {
 
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // Optionally, re-enable camera button or reset camera state here if desired
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null); // Clear any previous selfie
+    setCapturedSelfie(null); 
 
-    // Ensure camera is reset if it was open from a previous attempt
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
@@ -360,10 +355,9 @@ export default function DashboardPage() {
       setIsSavingMood(true);
       try {
         await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
-        setIsMoodDialogOpen(false);
+        setIsMoodDialogOpen(false); 
       } catch (error) {
         console.error("Error saving mood log:", error);
-        // Toast for error is likely handled in addMoodLog context function
       } finally {
         setIsSavingMood(false);
       }
@@ -373,7 +367,6 @@ export default function DashboardPage() {
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) {
-        // Full reset when dialog closes
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -386,7 +379,7 @@ export default function DashboardPage() {
         setMoodNotes("");
         setHasCameraPermission(null);
         setIsVideoReadyForCapture(false);
-        setIsSavingMood(false); // Ensure saving state is reset
+        setIsSavingMood(false); 
     }
   }
 
@@ -421,66 +414,50 @@ export default function DashboardPage() {
     }
   };
 
-
+  // Loading states
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading user data...</p>
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading user data...</p>
       </div>
     );
   }
   
-  // User is logged in, but NOT an admin, and NOT onboarded, and NO plan is loading
-  if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
-    // useEffect will handle redirect, show loader.
+  if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+    // useEffect will handle redirect, show loader. This is for regular user not onboarded.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Redirecting to onboarding...</p>
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Setting up your space...</p>
       </div>
     );
   }
   
-  // User is logged in (could be admin or regular user), and a plan is currently generating
   if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-3xl sm:text-4xl" />
-        <p className="mt-4 text-md sm:text-lg">Generating your personalized plan...</p>
-        <RotateCcw className="mt-4 h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <p className="mt-3 text-sm sm:text-md md:text-lg">Generating your personalized plan...</p>
+        <RotateCcw className="mt-3 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  // User is onboarded, but no plan available, and it's not loading (could be regular user or admin without a plan)
-  // For regular users, this is a prompt to create/edit. Admin users might not need a personal plan.
   if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan && !isAdminUser) {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-3xl sm:text-4xl" />
-        <p className="mt-4 text-md sm:text-lg">No wellness plan found or an error occurred.</p>
-        <p className="text-xs sm:text-sm text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <p className="mt-3 text-sm sm:text-md">No wellness plan found or an error occurred.</p>
+        <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2">
           New Plan / Edit Preferences
         </Button>
-         <Button variant="outline" onClick={handleLogout} className="mt-4 neumorphic-button text-xs sm:text-sm">
-            <LogOut className="mr-2 h-4 w-4" /> Logout
+         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-3 py-1 sm:px-4 sm:py-1.5">
+            <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
         </Button>
-      </div>
-    );
-  }
-
-  // This case handles when user is not logged in AND they are not on an auth page.
-  // Should be handled by useEffect redirect, but this is a fallback.
-  if (!currentUser && !isLoadingAuth && !['/login', '/signup', '/'].includes(router.pathname)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Redirecting...</p>
       </div>
     );
   }
@@ -488,55 +465,54 @@ export default function DashboardPage() {
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-        <div className="flex items-center gap-2 mt-3 sm:mt-0">
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
+        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-0">
             {isAdminUser && (
                 <Button 
                     variant="outline" 
                     onClick={() => router.push('/admin')} 
-                    className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2"
+                    className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5"
                 >
-                    <ShieldCheck className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Admin Panel
+                    <ShieldCheck className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Admin Panel
                 </Button>
             )}
             {!isAdminUser && (
-                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
                 New Plan / Edit Preferences
                 </Button>
             )}
-            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
-                <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Logout
+            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+                <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
             </Button>
         </div>
       </header>
 
-      {isLoadingPlan && wellnessPlan && ( // Show only if there was a plan before new one starts loading
+      {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-          <RotateCcw className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
-          <p className="mt-3 text-sm sm:text-md">Updating your plan...</p>
+          <RotateCcw className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+          <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
         </div>
       )}
 
-      {/* Show plan details only if plan is available and user is not admin OR if admin also has a personal plan */}
       {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
         <>
-          <div className="mb-5 p-3 sm:p-4 neumorphic rounded-lg">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Here&apos;s your personalized guide to a healthier you. Stay consistent!</p>
+          <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
+            <h2 className="text-md sm:text-lg md:text-xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
+            <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
           </div>
 
-          <SectionCard title="Meals" icon={<Utensils className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.meals.length}>
+          <SectionCard title="Meals" icon={<Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-3 pb-3">
+              <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
+                    <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
                     </h4>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Breakfast:</strong> {meal.breakfast}</p>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Lunch:</strong> {meal.lunch}</p>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Dinner:</strong> {meal.dinner}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -544,16 +520,16 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
+          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-3 pb-3">
+              <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                     <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
+                     <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
                     </h4>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -561,16 +537,16 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
+          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-3 pb-3">
+              <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-sm sm:text-md mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
+                    <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
                     </h4>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
-                    <p className="text-xs sm:text-sm break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
+                    <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -580,52 +556,51 @@ export default function DashboardPage() {
         </>
       )}
       
-      {/* Admin user specific message if no plan exists for them */}
       {isAdminUser && !isPlanAvailable && !isLoadingPlan && (
-        <Alert className="mb-6 neumorphic">
-          <AlertTitle>Admin View</AlertTitle>
-          <AlertDescription>
+        <Alert className="mb-4 sm:mb-6 neumorphic">
+          <AlertTitle className="text-sm sm:text-md">Admin View</AlertTitle>
+          <AlertDescription className="text-2xs sm:text-xs">
             You are logged in as an admin. You can view your personal plan here if you create one, or proceed to the Admin Panel.
-            <Button variant="link" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="p-0 h-auto ml-1 text-accent">Create Personal Plan?</Button>
+            <Button variant="link" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="p-0 h-auto ml-1 text-accent text-2xs sm:text-xs">Create Personal Plan?</Button>
           </AlertDescription>
         </Alert>
       )}
 
 
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="neumorphic w-[90vw] max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-md sm:text-lg">
-              Log Your Mood: <span className="ml-2 text-xl sm:text-2xl">{selectedMood}</span>
+        <DialogContent className="neumorphic w-[90vw] max-w-md p-4 sm:p-5">
+          <DialogHeader className="pb-2 sm:pb-3">
+            <DialogTitle className="flex items-center text-sm sm:text-md">
+              Log Your Mood: <span className="ml-1.5 text-lg sm:text-xl">{selectedMood}</span>
             </DialogTitle>
             <DialogDescription className="text-2xs sm:text-xs">
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-180px)] sm:max-h-[calc(70vh-180px)] -mx-1 px-1">
-            <div className="grid gap-3 py-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="mood-notes" className="text-xs sm:text-sm">Notes (Optional)</Label>
+          <ScrollArea className="max-h-[calc(80vh-200px)] sm:max-h-[calc(70vh-200px)] -mx-1 px-1"> {/* Adjusted max-h and padding */}
+            <div className="grid gap-2.5 sm:gap-3 py-2.5 sm:py-3">
+              <div className="space-y-1">
+                <Label htmlFor="mood-notes" className="text-2xs sm:text-xs">Notes (Optional)</Label>
                 <Textarea
                   id="mood-notes"
                   value={moodNotes}
                   onChange={(e) => setMoodNotes(e.target.value)}
-                  placeholder="Any thoughts or details about your mood..."
-                  className="h-16 sm:h-20 neumorphic-inset-sm text-xs sm:text-sm"
+                  placeholder="Any thoughts or details..."
+                  className="h-14 sm:h-16 neumorphic-inset-sm text-2xs sm:text-xs"
                   disabled={isSavingMood}
                 />
               </div>
-              <div className="space-y-1.5">
-                  <Label className="text-xs sm:text-sm">Selfie (Optional)</Label>
-                  <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2">
+              <div className="space-y-1">
+                  <Label className="text-2xs sm:text-xs">Selfie (Optional)</Label>
+                  <div className="flex flex-col xs:flex-row items-start xs:items-center gap-1.5 sm:gap-2">
                       <Button
                           type="button"
                           variant="outline"
                           onClick={handleToggleCamera}
-                          className="neumorphic-button w-full xs:w-auto text-xs px-3 py-1.5"
+                          className="neumorphic-button w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                           disabled={!!capturedSelfie || isSavingMood}
                       >
-                          {isCameraActive ? <VideoOff className="mr-1 h-3 w-3" /> : <Camera className="mr-1 h-3 w-3" />}
+                          {isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
                           {isCameraActive ? 'Close Camera' : 'Open Camera'}
                       </Button>
                       {isCameraActive && selfieStream && hasCameraPermission === true && (
@@ -634,14 +609,14 @@ export default function DashboardPage() {
                               variant="neumorphic-primary"
                               onClick={handleCaptureSelfie}
                               disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
-                              className="w-full xs:w-auto text-xs px-3 py-1.5"
+                              className="w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                           >
-                              <Camera className="mr-1 h-3 w-3" /> Capture
+                              <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Capture
                           </Button>
                       )}
                   </div>
 
-                  <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-1.5">
+                  <div className="mt-1.5 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-1">
                     {isCameraActive && selfieStream && hasCameraPermission === true ? (
                       <video
                           ref={videoRef}
@@ -650,34 +625,34 @@ export default function DashboardPage() {
                           playsInline
                        />
                     ) : capturedSelfie ? (
-                      <div className="p-1.5 sm:p-2 text-muted-foreground">
-                        <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 text-accent" />
-                        <p className="text-2xs sm:text-xs">Selfie captured!</p>
-                        <p className="text-2xs">Preview below.</p>
+                      <div className="p-1 sm:p-1.5 text-muted-foreground">
+                        <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5 text-accent" />
+                        <p className="text-3xs sm:text-2xs">Selfie captured!</p>
+                        <p className="text-3xs">Preview below.</p>
                       </div>
                     ) : hasCameraPermission === false ? (
-                      <div className="p-1.5 sm:p-2">
-                        <VideoOff className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 text-destructive" />
-                        <p className="font-semibold text-destructive text-2xs sm:text-xs">Camera Access Denied</p>
-                        <p className="text-2xs">Enable permissions in browser.</p>
+                      <div className="p-1 sm:p-1.5">
+                        <VideoOff className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5 text-destructive" />
+                        <p className="font-semibold text-destructive text-3xs sm:text-2xs">Camera Access Denied</p>
+                        <p className="text-3xs">Enable in browser.</p>
                       </div>
                     ) : isCameraActive && hasCameraPermission === null ? (
-                      <div className="p-1.5 sm:p-2">
-                        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 animate-spin" />
-                        <p className="text-2xs sm:text-xs">Requesting camera...</p>
+                      <div className="p-1 sm:p-1.5">
+                        <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5 animate-spin" />
+                        <p className="text-3xs sm:text-2xs">Requesting camera...</p>
                       </div>
                     ) : (
-                      <div className="p-1.5 sm:p-2">
-                        <Camera className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1" />
-                        <p className="text-2xs sm:text-xs">Camera is off.</p>
+                      <div className="p-1 sm:p-1.5">
+                        <Camera className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5" />
+                        <p className="text-3xs sm:text-2xs">Camera is off.</p>
                       </div>
                     )}
                   </div>
 
                   {capturedSelfie && (
-                      <div className="mt-3 space-y-1.5">
-                          <p className="text-xs sm:text-sm font-medium">Selfie Preview:</p>
-                          <div className="relative aspect-video w-full max-w-[150px] sm:max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
+                      <div className="mt-2 space-y-1">
+                          <p className="text-2xs sm:text-xs font-medium">Selfie Preview:</p>
+                          <div className="relative aspect-video w-full max-w-[120px] sm:max-w-[180px] neumorphic-sm rounded-md overflow-hidden">
                                <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                           </div>
                           <Button
@@ -685,28 +660,28 @@ export default function DashboardPage() {
                               variant="outline"
                               size="sm"
                               onClick={clearCapturedSelfie}
-                              className="neumorphic-button items-center text-2xs px-2 py-1"
+                              className="neumorphic-button items-center text-3xs px-2 py-0.5 sm:text-2xs sm:px-2 sm:py-1"
                               disabled={isSavingMood}
                           >
-                              <Trash2 className="mr-1 h-3 w-3 text-destructive" /> Clear Selfie
+                              <Trash2 className="mr-1 h-2.5 w-2.5 text-destructive" /> Clear Selfie
                           </Button>
                       </div>
                   )}
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between pt-4">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between pt-3 sm:pt-4">
              <DialogClose asChild>
-              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-xs px-3 py-1.5" disabled={isSavingMood}>Cancel</Button>
+              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5" disabled={isSavingMood}>Cancel</Button>
             </DialogClose>
             <Button
               type="button"
               variant="neumorphic-primary"
               onClick={handleSaveMoodLog}
               disabled={!selectedMood || isSavingMood}
-              className="w-full sm:w-auto text-xs px-3 py-1.5"
+              className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
             >
-              {isSavingMood ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+              {isSavingMood ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : null}
               {isSavingMood ? 'Saving...' : 'Save Mood'}
             </Button>
           </DialogFooter>
@@ -714,23 +689,23 @@ export default function DashboardPage() {
       </Dialog>
 
       <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
-        <AlertDialogContent className="neumorphic">
+        <AlertDialogContent className="neumorphic p-4 sm:p-5">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-sm sm:text-md">Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-2xs sm:text-xs">
               This action cannot be undone. This will permanently delete this mood log.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row">
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 pt-3 sm:pt-4">
             <AlertDialogCancel
               onClick={() => setLogToDelete(null)}
-              className="neumorphic-button w-full sm:w-auto text-xs px-3 py-1.5"
+              className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteMoodLog}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-xs px-3 py-1.5"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
             >
               Delete
             </AlertDialogAction>
@@ -739,16 +714,16 @@ export default function DashboardPage() {
       </AlertDialog>
 
 
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} >
-         <CardDescription className="mb-3 text-xs sm:text-sm">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
-        <div className="flex space-x-1 sm:space-x-2 justify-center sm:justify-start">
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} >
+         <CardDescription className="mb-2.5 sm:mb-3 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
+        <div className="flex space-x-1 xs:space-x-1.5 sm:space-x-2 justify-center sm:justify-start">
           {moodEmojiStrings.map(mood => (
             <Button
               key={mood}
               variant="outline"
               size="icon"
               onClick={() => handleMoodButtonClick(mood)}
-              className="text-lg sm:text-xl md:text-2xl neumorphic-button h-12 w-12 sm:h-14 sm:w-14 hover:neumorphic-inset"
+              className="text-lg sm:text-xl neumorphic-button h-10 w-10 sm:h-12 sm:w-12 hover:neumorphic-inset"
               aria-label={`Log mood: ${mood}`}
             >
               {mood}
@@ -757,43 +732,43 @@ export default function DashboardPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Mood History" icon={<RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={sortedMoodLogs.length}>
-        <ScrollArea className="w-full h-[250px] sm:h-[300px] md:h-[400px] whitespace-nowrap rounded-md">
-          <div className="flex flex-col space-y-2 sm:space-y-3 p-1">
+      <SectionCard title="Mood History" icon={<RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
+        <ScrollArea className="w-full h-[200px] sm:h-[250px] md:h-[300px] whitespace-nowrap rounded-md">
+          <div className="flex flex-col space-y-1.5 sm:space-y-2 p-0.5 sm:p-1">
             {sortedMoodLogs.map((log: MoodLog) => (
-              <ItemCard key={log.id} className="bg-card w-full min-w-0">
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <ItemCard key={log.id} className="bg-card w-full min-w-0 p-2.5 sm:p-3">
+                <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
-                    <div className="relative w-full sm:w-20 md:w-24 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                    <div className="relative w-full sm:w-16 md:w-20 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
                       <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                     </div>
                   )}
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-0.5">
-                      <h4 className="font-semibold text-md sm:text-lg flex items-center gap-1 sm:gap-2">
-                        <span className="text-xl sm:text-2xl">{log.mood}</span>
+                      <h4 className="font-semibold text-sm sm:text-md flex items-center gap-1 sm:gap-1.5">
+                        <span className="text-lg sm:text-xl">{log.mood}</span>
                         {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                       </h4>
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 onClick={() => setLogToDelete(log.id)} 
-                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
+                                className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-muted-foreground hover:text-destructive"
                                 aria-label="Delete mood log"
                             >
-                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             </Button>
                     </div>
-                     <p className="text-xs text-muted-foreground">
+                     <p className="text-2xs sm:text-xs text-muted-foreground">
                       {format(new Date(log.date), "MMM d, yy 'at' h:mma")}
                     </p>
-                    {log.notes && <p className="text-xs sm:text-sm mt-1.5 pt-1.5 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
+                    {log.notes && <p className="text-2xs sm:text-xs mt-1 pt-1 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                      {log.aiFeedback && (
-                      <div className="mt-1.5 pt-1.5 border-t border-border/50">
-                          <p className="text-xs sm:text-sm flex items-center gap-1 text-primary/90">
-                              <Sparkles className="h-3 w-3 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
+                      <div className="mt-1 pt-1 border-t border-border/50">
+                          <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
+                              <Sparkles className="h-2.5 w-2.5 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
                           </p>
-                          <p className="text-xs sm:text-sm italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
+                          <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
                     )}
                   </div>
@@ -804,78 +779,78 @@ export default function DashboardPage() {
           <ScrollBar orientation="vertical" />
         </ScrollArea>
         {sortedMoodLogs.length === 0 && (
-            <CardDescription className="mt-3 text-center text-xs sm:text-sm">
+            <CardDescription className="mt-2.5 text-center text-2xs sm:text-xs">
                 No mood logs yet. Use the Mood Check-in above to start tracking!
             </CardDescription>
         )}
       </SectionCard>
 
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
-          <CardDescription className="text-xs sm:text-sm">
+          <CardDescription className="text-2xs sm:text-xs">
             Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your &apos;Before & After&apos; share card will appear here.
           </CardDescription>
         )}
       </SectionCard>
 
 
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
-        <CardDescription className="mb-3 text-xs sm:text-sm">
+      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+        <CardDescription className="mb-2.5 sm:mb-3 text-2xs sm:text-xs">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button
           onClick={handleGenerateGroceryListClick}
           disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
           variant="neumorphic-primary"
-          className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5"
+          className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
         >
-          {isLoadingGroceryList ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShoppingCart className="mr-1 h-3 w-3" />}
+          {isLoadingGroceryList ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : <ShoppingCart className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
           Generate Grocery List
         </Button>
 
         {errorGroceryList && (
-          <Alert variant="destructive" className="mt-3">
+          <Alert variant="destructive" className="mt-2.5 sm:mt-3">
             <AlertTitle className="text-xs sm:text-sm">Error Generating List</AlertTitle>
             <AlertDescription className="text-2xs sm:text-xs">{errorGroceryList}</AlertDescription>
           </Alert>
         )}
 
         {!groceryList && !isLoadingGroceryList && !errorGroceryList && (
-           <CardDescription className="mt-3 text-xs sm:text-sm">
+           <CardDescription className="mt-2.5 sm:mt-3 text-2xs sm:text-xs">
                No grocery list generated yet. Click the button above to create one based on your meal plan.
            </CardDescription>
         )}
 
         {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
-          <div className="mt-4 space-y-3">
-            <h3 className="text-sm sm:text-md font-semibold">
-              Your Grocery List <span className="text-2xs sm:text-xs text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
+          <div className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold">
+              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
             </h3>
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems).length > 0 ? Object.keys(groupedGroceryItems) : undefined }>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
-                <AccordionItem value={category} key={category} className="neumorphic-sm mb-1.5">
-                  <AccordionTrigger className="p-2.5 text-xs sm:text-sm hover:no-underline">
+                <AccordionItem value={category} key={category} className="neumorphic-sm mb-1 sm:mb-1.5">
+                  <AccordionTrigger className="p-2 sm:p-2.5 text-2xs sm:text-xs hover:no-underline">
                     {category} ({items.length})
                   </AccordionTrigger>
-                  <AccordionContent className="p-2.5">
-                    <ul className="list-disc pl-3.5 sm:pl-4 space-y-1.5 text-2xs sm:text-xs">
+                  <AccordionContent className="p-2 sm:p-2.5">
+                    <ul className="list-disc pl-3 sm:pl-3.5 space-y-1 sm:space-y-1.5 text-3xs sm:text-2xs">
                       {items.map((item) => (
                         <li key={item.id} className="break-words flex justify-between items-start gap-1">
                           <div>
                             <strong>{item.name}</strong>
                             {item.quantity && <span className="text-muted-foreground"> ({item.quantity})</span>}
-                            {item.notes && <em className="text-muted-foreground text-2xs block"> - {item.notes}</em>}
+                            {item.notes && <em className="text-muted-foreground text-3xs block"> - {item.notes}</em>}
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => deleteGroceryItem(item.id)}
-                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-2"
+                            className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1 sm:ml-2"
                             aria-label="Delete grocery item"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-2.5 w-2.5" />
                           </Button>
                         </li>
                       ))}
@@ -884,13 +859,13 @@ export default function DashboardPage() {
                 </AccordionItem>
               ))}
             </Accordion>
-            <p className="text-2xs text-muted-foreground mt-3">
+            <p className="text-3xs text-muted-foreground mt-2.5 sm:mt-3">
               Note: This is an AI-generated list. Please review for accuracy and adjust quantities as needed.
             </p>
           </div>
         )}
         {groceryList && !isLoadingGroceryList && groceryList.items.length === 0 && (
-            <CardDescription className="mt-3 text-xs sm:text-sm">
+            <CardDescription className="mt-2.5 sm:mt-3 text-2xs sm:text-xs">
                Your grocery list is currently empty. You can generate a new one if you have a meal plan.
             </CardDescription>
         )}

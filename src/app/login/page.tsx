@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import Logo from '@/components/logo';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator'; // Added
+import { Separator } from '@/components/ui/separator';
 
-// A simple Google Icon SVG
+// A simple Google Icon SVG (can be moved to a shared component if used elsewhere)
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" data-ai-hint="google logo">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -31,30 +31,31 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false); // Added
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
       // Redirect logic is handled by PlanProvider or specific pages like dashboard/onboarding
-      // No direct redirect from login if user is already logged in, let other pages handle it.
     }
   }, [currentUser, isLoadingAuth, router]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setIsGoogleSubmitting(false);
     const user = await loginWithEmail(email, password);
     if (user) {
-      router.replace('/dashboard'); // Or let PlanProvider redirect
+      router.replace('/dashboard'); 
     }
     setIsSubmitting(false);
   };
 
   const handleGoogleSignIn = async () => {
     setIsGoogleSubmitting(true);
+    setIsSubmitting(false);
     const user = await signInWithGoogle();
     if (user) {
-      router.replace('/dashboard'); // Or let PlanProvider redirect
+      router.replace('/dashboard');
     }
     setIsGoogleSubmitting(false);
   };
@@ -109,7 +110,7 @@ export default function LoginPage() {
             </div>
             <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Login
+              Login with Email
             </Button>
           </form>
           <div className="my-4 sm:my-5 flex items-center">

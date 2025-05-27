@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+// import Link from 'next/link'; // Not directly used
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser || !isAdminUser) {
-        router.replace('/login'); // Or to a generic unauthorized page
+        router.replace('/login'); 
       } else {
         const loadUsers = async () => {
           setIsLoadingUsers(true);
@@ -34,78 +34,78 @@ export default function AdminPage() {
     }
   }, [currentUser, isAdminUser, isLoadingAuth, router, fetchAllUsers]);
 
-  if (isLoadingAuth || (!currentUser && !isLoadingAuth) || (!isAdminUser && currentUser)) {
+  if (isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isAdminUser && !isLoadingAuth) ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Verifying access...</p>
+        <Logo size="text-2xl sm:text-3xl" />
+        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Verifying access...</p>
       </div>
     );
   }
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-5 sm:mb-6">
-        <div className="flex items-center gap-2">
-            <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-            <span className="text-md sm:text-lg font-semibold text-primary">Admin Panel</span>
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+            <Logo size="text-xl sm:text-2xl md:text-3xl" />
+            <span className="text-sm sm:text-md md:text-lg font-semibold text-primary">Admin Panel</span>
         </div>
-        <div className="flex items-center gap-2 mt-3 sm:mt-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-0">
             <Button 
                 variant="outline" 
                 onClick={() => router.push('/dashboard')} 
-                className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2"
+                className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5"
             >
                 Back to Dashboard
             </Button>
-            <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
-                <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Logout
+            <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+                <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
             </Button>
         </div>
       </header>
 
       <Card className="neumorphic">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Users className="h-5 w-5 sm:h-6 sm:w-6 text-accent" /> User Management
+        <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-md md:text-lg">
+            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-accent" /> User Management
           </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
+          <CardDescription className="text-2xs sm:text-xs">
             List of all registered users. Click &apos;View Details&apos; to see their data.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pt-0 pb-3 sm:px-4 sm:pb-4">
           {isLoadingUsers ? (
-            <div className="flex justify-center items-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading users...</p>
+            <div className="flex justify-center items-center py-8 sm:py-10">
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+              <p className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading users...</p>
             </div>
           ) : users.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10">No users found.</p>
+            <p className="text-center text-muted-foreground py-8 sm:py-10 text-xs sm:text-sm">No users found.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto neumorphic-inset-sm rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs sm:text-sm">User ID (UID)</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Email</TableHead>
-                    <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
+                    <TableHead className="text-2xs sm:text-xs">User ID (UID)</TableHead>
+                    <TableHead className="text-2xs sm:text-xs">Email</TableHead>
+                    <TableHead className="text-right text-2xs sm:text-xs">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[100px] sm:max-w-[200px] md:max-w-xs">{user.id}</TableCell>
-                      <TableCell className="text-xs sm:text-sm truncate max-w-[150px] sm:max-w-xs">{user.email}</TableCell>
+                      <TableCell className="font-medium text-2xs sm:text-xs truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[150px] md:max-w-xs">{user.id}</TableCell>
+                      <TableCell className="text-2xs sm:text-xs truncate max-w-[100px] xs:max-w-[150px] sm:max-w-xs">{user.email}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => router.push(`/admin/user/${user.id}`)}
-                          className="neumorphic-button text-2xs sm:text-xs px-2 py-1"
+                          className="neumorphic-button text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1"
                           title="View User Details"
                         >
-                          <Eye className="mr-1 h-3 w-3" /> View Details
+                          <Eye className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> View
                         </Button>
                       </TableCell>
                     </TableRow>

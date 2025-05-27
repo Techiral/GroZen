@@ -9,7 +9,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label'; // Keep Label import
+import { Label } from '@/components/ui/label'; 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Logo from '@/components/logo';
@@ -40,31 +40,50 @@ export default function OnboardingPage() {
     completeOnboarding, 
     generatePlan, 
     isLoadingPlan, 
-    onboardingData: initialData,
+    onboardingData: initialData, // This is the onboardingData from context
     isPlanAvailable 
   } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Added state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<OnboardingFormValues>({
+    resolver: zodResolver(onboardingSchema),
+    // Use initialData from context to pre-fill form
+    defaultValues: {
+      goals: initialData?.goals || '',
+      dietPreferences: initialData?.dietPreferences || '',
+      budget: initialData?.budget as "low" | "medium" | "high" || undefined,
+    },
+    // Reset form if initialData changes (e.g., after login)
+    resetOptions: {
+      keepDirtyValues: false, // discard dirty fields and let new values apply
+    },
+  });
+
+  useEffect(() => {
+    // Reset form with initialData from context when it changes (e.g. after login)
+    // This is important if the user lands here, logs in, and then context provides their saved data
+    if (initialData) {
+        form.reset({
+            goals: initialData.goals || '',
+            dietPreferences: initialData.dietPreferences || '',
+            budget: initialData.budget as "low" | "medium" | "high" || undefined,
+        });
+    }
+  }, [initialData, form]);
+
 
   useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
       } else if (isPlanAvailable) {
-        // If user is logged in and already has a plan, redirect to dashboard
+        // If user is logged in and already has a plan (and they somehow land here), redirect to dashboard
         router.replace('/dashboard');
       }
     }
   }, [currentUser, isLoadingAuth, isPlanAvailable, router]);
 
-  const form = useForm<OnboardingFormValues>({
-    resolver: zodResolver(onboardingSchema),
-    defaultValues: {
-      goals: initialData.goals || '',
-      dietPreferences: initialData.dietPreferences || '',
-      budget: initialData.budget as "low" | "medium" | "high" || undefined,
-    },
-  });
 
   const { control, handleSubmit, trigger, getValues } = form;
 
@@ -88,25 +107,25 @@ export default function OnboardingPage() {
 
   const onSubmit: SubmitHandler<OnboardingFormValues> = async (data) => {
     if (!currentUser) {
-        router.push('/login'); // Should not happen if useEffect works
+        router.push('/login'); 
         return;
     }
-    setIsSubmitting(true); // Set isSubmitting to true
+    setIsSubmitting(true);
     try {
       const fullData: OnboardingData = { ...data };
-      completeOnboarding(fullData); // This will save to LS for now
-      await generatePlan(fullData); // This will save to LS for now
+      await completeOnboarding(fullData); // Saves onboarding data to Firestore
+      await generatePlan(fullData); // Generates plan and saves to Firestore
       router.push('/dashboard');
     } catch (error) {
-      // Error handling is likely done within generatePlan or context,
-      // but you could add specific error handling here if needed.
       console.error("Onboarding submission error:", error);
     } finally {
-      setIsSubmitting(false); // Set isSubmitting to false
+      setIsSubmitting(false);
     }
   };
   
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser) || (!isLoadingAuth && currentUser && isPlanAvailable)) {
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser) || (!isLoadingAuth && currentUser && isPlanAvailable && router.pathname === '/onboarding')) {
+    // Show loader if auth is loading, or if user is not logged in (redirect to login will happen),
+    // or if user is logged in and has a plan (redirect to dashboard will happen)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -121,14 +140,14 @@ export default function OnboardingPage() {
       <Card className="w-full max-w-md sm:max-w-lg neumorphic shadow-lg">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 sm:mb-4">
-            <Logo size="text-xl sm:text-2xl md:text-3xl" />
+            <Logo size="text-xl sm:text-2xl" />
           </div>
-          <CardTitle className="text-lg sm:text-xl md:text-2xl">{steps[currentStep].title}</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">{steps[currentStep].description}</CardDescription>
+          <CardTitle className="text-md sm:text-lg md:text-xl">{steps[currentStep].title}</CardTitle>
+          <CardDescription className="text-2xs sm:text-xs">{steps[currentStep].description}</CardDescription>
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
               {currentStep === 0 && (
                 <FormField
                   control={control}
@@ -137,7 +156,7 @@ export default function OnboardingPage() {
                     <FormItem>
                       <FormLabel className="text-xs sm:text-sm">Goals</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[70px] sm:min-h-[80px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[60px] sm:min-h-[70px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
@@ -152,7 +171,7 @@ export default function OnboardingPage() {
                     <FormItem>
                       <FormLabel className="text-xs sm:text-sm">Dietary Preferences</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[70px] sm:min-h-[80px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[60px] sm:min-h-[70px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
@@ -164,20 +183,20 @@ export default function OnboardingPage() {
                   control={control}
                   name="budget"
                   render={({ field }) => (
-                    <FormItem className="space-y-2 sm:space-y-3">
+                    <FormItem className="space-y-1.5 sm:space-y-2">
                       <FormLabel className="text-xs sm:text-sm">Weekly Budget</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
                           defaultValue={field.value}
-                          className="flex flex-col space-y-1.5 sm:space-y-2"
+                          className="flex flex-col space-y-1 sm:space-y-1.5"
                         >
                           {['low', 'medium', 'high'].map(value => (
-                            <FormItem key={value} className="flex items-center space-x-2 sm:space-x-3 space-y-0 p-2 sm:p-2.5 neumorphic-sm hover:neumorphic-inset-sm">
+                            <FormItem key={value} className="flex items-center space-x-2 sm:space-x-2.5 p-2 sm:p-2 neumorphic-sm hover:neumorphic-inset-sm">
                               <FormControl>
                                 <RadioGroupItem value={value} />
                               </FormControl>
-                              <FormLabel className="font-normal capitalize text-xs sm:text-sm">
+                              <FormLabel className="font-normal capitalize text-2xs sm:text-xs">
                                 {value}
                               </FormLabel>
                             </FormItem>
@@ -190,40 +209,40 @@ export default function OnboardingPage() {
                 />
               )}
               {currentStep === 3 && (
-                <div className="space-y-2 sm:space-y-3 p-2.5 sm:p-3 neumorphic-sm rounded-md">
-                  <h4 className="font-semibold text-sm sm:text-md mb-1.5">Review Your Information:</h4>
-                  <p className="text-xs sm:text-sm break-words"><strong>Goals:</strong> {getValues("goals")}</p>
-                  <p className="text-xs sm:text-sm break-words"><strong>Diet:</strong> {getValues("dietPreferences")}</p>
-                  <p className="text-xs sm:text-sm"><strong>Budget:</strong> <span className="capitalize">{getValues("budget")}</span></p>
+                <div className="space-y-1.5 sm:space-y-2 p-2 sm:p-2.5 neumorphic-sm rounded-md">
+                  <h4 className="font-semibold text-xs sm:text-sm mb-1">Review Your Information:</h4>
+                  <p className="text-2xs sm:text-xs break-words"><strong>Goals:</strong> {getValues("goals")}</p>
+                  <p className="text-2xs sm:text-xs break-words"><strong>Diet:</strong> {getValues("dietPreferences")}</p>
+                  <p className="text-2xs sm:text-xs"><strong>Budget:</strong> <span className="capitalize">{getValues("budget")}</span></p>
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row justify-between pt-3 gap-3 sm:gap-0">
+              <div className="flex flex-col sm:flex-row justify-between pt-2 sm:pt-3 gap-2 sm:gap-0">
                 {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
+                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
                     Previous
                   </Button>
                 )}
-                {currentStep === 0 && <div className="sm:flex-grow"></div>} {/* Spacer for alignment when "Previous" is not shown */}
+                {currentStep === 0 && <div className="hidden sm:block sm:flex-grow"></div>} {/* Spacer for alignment */}
                 {currentStep < steps.length - 1 && (
-                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
+                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
                     Next
                   </Button>
                 )}
                 {currentStep === steps.length - 1 && (
-                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan || isSubmitting} className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5">
-                    {(isLoadingPlan || isSubmitting) ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan || isSubmitting} className="w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+                    {(isLoadingPlan || isSubmitting) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
                     Generate My Plan
                   </Button>
                 )}
               </div>
             </form>
           </FormProvider>
-          <div className="flex justify-center mt-4 sm:mt-5 space-x-1.5 sm:space-x-2">
+          <div className="flex justify-center mt-3 sm:mt-4 space-x-1 sm:space-x-1.5">
             {steps.map((_, index) => (
               <div
                 key={index}
-                className={`h-1.5 w-5 sm:w-6 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
+                className={`h-1.5 w-4 sm:w-5 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
               />
             ))}
           </div>
