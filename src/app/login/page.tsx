@@ -45,7 +45,8 @@ export default function LoginPage() {
     setIsGoogleSubmitting(false);
     const user = await loginWithEmail(email, password);
     if (user) {
-      router.replace('/dashboard'); 
+      // Redirection primarily handled by PlanContext/Dashboard/Onboarding effects
+      // router.replace('/dashboard'); 
     }
     setIsSubmitting(false);
   };
@@ -55,7 +56,8 @@ export default function LoginPage() {
     setIsSubmitting(false);
     const user = await signInWithGoogle();
     if (user) {
-      router.replace('/dashboard');
+      // Redirection primarily handled by PlanContext/Dashboard/Onboarding effects
+      // router.replace('/dashboard');
     }
     setIsGoogleSubmitting(false);
   };
@@ -73,14 +75,14 @@ export default function LoginPage() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 md:p-6">
       <Card className="w-full max-w-sm neumorphic">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center px-4 pt-5 sm:px-5 sm:pt-6">
           <div className="mx-auto mb-3 sm:mb-4">
             <Logo size="text-xl sm:text-2xl" />
           </div>
           <CardTitle className="text-lg sm:text-xl">Login to GroZen</CardTitle>
           <CardDescription className="text-xs sm:text-sm">Enter your credentials or sign in with Google.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-5 sm:px-5 sm:pb-6">
           <form onSubmit={handleEmailSubmit} className="space-y-3 sm:space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
@@ -113,11 +115,13 @@ export default function LoginPage() {
               Login with Email
             </Button>
           </form>
-          <div className="my-4 sm:my-5 flex items-center">
+          
+          <div className="my-4 sm:my-5 flex items-center w-full">
             <Separator className="flex-grow" />
-            <span className="mx-2 text-xs text-muted-foreground">OR</span>
+            <span className="mx-3 text-xs text-muted-foreground">OR</span>
             <Separator className="flex-grow" />
           </div>
+
           <Button 
             variant="outline" 
             className="w-full text-xs sm:text-sm neumorphic-button" 
@@ -128,7 +132,7 @@ export default function LoginPage() {
             Sign in with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-center text-xs sm:text-sm pt-4">
+        <CardFooter className="flex flex-col items-center text-center text-xs sm:text-sm pt-4 pb-5 px-4 sm:px-5 sm:pb-6">
           <p>Don&apos;t have an account?</p>
           <Link href="/signup" className="font-medium text-primary hover:underline">
             Sign up here
