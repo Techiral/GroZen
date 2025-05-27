@@ -4,6 +4,7 @@
 import type { WellnessPlan, OnboardingData, MoodLog } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
+import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
 import { useToast } from "@/hooks/use-toast";
 
 interface PlanContextType {
@@ -18,7 +19,7 @@ interface PlanContextType {
   isOnboarded: boolean;
   completeOnboarding: (data: OnboardingData) => void;
   moodLogs: MoodLog[];
-  addMoodLog: (mood: string, notes?: string) => void;
+  addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<void>;
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
@@ -85,19 +86,36 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const addMoodLog = (mood: string, notes?: string) => {
+  const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string) => {
+    let aiFeedbackText: string | undefined = undefined;
+    try {
+      // Don't send selfieDataUri to this AI flow, it's not designed for image input yet
+      const feedbackInput: ProvideMoodFeedbackInput = { mood, notes };
+      const feedbackResponse = await aiProvideMoodFeedback(feedbackInput);
+      aiFeedbackText = feedbackResponse.feedback;
+    } catch (err) {
+      console.error("Failed to get AI mood feedback:", err);
+      const errorMessage = err instanceof Error ? err.message : "Could not get AI feedback.";
+      toast({ variant: "destructive", title: "AI Feedback Error", description: errorMessage });
+    }
+
     const newLog: MoodLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       mood,
       notes,
+      selfieDataUri,
+      aiFeedback: aiFeedbackText,
     };
     setMoodLogs(prevLogs => {
       const updatedLogs = [newLog, ...prevLogs];
       localStorage.setItem('grozen_moodLogs', JSON.stringify(updatedLogs));
       return updatedLogs;
     });
-    toast({ title: "Mood Logged", description: "Your mood has been successfully recorded." });
+    toast({ 
+      title: "Mood Logged", 
+      description: `Your mood has been recorded. ${aiFeedbackText ? "Here's a thought: " + aiFeedbackText : ""}` 
+    });
   };
 
   const clearPlan = () => {

@@ -35,4 +35,7 @@ export interface MoodLog {
   date: string; // ISO string for consistency
   mood: string; // e.g., "😊", "🙂"
   notes?: string;
+  selfieDataUri?: string; // To store the captured selfie
+  aiFeedback?: string; // To store AI's feedback on the mood
 }
+
