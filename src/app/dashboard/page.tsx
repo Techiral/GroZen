@@ -88,6 +88,8 @@ export default function DashboardPage() {
   const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
   const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
+
 
   const sortedMoodLogs = React.useMemo(() => {
     return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -104,34 +106,66 @@ export default function DashboardPage() {
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
 
-  // Effect to handle attaching stream to video element and playing it
+  // Effect for attaching stream, playing video, and managing ready state
   useEffect(() => {
-    if (videoRef.current && selfieStream && isCameraActive && hasCameraPermission === true) {
-      videoRef.current.srcObject = selfieStream;
-      videoRef.current.onloadedmetadata = () => {
-        videoRef.current?.play().catch(err => {
-          console.error("Error playing video stream (onloadedmetadata):", err);
-          toast({
-            variant: "destructive",
-            title: "Camera Error",
-            description: "Could not start the video stream. Please ensure permissions are granted and try again."
-          });
-        });
+    const video = videoRef.current;
+    if (video && selfieStream && isCameraActive && hasCameraPermission === true) {
+      video.srcObject = selfieStream;
+
+      const handleCanPlay = () => {
+        if (video.videoWidth > 0) {
+          setIsVideoReadyForCapture(true);
+        } else {
+          // Fallback check if videoWidth is not immediately available
+          setTimeout(() => {
+            if (video.videoWidth > 0) setIsVideoReadyForCapture(true);
+            else setIsVideoReadyForCapture(false);
+          }, 100);
+        }
       };
-      // Fallback play attempt in case onloadedmetadata is slow or doesn't fire
-      videoRef.current.play().catch(err => { /* console.error("Direct play attempt failed quietly:", err); */ });
+      const handlePlaying = () => {
+         if (video.videoWidth > 0) setIsVideoReadyForCapture(true);
+      };
+      const handleWaitingOrStalled = () => setIsVideoReadyForCapture(false);
+
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('playing', handlePlaying);
+      video.addEventListener('waiting', handleWaitingOrStalled);
+      video.addEventListener('stalled', handleWaitingOrStalled);
+
+      video.play().catch(err => {
+        console.error("Error playing video stream in effect:", err);
+        toast({
+          variant: "destructive",
+          title: "Camera Error",
+          description: "Could not start the video stream."
+        });
+        setIsVideoReadyForCapture(false);
+      });
+
+      return () => { // Cleanup
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('playing', handlePlaying);
+        video.removeEventListener('waiting', handleWaitingOrStalled);
+        video.removeEventListener('stalled', handleWaitingOrStalled);
+        // Ensure ready state is false when effect cleans up
+        setIsVideoReadyForCapture(false); 
+      };
+    } else if (!isCameraActive || !selfieStream) {
+      setIsVideoReadyForCapture(false); // Ensure readiness is false if camera not active or no stream
     }
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
-  // Effect for cleaning up the selfieStream (stopping tracks)
+
+  // Effect for cleaning up the selfieStream tracks (stopping tracks)
   useEffect(() => {
-    const currentStream = selfieStream; // Capture the stream for cleanup closure
+    const currentStream = selfieStream; 
     return () => {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [selfieStream]); // This effect specifically manages the lifecycle of the selfieStream
+  }, [selfieStream]); 
 
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
@@ -167,21 +201,19 @@ export default function DashboardPage() {
   }, [sortedMoodLogs]);
 
   const handleToggleCamera = async () => {
-    if (isCameraActive && selfieStream) { // Turning camera OFF
-      // Cleanup is handled by the useEffect for selfieStream when it's set to null
+    setIsVideoReadyForCapture(false); // Reset readiness on toggle
+    if (isCameraActive && selfieStream) { 
       setSelfieStream(null); 
       setIsCameraActive(false);
-      // Note: videoRef.current.srcObject = null will be implicitly handled if the video element unrenders or by effect cleanup.
-      // Explicitly setting it here can be redundant if the stream itself is nullified.
       if (videoRef.current) videoRef.current.srcObject = null;
-    } else { // Turning camera ON
+    } else { 
       setCapturedSelfie(null); 
       setHasCameraPermission(null); 
       setIsCameraActive(true); 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream); // Set the stream, the useEffect will handle attaching it
+        setSelfieStream(stream); 
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
@@ -197,45 +229,58 @@ export default function DashboardPage() {
   };
 
   const handleCaptureSelfie = () => {
-    if (videoRef.current && selfieStream && videoRef.current.readyState >= videoRef.current.HAVE_METADATA && videoRef.current.videoWidth > 0) {
+    const video = videoRef.current;
+    if (isVideoReadyForCapture && video && selfieStream) {
+       if (video.videoWidth === 0 || video.videoHeight === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Capture Failed',
+                description: 'Video dimensions not available. Please try again.',
+            });
+            setIsVideoReadyForCapture(false); // Mark as not ready if dimensions are bad
+            return;
+        }
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const context = canvas.getContext('2d');
       if (context) {
-        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
-        
-        // Stop the stream and set camera inactive
-        // The useEffect for selfieStream will handle track stopping when selfieStream becomes null.
-        setSelfieStream(null);
+        setSelfieStream(null); // Stop stream after capture
         setIsCameraActive(false); 
+        setIsVideoReadyForCapture(false);
+      } else {
+         toast({
+            variant: 'destructive',
+            title: 'Capture Failed',
+            description: 'Could not get canvas context. Please try again.',
+        });
       }
     } else {
         toast({
             variant: 'destructive',
             title: 'Capture Failed',
-            description: 'Video stream not ready or camera not active. Please try again.',
+            description: 'Video stream not ready or camera not active. Please ensure the video feed is visible and try again.',
         });
     }
   };
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
+    setIsVideoReadyForCapture(false); // Camera not active if selfie cleared
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
     setCapturedSelfie(null);
-    // Ensure camera is off when opening dialog for a new mood log
-    if (selfieStream) { // If a stream exists, set it to null to trigger cleanup
-        setSelfieStream(null);
-    }
+    if (selfieStream) setSelfieStream(null);
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
     setHasCameraPermission(null); 
+    setIsVideoReadyForCapture(false);
     setIsMoodDialogOpen(true);
   };
 
@@ -243,21 +288,21 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
+      // Dialog close will also trigger cleanup via onOpenChange
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
-    if (!open) { // Dialog is closing
-        if (selfieStream) { // If a stream exists, set it to null to trigger cleanup
-           setSelfieStream(null);
-        }
+    if (!open) { 
+        if (selfieStream) setSelfieStream(null); // Triggers cleanup effect
         if (videoRef.current) videoRef.current.srcObject = null;
         setIsCameraActive(false);
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
         setHasCameraPermission(null); 
+        setIsVideoReadyForCapture(false);
     }
   }
 
@@ -415,7 +460,7 @@ export default function DashboardPage() {
                             type="button"
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
-                            disabled={!selfieStream || videoRef.current?.readyState !== 4}
+                            disabled={!selfieStream || !isVideoReadyForCapture}
                         >
                             <Camera className="mr-2 h-4 w-4" /> Capture
                         </Button>
@@ -443,13 +488,13 @@ export default function DashboardPage() {
                       <p className="font-semibold text-destructive">Camera Access Denied</p>
                       <p className="text-xs">Enable camera permissions in browser settings. You might need to refresh.</p>
                     </div>
-                  ) : isCameraActive && hasCameraPermission === null ? ( // Actively trying to turn on camera
+                  ) : isCameraActive && hasCameraPermission === null ? ( 
                     <div className="p-4">
                       <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin" />
                       <p>Requesting camera access...</p>
                       <p className="text-xs">Please allow in your browser.</p>
                     </div>
-                  ) : ( // Default: !isCameraActive (and permission not denied and no selfie captured)
+                  ) : ( 
                     <div className="p-4">
                       <Camera className="h-10 w-10 mx-auto mb-2" />
                       <p>Camera is off.</p>
@@ -613,4 +658,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
