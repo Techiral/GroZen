@@ -112,11 +112,17 @@ export default function DashboardPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (!isPlanAvailable && !isLoadingPlan && !isOnboardedState) {
-        router.replace('/onboarding');
-      } else if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
+      } else if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+         // User is logged in but not onboarded and no plan is loading
+         // This specific condition handles the case where they might have landed here directly
+         // and should be sent to onboarding.
+        if (router.pathname !== '/onboarding') {
+            router.replace('/onboarding');
+        }
+      } else if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
          // User is onboarded, but no plan is available, and it's not currently loading.
          // The UI below will handle showing a "Create a New Plan" button.
+         // No redirect needed here, the component will render the appropriate UI.
       }
     }
   }, [currentUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
@@ -413,6 +419,7 @@ export default function DashboardPage() {
 
 
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.pathname !== '/login' && router.pathname !== '/signup')) {
+    // This condition is mostly handled by useEffect now, but acts as a fallback if router navigation is slow.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -422,8 +429,10 @@ export default function DashboardPage() {
     );
   }
 
+  // This specific condition is also handled by useEffect now.
+  // Kept here as a safeguard during initial render cycles before useEffect takes over completely.
   if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
-    router.replace('/onboarding');
+    // The useEffect will handle the redirect. We show a loader here.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -450,7 +459,7 @@ export default function DashboardPage() {
         <p className="mt-4 text-md sm:text-lg">No wellness plan found or an error occurred.</p>
         <p className="text-xs sm:text-sm text-muted-foreground">Please try creating a new plan.</p>
         <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-4 text-sm sm:text-base px-5 py-2 sm:px-6 sm:py-3">
-          Create a New Plan
+          New Plan / Edit Preferences
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-4 neumorphic-button text-xs sm:text-sm">
             <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -459,9 +468,12 @@ export default function DashboardPage() {
     );
   }
 
+  // This specific condition is also handled by useEffect.
+  // Kept here as a safeguard.
   if (!currentUser && !isLoadingAuth) {
+    // The useEffect will handle the redirect if not on allowed public paths.
+    // If on /login, /signup, / (home), it won't redirect from here.
     if (!['/login', '/signup', '/'].includes(router.pathname)) {
-         router.replace('/login');
          return (
              <div className="flex flex-col items-center justify-center min-h-screen p-4">
                 <Logo size="text-3xl sm:text-4xl" />
@@ -470,6 +482,9 @@ export default function DashboardPage() {
             </div>
         );
     }
+    // If on allowed public paths and no user, this component shouldn't render the dashboard.
+    // The page itself (e.g. login page) will render its content.
+    // Returning null here prevents dashboard content flash.
     return null;
   }
 
