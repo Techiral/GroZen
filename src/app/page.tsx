@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -57,8 +58,8 @@ export default function HomePage() {
           src="https://placehold.co/1200x800.png" 
           alt="Abstract background"
           data-ai-hint="wellness abstract" 
-          layout="fill"
-          objectFit="cover"
+          fill={true}
+          className="object-cover"
           priority
         />
       </div>
