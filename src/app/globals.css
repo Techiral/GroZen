@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +17,7 @@
     --primary: 0 0% 82.7%; /* Light Gray - D3D3D3 - using this as the main interactive color */
     --primary-foreground: 0 0% 0%; /* Black text on light gray primary elements */
     
-    --secondary: 0 0% 10%; /* Dark Gray for secondary elements */
+    --secondary: 0 0% 20%; /* Dark Gray for secondary elements - Made lighter */
     --secondary-foreground: 0 0% 90%; /* Light Gray text for secondary elements */
 
     --muted: 0 0% 8%; /* Darker Gray for muted elements */
