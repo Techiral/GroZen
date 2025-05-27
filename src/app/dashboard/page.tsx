@@ -75,21 +75,22 @@ const moodEmojiStrings = ["😊", "🙂", "😐", "😕", "😞"];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { 
+  const {
     currentUser,
     isLoadingAuth,
     logoutUser,
-    wellnessPlan, 
-    isOnboardedState, 
-    clearPlanAndData, 
-    isLoadingPlan, 
+    wellnessPlan,
+    isOnboardedState,
+    clearPlanAndData,
+    isLoadingPlan,
     addMoodLog,
-    deleteMoodLog, 
+    deleteMoodLog,
     moodLogs,
     groceryList,
     isLoadingGroceryList,
     errorGroceryList,
     generateGroceryList: generateGroceryListFromContext,
+    deleteGroceryItem,
     isPlanAvailable
   } = usePlan();
   const { toast } = useToast();
@@ -111,7 +112,7 @@ export default function DashboardPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (!isPlanAvailable && !isLoadingPlan && !isOnboardedState) { 
+      } else if (!isPlanAvailable && !isLoadingPlan && !isOnboardedState) {
         router.replace('/onboarding');
       } else if (isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
          // User is onboarded, but no plan is available, and it's not currently loading.
@@ -146,7 +147,7 @@ export default function DashboardPage() {
       };
 
       const handlePlaying = () => {
-        setTimeout(() => { 
+        setTimeout(() => {
           if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
           } else {
@@ -163,11 +164,11 @@ export default function DashboardPage() {
                 });
                 setIsVideoReadyForCapture(false);
               }
-            }, 200); 
+            }, 200);
           }
-        }, 100); 
+        }, 100);
       };
-      
+
       const handleCanPlay = () => {
         if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
@@ -176,13 +177,13 @@ export default function DashboardPage() {
 
       const handleWaiting = () => setIsVideoReadyForCapture(false);
       const handleStalled = () => setIsVideoReadyForCapture(false);
-      
+
       video.addEventListener('loadedmetadata', handleLoadedMetadata);
       video.addEventListener('playing', handlePlaying);
       video.addEventListener('canplay', handleCanPlay);
       video.addEventListener('waiting', handleWaiting);
       video.addEventListener('stalled', handleStalled);
-      
+
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
          if (video.videoWidth > 0 && video.videoHeight > 0) {
             setIsVideoReadyForCapture(true);
@@ -207,7 +208,7 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    const currentStream = selfieStream; 
+    const currentStream = selfieStream;
     return () => {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
@@ -218,7 +219,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
       const logsWithSelfies = sortedMoodLogs.filter(log => !!log.selfieDataUri).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
+
       if (logsWithSelfies.length >= 2) {
         const firstSelfieLog = logsWithSelfies[0];
         let suitableAfterLog = null;
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                 break;
             }
         }
-        
+
         if (suitableAfterLog) {
           setBeforeShareLog(firstSelfieLog);
           setAfterShareLog(suitableAfterLog);
@@ -251,23 +252,23 @@ export default function DashboardPage() {
   const handleToggleCamera = async () => {
     setIsVideoReadyForCapture(false);
 
-    if (isCameraActive && selfieStream) { 
-      setSelfieStream(null); 
+    if (isCameraActive && selfieStream) {
+      setSelfieStream(null);
       setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null; 
-    } else { 
-      setCapturedSelfie(null); 
-      setHasCameraPermission(null); 
-      setIsCameraActive(true); 
-      
+      if (videoRef.current) videoRef.current.srcObject = null;
+    } else {
+      setCapturedSelfie(null);
+      setHasCameraPermission(null);
+      setIsCameraActive(true);
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream); 
+        setSelfieStream(stream);
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); 
+        setIsCameraActive(false);
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -287,7 +288,7 @@ export default function DashboardPage() {
                 title: 'Capture Failed',
                 description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false); 
+            setIsVideoReadyForCapture(false);
             return;
         }
       const canvas = document.createElement('canvas');
@@ -296,13 +297,13 @@ export default function DashboardPage() {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
-        
+
         selfieStream.getTracks().forEach(track => track.stop());
-        setSelfieStream(null); 
-        setIsCameraActive(false); 
-        setIsVideoReadyForCapture(false); 
+        setSelfieStream(null);
+        setIsCameraActive(false);
+        setIsVideoReadyForCapture(false);
       } else {
          toast({
             variant: 'destructive',
@@ -323,7 +324,7 @@ export default function DashboardPage() {
         });
     }
   };
-  
+
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
   }
@@ -331,15 +332,15 @@ export default function DashboardPage() {
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null); 
-    
-    if (selfieStream) { 
+    setCapturedSelfie(null);
+
+    if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null); 
+    setHasCameraPermission(null);
     setIsVideoReadyForCapture(false);
 
     setIsMoodDialogOpen(true);
@@ -350,7 +351,7 @@ export default function DashboardPage() {
       setIsSavingMood(true);
       try {
         await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
-        setIsMoodDialogOpen(false); 
+        setIsMoodDialogOpen(false);
       } catch (error) {
         console.error("Error saving mood log:", error);
         // Toast for error is likely handled in addMoodLog context function
@@ -359,21 +360,21 @@ export default function DashboardPage() {
       }
     }
   };
-  
+
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
-    if (!open) { 
+    if (!open) {
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
         }
         if (videoRef.current) videoRef.current.srcObject = null;
-        
+
         setIsCameraActive(false);
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null); 
+        setHasCameraPermission(null);
         setIsVideoReadyForCapture(false);
         setIsSavingMood(false); // Ensure saving state is reset
     }
@@ -406,12 +407,12 @@ export default function DashboardPage() {
   const confirmDeleteMoodLog = async () => {
     if (logToDelete) {
       await deleteMoodLog(logToDelete);
-      setLogToDelete(null); 
+      setLogToDelete(null);
     }
   };
 
 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.pathname !== '/login' && router.pathname !== '/signup')) { 
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.pathname !== '/login' && router.pathname !== '/signup')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-3xl sm:text-4xl" />
@@ -420,10 +421,10 @@ export default function DashboardPage() {
       </div>
     );
   }
-  
-  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') { 
-    router.replace('/onboarding'); 
-    return ( 
+
+  if (currentUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan && router.pathname !== '/onboarding') {
+    router.replace('/onboarding');
+    return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
         <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
@@ -431,8 +432,8 @@ export default function DashboardPage() {
       </div>
     );
   }
-  
-  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
+
+  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -441,8 +442,8 @@ export default function DashboardPage() {
       </div>
     );
   }
-  
-  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
+
+  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-3xl sm:text-4xl" />
@@ -459,9 +460,9 @@ export default function DashboardPage() {
   }
 
   if (!currentUser && !isLoadingAuth) {
-    if (!['/login', '/signup', '/'].includes(router.pathname)) { 
-         router.replace('/login'); 
-         return ( 
+    if (!['/login', '/signup', '/'].includes(router.pathname)) {
+         router.replace('/login');
+         return (
              <div className="flex flex-col items-center justify-center min-h-screen p-4">
                 <Logo size="text-3xl sm:text-4xl" />
                 <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
@@ -469,9 +470,9 @@ export default function DashboardPage() {
             </div>
         );
     }
-    return null; 
+    return null;
   }
-  
+
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
@@ -487,13 +488,13 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {isLoadingPlan && wellnessPlan && ( 
+      {isLoadingPlan && wellnessPlan && (
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
           <RotateCcw className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
           <p className="mt-3 text-sm sm:text-md">Updating your plan...</p>
         </div>
       )}
-      
+
       {wellnessPlan && (
         <>
           <div className="mb-5 p-3 sm:p-4 neumorphic rounded-lg">
@@ -554,7 +555,7 @@ export default function DashboardPage() {
           </SectionCard>
         </>
       )}
-      
+
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="neumorphic w-[90vw] max-w-md">
           <DialogHeader>
@@ -565,7 +566,7 @@ export default function DashboardPage() {
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-180px)] sm:max-h-[calc(70vh-180px)] -mx-1 px-1"> 
+          <ScrollArea className="max-h-[calc(80vh-180px)] sm:max-h-[calc(70vh-180px)] -mx-1 px-1">
             <div className="grid gap-3 py-3">
               <div className="space-y-1.5">
                 <Label htmlFor="mood-notes" className="text-xs sm:text-sm">Notes (Optional)</Label>
@@ -586,7 +587,7 @@ export default function DashboardPage() {
                           variant="outline"
                           onClick={handleToggleCamera}
                           className="neumorphic-button w-full xs:w-auto text-xs px-3 py-1.5"
-                          disabled={!!capturedSelfie || isSavingMood} 
+                          disabled={!!capturedSelfie || isSavingMood}
                       >
                           {isCameraActive ? <VideoOff className="mr-1 h-3 w-3" /> : <Camera className="mr-1 h-3 w-3" />}
                           {isCameraActive ? 'Close Camera' : 'Open Camera'}
@@ -603,14 +604,14 @@ export default function DashboardPage() {
                           </Button>
                       )}
                   </div>
-                  
+
                   <div className="mt-2 rounded-md overflow-hidden border border-border neumorphic-inset-sm aspect-video bg-muted/20 flex items-center justify-center text-center p-1.5">
                     {isCameraActive && selfieStream && hasCameraPermission === true ? (
-                      <video 
-                          ref={videoRef} 
+                      <video
+                          ref={videoRef}
                           className="w-full h-full object-cover"
-                          muted 
-                          playsInline 
+                          muted
+                          playsInline
                        />
                     ) : capturedSelfie ? (
                       <div className="p-1.5 sm:p-2 text-muted-foreground">
@@ -624,12 +625,12 @@ export default function DashboardPage() {
                         <p className="font-semibold text-destructive text-2xs sm:text-xs">Camera Access Denied</p>
                         <p className="text-2xs">Enable permissions in browser.</p>
                       </div>
-                    ) : isCameraActive && hasCameraPermission === null ? ( 
+                    ) : isCameraActive && hasCameraPermission === null ? (
                       <div className="p-1.5 sm:p-2">
                         <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 animate-spin" />
                         <p className="text-2xs sm:text-xs">Requesting camera...</p>
                       </div>
-                    ) : ( 
+                    ) : (
                       <div className="p-1.5 sm:p-2">
                         <Camera className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1" />
                         <p className="text-2xs sm:text-xs">Camera is off.</p>
@@ -643,11 +644,11 @@ export default function DashboardPage() {
                           <div className="relative aspect-video w-full max-w-[150px] sm:max-w-[200px] neumorphic-sm rounded-md overflow-hidden">
                                <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                           </div>
-                          <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={clearCapturedSelfie} 
+                          <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={clearCapturedSelfie}
                               className="neumorphic-button items-center text-2xs px-2 py-1"
                               disabled={isSavingMood}
                           >
@@ -658,15 +659,15 @@ export default function DashboardPage() {
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between pt-4"> 
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between pt-4">
              <DialogClose asChild>
               <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-xs px-3 py-1.5" disabled={isSavingMood}>Cancel</Button>
             </DialogClose>
-            <Button 
-              type="button" 
-              variant="neumorphic-primary" 
-              onClick={handleSaveMoodLog} 
-              disabled={!selectedMood || isSavingMood} 
+            <Button
+              type="button"
+              variant="neumorphic-primary"
+              onClick={handleSaveMoodLog}
+              disabled={!selectedMood || isSavingMood}
               className="w-full sm:w-auto text-xs px-3 py-1.5"
             >
               {isSavingMood ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
@@ -685,14 +686,14 @@ export default function DashboardPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row">
-            <AlertDialogCancel 
-              onClick={() => setLogToDelete(null)} 
+            <AlertDialogCancel
+              onClick={() => setLogToDelete(null)}
               className="neumorphic-button w-full sm:w-auto text-xs px-3 py-1.5"
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteMoodLog} 
+            <AlertDialogAction
+              onClick={confirmDeleteMoodLog}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-xs px-3 py-1.5"
             >
               Delete
@@ -706,10 +707,10 @@ export default function DashboardPage() {
          <CardDescription className="mb-3 text-xs sm:text-sm">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 sm:space-x-2 justify-center sm:justify-start">
           {moodEmojiStrings.map(mood => (
-            <Button 
-              key={mood} 
-              variant="outline" 
-              size="icon" 
+            <Button
+              key={mood}
+              variant="outline"
+              size="icon"
               onClick={() => handleMoodButtonClick(mood)}
               className="text-lg sm:text-xl md:text-2xl neumorphic-button h-12 w-12 sm:h-14 sm:w-14 hover:neumorphic-inset"
               aria-label={`Log mood: ${mood}`}
@@ -737,15 +738,15 @@ export default function DashboardPage() {
                         <span className="text-xl sm:text-2xl">{log.mood}</span>
                         {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
                       </h4>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setLogToDelete(log.id)}
-                            className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
-                            aria-label="Delete mood log"
-                        >
-                            <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setLogToDelete(log.id)}
+                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-muted-foreground hover:text-destructive"
+                                aria-label="Delete mood log"
+                            >
+                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </Button>
                     </div>
                      <p className="text-xs text-muted-foreground">
                       {format(new Date(log.date), "MMM d, yy 'at' h:mma")}
@@ -772,7 +773,7 @@ export default function DashboardPage() {
             </CardDescription>
         )}
       </SectionCard>
-      
+
       <SectionCard title="Share Your Progress" icon={<Gift className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
@@ -788,8 +789,8 @@ export default function DashboardPage() {
         <CardDescription className="mb-3 text-xs sm:text-sm">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
-        <Button 
-          onClick={handleGenerateGroceryListClick} 
+        <Button
+          onClick={handleGenerateGroceryListClick}
           disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
           variant="neumorphic-primary"
           className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5"
@@ -804,32 +805,42 @@ export default function DashboardPage() {
             <AlertDescription className="text-2xs sm:text-xs">{errorGroceryList}</AlertDescription>
           </Alert>
         )}
-        
+
         {!groceryList && !isLoadingGroceryList && !errorGroceryList && (
            <CardDescription className="mt-3 text-xs sm:text-sm">
                No grocery list generated yet. Click the button above to create one based on your meal plan.
            </CardDescription>
         )}
 
-        {groceryList && !isLoadingGroceryList && (
+        {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
           <div className="mt-4 space-y-3">
             <h3 className="text-sm sm:text-md font-semibold">
               Your Grocery List <span className="text-2xs sm:text-xs text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
             </h3>
-            {Object.keys(groupedGroceryItems).length === 0 && <p className="text-xs sm:text-sm">Your grocery list is empty or could not be generated.</p>}
-            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems)}>
+            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems).length > 0 ? Object.keys(groupedGroceryItems) : undefined }>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
                 <AccordionItem value={category} key={category} className="neumorphic-sm mb-1.5">
                   <AccordionTrigger className="p-2.5 text-xs sm:text-sm hover:no-underline">
                     {category} ({items.length})
                   </AccordionTrigger>
                   <AccordionContent className="p-2.5">
-                    <ul className="list-disc pl-3.5 sm:pl-4 space-y-1 text-2xs sm:text-xs">
-                      {items.map((item, index) => (
-                        <li key={`${item.name}-${index}`} className="break-words">
-                          <strong>{item.name}</strong>
-                          {item.quantity && <span className="text-muted-foreground"> ({item.quantity})</span>}
-                          {item.notes && <em className="text-muted-foreground text-2xs block"> - {item.notes}</em>}
+                    <ul className="list-disc pl-3.5 sm:pl-4 space-y-1.5 text-2xs sm:text-xs">
+                      {items.map((item) => (
+                        <li key={item.id} className="break-words flex justify-between items-start gap-1">
+                          <div>
+                            <strong>{item.name}</strong>
+                            {item.quantity && <span className="text-muted-foreground"> ({item.quantity})</span>}
+                            {item.notes && <em className="text-muted-foreground text-2xs block"> - {item.notes}</em>}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteGroceryItem(item.id)}
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-2"
+                            aria-label="Delete grocery item"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -842,10 +853,13 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
+        {groceryList && !isLoadingGroceryList && groceryList.items.length === 0 && (
+            <CardDescription className="mt-3 text-xs sm:text-sm">
+               Your grocery list is currently empty. You can generate a new one if you have a meal plan.
+            </CardDescription>
+        )}
       </SectionCard>
 
     </main>
   );
 }
-
-    

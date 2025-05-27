@@ -40,6 +40,7 @@ export interface MoodLog {
 }
 
 export interface GroceryItem {
+  id: string; // Unique identifier for the item
   name: string;
   category: string; // e.g., "Produce", "Dairy", "Pantry", "Meats"
   quantity?: string; // e.g., "1 lb", "2 cans", "1 gallon"
@@ -51,3 +52,4 @@ export interface GroceryList {
   items: GroceryItem[];
   generatedDate: string; // ISO string
 }
+
