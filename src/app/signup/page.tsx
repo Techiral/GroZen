@@ -135,9 +135,9 @@ export default function SignupPage() {
           </form>
 
           <div className="my-4 sm:my-5 flex items-center w-full">
-            <Separator className="flex-grow" />
-            <span className="mx-3 text-xs text-muted-foreground">OR</span>
-            <Separator className="flex-grow" />
+            <Separator className="flex-1" />
+            <span className="px-2 text-xs text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
           </div>
 
           <Button 

@@ -35,7 +35,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
-      // Redirect logic is handled by PlanProvider or specific pages like dashboard/onboarding
+      // Redirection logic is handled by PlanProvider or specific pages like dashboard/onboarding
     }
   }, [currentUser, isLoadingAuth, router]);
 
@@ -117,9 +117,9 @@ export default function LoginPage() {
           </form>
           
           <div className="my-4 sm:my-5 flex items-center w-full">
-            <Separator className="flex-grow" />
-            <span className="mx-3 text-xs text-muted-foreground">OR</span>
-            <Separator className="flex-grow" />
+            <Separator className="flex-1" />
+            <span className="px-2 text-xs text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
           </div>
 
           <Button 
