@@ -75,7 +75,7 @@ export default function DashboardPage() {
     groceryList,
     isLoadingGroceryList,
     errorGroceryList,
-    generateGroceryList
+    generateGroceryList // This is the context function
   } = usePlan();
   const { toast } = useToast();
 
@@ -102,22 +102,18 @@ export default function DashboardPage() {
     if (!isLoadingPlan && !isOnboarded) {
       router.push('/onboarding');
     } else if (!isLoadingPlan && isOnboarded && !wellnessPlan) {
-      // If onboarded but somehow lost plan, redirect to generate it again.
-      // This could happen if localStorage is cleared or plan generation failed initially.
       router.push('/onboarding');
     }
   }, [wellnessPlan, isOnboarded, isLoadingPlan, router]);
 
-  // Effect to handle attaching stream to video element and managing video events
   useEffect(() => {
     const video = videoRef.current;
-
-    if (video && selfieStream && isCameraActive && hasCameraPermission === true) {
+    if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
       video.srcObject = selfieStream;
 
       const handleLoadedMetadata = () => {
         video.play().catch(err => {
-          console.error("Error playing video stream (on play after loadedmetadata):", err);
+          console.error("Error playing video stream:", err);
           toast({
             variant: "destructive",
             title: "Camera Error",
@@ -128,20 +124,28 @@ export default function DashboardPage() {
       };
 
       const handlePlaying = () => {
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          setIsVideoReadyForCapture(true);
-        } else {
-          console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
-          // It can sometimes take a moment for dimensions to be reported even after 'playing'
-          setTimeout(() => {
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
-              setIsVideoReadyForCapture(true);
-            } else {
-              console.error("Video dimensions still 0 after delay on 'playing' event.");
-              setIsVideoReadyForCapture(false);
-            }
-          }, 100);
-        }
+         // Check dimensions with a slight delay, as 'playing' can fire before dimensions are available
+        setTimeout(() => {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setIsVideoReadyForCapture(true);
+          } else {
+            console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
+            // It can sometimes take a moment for dimensions to be reported even after 'playing'
+            setTimeout(() => {
+              if (video.videoWidth > 0 && video.videoHeight > 0) {
+                setIsVideoReadyForCapture(true);
+              } else {
+                console.error("Video dimensions still 0 after delay on 'playing' event.");
+                toast({
+                  variant: "destructive",
+                  title: "Camera Feed Issue",
+                  description: "Video feed started but dimensions are not available. Try reopening camera."
+                });
+                setIsVideoReadyForCapture(false);
+              }
+            }, 200); // A bit longer delay for the second check
+          }
+        }, 100); // Initial delay after 'playing'
       };
 
       const handleWaiting = () => setIsVideoReadyForCapture(false);
@@ -152,32 +156,29 @@ export default function DashboardPage() {
       video.addEventListener('waiting', handleWaiting);
       video.addEventListener('stalled', handleStalled);
       
-      // It's good practice to call play() if it's already loaded and not playing,
-      // though loadedmetadata should cover this.
-      if (video.readyState >= video.HAVE_METADATA && !video.paused) {
-         // Stream already loaded and potentially playing or played.
-      } else if (video.readyState >= video.HAVE_METADATA) {
-        // If metadata loaded but paused, try to play.
+      if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
+        // Already playing or played, check dimensions
+         if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setIsVideoReadyForCapture(true);
+          }
+      } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
+        // Metadata loaded but paused, try to play.
          video.play().catch(err => console.error("Error attempting to play already loaded video", err));
       }
-
 
       return () => {
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('playing', handlePlaying);
         video.removeEventListener('waiting', handleWaiting);
         video.removeEventListener('stalled', handleStalled);
-        // Ensure state is reset if dependencies change causing re-run before unmount
         setIsVideoReadyForCapture(false);
       };
     } else {
-      // If conditions aren't met (e.g., camera turned off), ensure ready state is false
       setIsVideoReadyForCapture(false);
     }
   }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
 
-  // Effect to clean up the selfie stream (stop camera tracks)
   useEffect(() => {
     const currentStream = selfieStream; 
     return () => {
@@ -185,7 +186,7 @@ export default function DashboardPage() {
         currentStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [selfieStream]); // This effect runs when selfieStream itself changes or on unmount
+  }, [selfieStream]); 
 
   useEffect(() => {
     if (sortedMoodLogs.length >= 2) {
@@ -221,25 +222,25 @@ export default function DashboardPage() {
   }, [sortedMoodLogs]);
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); // Reset readiness state immediately
+    setIsVideoReadyForCapture(false); 
 
     if (isCameraActive && selfieStream) { 
-      setSelfieStream(null); // This will trigger the cleanup effect for tracks
+      setSelfieStream(null); 
       setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null; // Explicitly clear srcObject
+      if (videoRef.current) videoRef.current.srcObject = null; 
     } else { 
-      setCapturedSelfie(null); // Clear any previous selfie
-      setHasCameraPermission(null); // Reset permission status to show loading/requesting
-      setIsCameraActive(true); // Set active *before* asking for permission
+      setCapturedSelfie(null); 
+      setHasCameraPermission(null); 
+      setIsCameraActive(true); 
       
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
         setSelfieStream(stream); 
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); // Turn off active state on error
+        setIsCameraActive(false); 
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -257,9 +258,9 @@ export default function DashboardPage() {
             toast({
                 variant: 'destructive',
                 title: 'Capture Failed',
-                description: 'Video dimensions not available. Please ensure the camera feed is active and try again.',
+                description: 'Video dimensions not available. Ensure camera feed is active and try again.',
             });
-            setIsVideoReadyForCapture(false); // Video not truly ready
+            setIsVideoReadyForCapture(false); 
             return;
         }
       const canvas = document.createElement('canvas');
@@ -271,10 +272,9 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8); 
         setCapturedSelfie(dataUri);
         
-        // Stop the stream and turn off camera after capture
-        setSelfieStream(null); // Triggers track cleanup
+        setSelfieStream(null); 
         setIsCameraActive(false); 
-        setIsVideoReadyForCapture(false); // No longer ready as stream is stopped
+        setIsVideoReadyForCapture(false); 
       } else {
          toast({
             variant: 'destructive',
@@ -284,9 +284,9 @@ export default function DashboardPage() {
       }
     } else {
         let description = 'Video stream not ready or camera not active.';
-        if (!isVideoReadyForCapture) description = 'Video is not ready for capture. Please wait for the feed to stabilize.';
-        if (!selfieStream) description = 'Camera stream is not available.';
-        if (!video) description = 'Video element not found.';
+        if (!isVideoReadyForCapture && selfieStream) description = 'Video is not ready for capture. Please wait for the feed to stabilize.';
+        else if (!selfieStream) description = 'Camera stream is not available.';
+        else if (!video) description = 'Video element not found.';
 
         toast({
             variant: 'destructive',
@@ -298,17 +298,15 @@ export default function DashboardPage() {
   
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // Don't automatically turn camera back on; user should explicitly open it.
-    // setIsVideoReadyForCapture(false); // will be false if camera is off
+    // setIsVideoReadyForCapture(false); // Redundant as camera will be off or re-opened
   }
 
   const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
-    setCapturedSelfie(null); // Clear any previous selfie for new log
+    setCapturedSelfie(null); 
     
-    // Reset all camera states for a fresh start when dialog opens
-    if (selfieStream) setSelfieStream(null); // Stop existing stream
+    if (selfieStream) setSelfieStream(null); 
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
     setHasCameraPermission(null); 
@@ -321,14 +319,12 @@ export default function DashboardPage() {
     if (selectedMood) {
       await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
       setIsMoodDialogOpen(false); 
-      // States like selectedMood, moodNotes, capturedSelfie are reset in handleDialogClose
     }
   };
   
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) { 
-        // Comprehensive cleanup when dialog closes
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -344,11 +340,11 @@ export default function DashboardPage() {
     }
   }
 
-  const handleGenerateGroceryList = async () => {
-    if (wellnessPlan) {
-      await generateGroceryList(wellnessPlan.meals); // Pass only meals
+  const handleGenerateGroceryListClick = async () => {
+    if (wellnessPlan && wellnessPlan.meals && wellnessPlan.meals.length > 0) {
+      await generateGroceryList(wellnessPlan); // Pass the whole wellnessPlan object
     } else {
-      toast({ variant: "destructive", title: "Error", description: "No wellness plan available to generate groceries from." });
+      toast({ variant: "destructive", title: "Error", description: "No wellness plan with meals available to generate groceries from." });
     }
   };
 
@@ -498,7 +494,7 @@ export default function DashboardPage() {
                             type="button"
                             variant="neumorphic-primary"
                             onClick={handleCaptureSelfie}
-                            disabled={!isVideoReadyForCapture}
+                            disabled={!selfieStream || !isVideoReadyForCapture}
                             className="w-full xs:w-auto text-xs px-3 py-1.5"
                         >
                             <Camera className="mr-1 h-3 w-3" /> Capture
@@ -642,8 +638,8 @@ export default function DashboardPage() {
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button 
-          onClick={handleGenerateGroceryList} 
-          disabled={isLoadingGroceryList || !wellnessPlan}
+          onClick={handleGenerateGroceryListClick} 
+          disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
           variant="neumorphic-primary"
           className="w-full sm:w-auto text-xs sm:text-sm px-3 py-1.5"
         >
@@ -694,4 +690,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
