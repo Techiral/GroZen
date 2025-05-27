@@ -76,13 +76,16 @@ const generateWellnessPlanFlow = ai.defineFlow(
     outputSchema: GenerateWellnessPlanOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    // Ensure the output is not null or undefined before returning.
-    // The schema validation on the prompt should handle this, but an extra check is safe.
-    if (!output || typeof output.plan !== 'string') {
-        throw new Error('AI did not return a valid plan string.');
+    try {
+      const {output} = await prompt(input);
+      if (!output || typeof output.plan !== 'string') {
+          console.error('generateWellnessPlanFlow: AI did not return a valid plan string structure. Output:', output);
+          throw new Error('AI did not return a valid plan string.');
+      }
+      return output;
+    } catch (error) {
+      console.error('generateWellnessPlanFlow: Error during AI call or processing. Input:', input, 'Error:', error);
+      throw new Error(`Failed to generate wellness plan: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return output;
   }
 );
-

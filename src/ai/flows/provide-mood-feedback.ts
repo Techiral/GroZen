@@ -56,10 +56,16 @@ const provideMoodFeedbackFlow = ai.defineFlow(
     outputSchema: ProvideMoodFeedbackOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (!output) {
-        throw new Error('AI did not return valid feedback.');
+    try {
+      const {output} = await prompt(input);
+      if (!output || typeof output.feedback !== 'string') {
+          console.error('provideMoodFeedbackFlow: AI did not return valid feedback structure. Output:', output);
+          throw new Error('AI did not return valid feedback.');
+      }
+      return output;
+    } catch (error) {
+      console.error('provideMoodFeedbackFlow: Error during AI call or processing. Input:', input, 'Error:', error);
+      throw new Error(`Failed to provide mood feedback: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return output;
   }
 );

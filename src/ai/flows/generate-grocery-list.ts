@@ -74,10 +74,16 @@ const generateGroceryListFlow = ai.defineFlow(
     outputSchema: GenerateGroceryListOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (!output || !Array.isArray(output.items)) {
-        throw new Error('AI did not return a valid array of grocery items.');
+    try {
+      const {output} = await prompt(input);
+      if (!output || !Array.isArray(output.items)) {
+          console.error('generateGroceryListFlow: AI did not return a valid array of grocery items. Output:', output);
+          throw new Error('AI did not return a valid array of grocery items.');
+      }
+      return output;
+    } catch (error) {
+      console.error('generateGroceryListFlow: Error during AI call or processing. Input:', input, 'Error:', error);
+      throw new Error(`Failed to generate grocery list: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return output;
   }
 );
