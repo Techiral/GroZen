@@ -94,15 +94,6 @@ const moodValueToLabel: { [key: number]: string } = {
   1: "Sad",
 };
 
-// const moodValueToColor: { [key: number]: string } = {
-//   5: "hsl(var(--chart-1))", // Greenish
-//   4: "hsl(var(--chart-2))", // Bluish
-//   3: "hsl(var(--chart-3))", // Yellowish/Neutral
-//   2: "hsl(var(--chart-4))", // Orangish
-//   1: "hsl(var(--chart-5))", // Reddish
-// };
-
-
 const chartConfig = {
   mood: {
     label: "Mood",
@@ -156,7 +147,7 @@ export default function DashboardPage() {
   }, [moodLogs]);
 
   const moodChartData: ChartMoodLog[] = useMemo(() => {
-    return [...moodLogs] // Use original moodLogs for chart data to maintain consistent sort for lines
+    return [...moodLogs] 
       .map(log => ({
         date: format(parseISO(log.date), "MMM d"),
         moodValue: moodToValueMapping[log.mood] || 0, 
@@ -166,11 +157,15 @@ export default function DashboardPage() {
       .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
   }, [moodLogs]);
 
- useEffect(() => {
+  useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
       } else if (!isAdminUser && !isPlanAvailable && isOnboardedState && !isLoadingPlan) {
+        // Non-admin is onboarded but has no plan (e.g. plan generation failed or new login)
+        // Dashboard handles showing "create plan" message for this state
+      } else if (!isAdminUser && !isOnboardedState && !isLoadingPlan) {
+        // Non-admin is not onboarded
         router.replace('/onboarding');
       }
     }
@@ -179,6 +174,38 @@ export default function DashboardPage() {
 
   const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
   const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+
+ useEffect(() => {
+    const logsWithSelfies = [...moodLogs]
+      .filter(log => !!log.selfieDataUri)
+      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort oldest first
+
+    if (logsWithSelfies.length >= 2) {
+      const firstSelfieLog = logsWithSelfies[0];
+      let suitableAfterLog = null;
+
+      for (let i = logsWithSelfies.length - 1; i > 0; i--) {
+          const potentialAfterLog = logsWithSelfies[i];
+          // Admin condition: any log after the first one is suitable for testing
+          // Regular user condition: must be at least 14 days after
+          if (isAdminUser || differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14) {
+              suitableAfterLog = potentialAfterLog;
+              break; 
+          }
+      }
+
+      if (suitableAfterLog) {
+        setBeforeShareLog(firstSelfieLog);
+        setAfterShareLog(suitableAfterLog);
+      } else {
+        setBeforeShareLog(null);
+        setAfterShareLog(null);
+      }
+    } else {
+       setBeforeShareLog(null);
+       setAfterShareLog(null);
+    }
+  }, [moodLogs, isAdminUser]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -219,7 +246,7 @@ export default function DashboardPage() {
                 }
             }, 100); 
         };
-
+        
         const handleCanPlay = () => {
             if (video && video.videoWidth > 0 && video.videoHeight > 0) {
                 setIsVideoReadyForCapture(true);
@@ -268,38 +295,6 @@ export default function DashboardPage() {
     };
   }, [selfieStream]);
 
-  useEffect(() => {
-    // Use moodLogs directly as sortedMoodLogs is already sorted by newest first
-    // For share card, we need oldest with selfie and newest with selfie (with a gap)
-    const logsWithSelfies = [...moodLogs]
-      .filter(log => !!log.selfieDataUri)
-      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort oldest first
-
-    if (logsWithSelfies.length >= 2) {
-      const firstSelfieLog = logsWithSelfies[0];
-      let suitableAfterLog = null;
-
-      // Iterate from newest to oldest to find a suitable "after" log
-      for (let i = logsWithSelfies.length - 1; i > 0; i--) {
-          const potentialAfterLog = logsWithSelfies[i];
-          if (differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14) {
-              suitableAfterLog = potentialAfterLog;
-              break; // Found the newest suitable "after" log
-          }
-      }
-
-      if (suitableAfterLog) {
-        setBeforeShareLog(firstSelfieLog);
-        setAfterShareLog(suitableAfterLog);
-      } else {
-        setBeforeShareLog(null);
-        setAfterShareLog(null);
-      }
-    } else {
-       setBeforeShareLog(null);
-       setAfterShareLog(null);
-    }
-  }, [moodLogs]);
 
   const handleToggleCamera = async () => {
     setIsVideoReadyForCapture(false);
@@ -475,6 +470,8 @@ export default function DashboardPage() {
   }
   
   if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+     // This state implies user is logged in, not admin, not onboarded, and plan isn't loading (should be caught by useEffect for redirect to onboarding)
+     // If they reach here, likely means redirect hasn't fired yet, so show a generic loader.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
@@ -494,7 +491,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (currentUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan && !isAdminUser) {
+  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
@@ -528,7 +525,7 @@ export default function DashboardPage() {
             )}
             {!isAdminUser && (
                 <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan or Edit Preferences">
-                New Plan / Edit Preferences
+                 New Plan / Edit Preferences
                 </Button>
             )}
             <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="Logout">
@@ -899,7 +896,7 @@ export default function DashboardPage() {
                                 size="icon" 
                                 onClick={() => setLogToDelete(log.id)} 
                                 className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-muted-foreground hover:text-destructive"
-                                aria-label="Delete mood log"
+                                aria-label={`Delete mood log from ${format(parseISO(log.date), "MMM d, yy 'at' h:mma")}`}
                             >
                                 <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             </Button>
@@ -935,7 +932,7 @@ export default function DashboardPage() {
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
           <CardDescription className="text-2xs sm:text-xs">
-            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first, your &apos;Before & After&apos; share card will appear here.
+            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first (or if you are an admin), your &apos;Before & After&apos; share card will appear here.
           </CardDescription>
         )}
       </SectionCard>
@@ -1020,3 +1017,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
