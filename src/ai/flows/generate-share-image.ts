@@ -34,18 +34,14 @@ const generateShareImagePrompt = ai.definePrompt({
   model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Image generation model
   config: {
     responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE
-     safetySettings: [ // Relax safety settings slightly if needed for creative content
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+     safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
     ],
   },
-  prompt: `Task: Generate a visually appealing and motivational background image for a social media share card AND a short alt text for it.
-User Information for Context:
-- User Name: {{#if userName}}{{userName}}{{else}}A GroZen User{{/if}}
-- Challenge Title: '{{challengeTitle}}'
-- Days Completed: {{daysCompleted}}
+  prompt: `Task: First, generate a visually appealing and motivational background image for a social media share card. Second, provide a short alt text for that image.
 
 Image Generation Guidelines:
 - Create a vibrant, celebratory, and abstract background image.
@@ -54,7 +50,12 @@ Image Generation Guidelines:
 - The image must be purely visual. DO NOT include any text, numbers, or human figures in the image.
 - Focus on abstract elements or subtle thematic cues related to wellness or accomplishment.
 
-Alt Text Generation Guidelines:
+Context for image generation:
+- User Name: {{#if userName}}{{userName}}{{else}}A GroZen User{{/if}}
+- Challenge Title: '{{challengeTitle}}'
+- Days Completed: {{daysCompleted}}
+
+Alt Text Generation Guidelines (for the image you generate):
 - Provide a concise (1-2 sentence) descriptive alt text for the generated image.
 - This text should describe the visual elements and mood of the image. Example: "Abstract background with flowing blue and gold lines creating a sense of motion and achievement."
 - Your text response must ONLY be the alt text. Do not include any other conversational text or markdown.
@@ -71,29 +72,28 @@ const generateShareImageFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const response = await generateShareImagePrompt(input); // This will be a GenerateResponse object
+      const response = await generateShareImagePrompt(input); 
       
       const imageDataUri = response.media?.url;
-      const altText = response.text?.trim();
+      const altTextFromAI = response.text?.trim();
 
       if (!imageDataUri) {
-        console.error('generateShareImageFlow: AI did not return an image. Media:', response.media);
+        console.error('generateShareImageFlow: AI did not return an image. Media:', response.media, 'Text response was:', altTextFromAI);
         throw new Error('AI did not return an image.');
       }
-      if (!altText || typeof altText !== 'string' || altText.length === 0) {
-        console.warn('generateShareImageFlow: AI did not return valid alt text. Text response:', altText);
-        // Fallback alt text if AI fails to provide one or provides empty
-        const fallbackAlt = `GroZen Challenge: ${input.challengeTitle} - ${input.daysCompleted} days completed. By ${input.userName || 'User'}.`;
-        return { imageDataUri, altText: fallbackAlt };
-      }
+      
+      const altText = altTextFromAI && altTextFromAI.length > 0 
+        ? altTextFromAI 
+        : `GroZen Challenge: ${input.challengeTitle} - ${input.daysCompleted} days completed. By ${input.userName || 'User'}.`;
+
       return { imageDataUri, altText };
     } catch (error) {
       console.error('generateShareImageFlow: Error during AI image generation or processing. Input:', input, 'Error:', error);
       if (error instanceof Error) {
+        // Prepend a consistent prefix to the error message
         throw new Error(`Failed to generate share image from AI: ${error.message}`);
       }
       throw new Error('Failed to generate share image due to an unknown AI error.');
     }
   }
 );
-
