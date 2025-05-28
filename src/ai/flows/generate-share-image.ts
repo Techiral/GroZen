@@ -31,7 +31,6 @@ export async function generateShareImage(input: GenerateShareImageInput): Promis
 const generateShareImagePrompt = ai.definePrompt({
   name: 'generateShareImagePrompt',
   input: {schema: GenerateShareImageInputSchema},
-  // Removed output schema here, as gemini-2.0-flash-exp doesn't support JSON output with image generation
   model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Image generation model
   config: {
     responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE
@@ -43,19 +42,22 @@ const generateShareImagePrompt = ai.definePrompt({
     ],
   },
   prompt: `Task: Generate a visually appealing and motivational background image for a social media share card AND a short alt text for it.
-The user, {{#if userName}}{{userName}}{{else}}someone{{/if}}, is celebrating their progress in the '{{challengeTitle}}' challenge, having completed {{daysCompleted}} days.
+User Information for Context:
+- User Name: {{#if userName}}{{userName}}{{else}}A GroZen User{{/if}}
+- Challenge Title: '{{challengeTitle}}'
+- Days Completed: {{daysCompleted}}
 
 Image Generation Guidelines:
-- Create a vibrant, celebratory, and abstract image.
-- The image should evoke a sense of achievement and positive energy.
-- Use colors that are generally uplifting.
-- Do NOT include any text, numbers, or human figures in the image itself. The image is purely for background and mood.
-- Consider abstract patterns, light effects, or subtle thematic elements related to wellness or accomplishment.
-- Output the image as a data URI.
+- Create a vibrant, celebratory, and abstract background image.
+- The image should strongly evoke a sense of achievement and positive wellness energy.
+- Use uplifting and positive colors.
+- The image must be purely visual. DO NOT include any text, numbers, or human figures in the image.
+- Focus on abstract elements or subtle thematic cues related to wellness or accomplishment.
 
 Alt Text Generation Guidelines:
-- Provide a concise (1-2 sentence) descriptive alt text for the generated image. This text should describe the visual elements and mood of the image. Example: "Abstract background with flowing blue and gold lines creating a sense of motion and achievement."
-- Your text response should ONLY be the alt text. Do not include any other conversational text or markdown.
+- Provide a concise (1-2 sentence) descriptive alt text for the generated image.
+- This text should describe the visual elements and mood of the image. Example: "Abstract background with flowing blue and gold lines creating a sense of motion and achievement."
+- Your text response must ONLY be the alt text. Do not include any other conversational text or markdown.
 
 Example of a good alt text: "Vibrant abstract background with streaks of light, symbolizing energy and progress for a wellness challenge."
 `,
@@ -72,16 +74,16 @@ const generateShareImageFlow = ai.defineFlow(
       const response = await generateShareImagePrompt(input); // This will be a GenerateResponse object
       
       const imageDataUri = response.media?.url;
-      const altText = response.text?.trim(); // Get the text part of the response
+      const altText = response.text?.trim();
 
       if (!imageDataUri) {
         console.error('generateShareImageFlow: AI did not return an image. Media:', response.media);
         throw new Error('AI did not return an image.');
       }
       if (!altText || typeof altText !== 'string' || altText.length === 0) {
-        console.error('generateShareImageFlow: AI did not return valid alt text. Text response:', altText);
+        console.warn('generateShareImageFlow: AI did not return valid alt text. Text response:', altText);
         // Fallback alt text if AI fails to provide one or provides empty
-        const fallbackAlt = `Wellness challenge progress for ${input.challengeTitle} - ${input.daysCompleted} days completed.`;
+        const fallbackAlt = `GroZen Challenge: ${input.challengeTitle} - ${input.daysCompleted} days completed. By ${input.userName || 'User'}.`;
         return { imageDataUri, altText: fallbackAlt };
       }
       return { imageDataUri, altText };
