@@ -67,3 +67,11 @@ export interface FullUserDetail extends UserListItem {
   moodLogs: MoodLog[];
   groceryList: GroceryList | null;
 }
+
+// For Mood Chart
+export interface ChartMoodLog {
+  date: string; // Formatted date string for X-axis label (e.g., "MMM d")
+  moodValue: number; // Numerical representation of mood
+  moodEmoji: string; // Original mood emoji for tooltip
+  fullDate: string; // Full ISO date string for sorting/original reference
+}

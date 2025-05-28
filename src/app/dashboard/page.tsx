@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
@@ -10,8 +10,8 @@ import SocialShareCard from '@/components/social-share-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck } from 'lucide-react';
+import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -36,8 +36,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
@@ -63,13 +70,6 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
   </div>
 );
 
-const moodEmojis: { [key: string]: string | React.ReactNode } = {
-  "😊": <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />,
-  "🙂": <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" />,
-  "😐": <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />,
-  "😕": <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" />,
-  "😞": <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
-};
 const moodEmojiStrings = [
     { emoji: "😊", label: "Happy" }, 
     { emoji: "🙂", label: "Okay" }, 
@@ -77,6 +77,38 @@ const moodEmojiStrings = [
     { emoji: "😕", label: "Worried" }, 
     { emoji: "😞", label: "Sad" }
 ];
+
+const moodToValueMapping: { [key: string]: number } = {
+  "😊": 5, // Happy
+  "🙂": 4, // Okay
+  "😐": 3, // Neutral
+  "😕": 2, // Worried
+  "😞": 1, // Sad
+};
+
+const moodValueToLabel: { [key: number]: string } = {
+  5: "Happy",
+  4: "Okay",
+  3: "Neutral",
+  2: "Worried",
+  1: "Sad",
+};
+
+const moodValueToColor: { [key: number]: string } = {
+  5: "hsl(var(--chart-1))", // Greenish
+  4: "hsl(var(--chart-2))", // Bluish
+  3: "hsl(var(--chart-3))", // Yellowish/Neutral
+  2: "hsl(var(--chart-4))", // Orangish
+  1: "hsl(var(--chart-5))", // Reddish
+};
+
+
+const chartConfig = {
+  mood: {
+    label: "Mood",
+    color: "hsl(var(--primary))", // Use primary color for the line
+  },
+} satisfies ChartConfig;
 
 
 export default function DashboardPage() {
@@ -115,21 +147,31 @@ export default function DashboardPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
 
+  const sortedMoodLogs = useMemo(() => {
+    return [...moodLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [moodLogs]);
+
+  const moodChartData: ChartMoodLog[] = useMemo(() => {
+    return sortedMoodLogs
+      .map(log => ({
+        date: format(parseISO(log.date), "MMM d"),
+        moodValue: moodToValueMapping[log.mood] || 0, // Default to 0 if mood not in map
+        moodEmoji: log.mood,
+        fullDate: log.date,
+      }))
+      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); // Ensure chronological for chart
+  }, [sortedMoodLogs]);
+
  useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (!isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-        // Regular user, not onboarded, no plan, not loading -> onboarding
+      } else if (!isAdminUser && !isPlanAvailable && isOnboardedState && !isLoadingPlan) {
         router.replace('/onboarding');
       }
     }
   }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
-
-  const sortedMoodLogs = React.useMemo(() => {
-    return [...moodLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [moodLogs]);
 
   const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
   const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
@@ -481,7 +523,7 @@ export default function DashboardPage() {
                 </Button>
             )}
             {!isAdminUser && (
-                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5">
+                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan or Edit Preferences">
                 New Plan / Edit Preferences
                 </Button>
             )}
@@ -679,7 +721,7 @@ export default function DashboardPage() {
           </ScrollArea>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between pt-3 sm:pt-4">
              <DialogClose asChild>
-              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5" disabled={isSavingMood}>Cancel</Button>
+              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5" disabled={isSavingMood} aria-label="Cancel mood logging">Cancel</Button>
             </DialogClose>
             <Button
               type="button"
@@ -687,6 +729,7 @@ export default function DashboardPage() {
               onClick={handleSaveMoodLog}
               disabled={!selectedMood || isSavingMood}
               className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+              aria-label="Save current mood"
             >
               {isSavingMood ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : null}
               {isSavingMood ? 'Saving...' : 'Save Mood'}
@@ -707,12 +750,14 @@ export default function DashboardPage() {
             <AlertDialogCancel
               onClick={() => setLogToDelete(null)}
               className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+              aria-label="Cancel mood log deletion"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteMoodLog}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+              aria-label="Confirm mood log deletion"
             >
               Delete
             </AlertDialogAction>
@@ -738,6 +783,89 @@ export default function DashboardPage() {
           ))}
         </div>
       </SectionCard>
+      
+      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+        {moodChartData.length >= 2 ? (
+          <div className="aspect-[16/9] sm:aspect-[2/1] lg:aspect-[3/1]">
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={moodChartData}
+                  margin={{
+                    top: 5,
+                    right: 10,
+                    left: -25, // Adjust left margin to make Y-axis labels visible
+                    bottom: 0,
+                  }}
+                  accessibilityLayer
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50" />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => value.slice(0, 6)} // Shorten date e.g. "Jan 1"
+                    className="text-2xs sm:text-xs"
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    domain={[0, 5]} // Fixed domain from 0 to 5
+                    ticks={[1, 2, 3, 4, 5]}
+                    tickFormatter={(value) => moodValueToLabel[value] || ''}
+                    className="text-2xs sm:text-xs"
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        indicator="line"
+                        nameKey="moodValue"
+                        labelKey="date"
+                        formatter={(value, name, props) => {
+                          const { payload } = props as any; // Type assertion
+                          return (
+                            <div className="flex flex-col items-center gap-0.5 p-1">
+                              <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue as number]}</span>
+                              <span className="text-xs text-muted-foreground">{payload.date}</span>
+                            </div>
+                          );
+                        }}
+                        
+                      />
+                    }
+                  />
+                  <Line
+                    dataKey="moodValue"
+                    type="monotone"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{
+                      r: 4,
+                      fill: "hsl(var(--primary))",
+                      stroke: "hsl(var(--background))",
+                      strokeWidth: 2,
+                    }}
+                    activeDot={{
+                       r: 6,
+                       fill: "hsl(var(--primary))",
+                       stroke: "hsl(var(--background))",
+                       strokeWidth: 2,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+        ) : (
+          <CardDescription className="text-center text-2xs sm:text-xs">
+            Log your mood for at least two days to see your trend here!
+          </CardDescription>
+        )}
+      </SectionCard>
+
 
       <SectionCard title="Mood History" icon={<RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
         <ScrollArea className="w-full h-[200px] sm:h-[250px] md:h-[300px] whitespace-nowrap rounded-md">
@@ -747,14 +875,20 @@ export default function DashboardPage() {
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
                     <div className="relative w-full sm:w-16 md:w-20 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(new Date(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
+                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(parseISO(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                     </div>
                   )}
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-0.5">
                       <h4 className="font-semibold text-sm sm:text-md flex items-center gap-1 sm:gap-1.5">
                         <span className="text-lg sm:text-xl">{log.mood}</span>
-                        {moodEmojis[log.mood] && typeof moodEmojis[log.mood] !== 'string' ? moodEmojis[log.mood] : ''}
+                        {moodEmojiStrings.find(m => m.emoji === log.mood) && typeof moodEmojiStrings.find(m => m.emoji === log.mood) !== 'string' && 
+                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" aria-hidden="true"/> : '')
+                        }
                       </h4>
                             <Button 
                                 variant="ghost" 
@@ -767,7 +901,7 @@ export default function DashboardPage() {
                             </Button>
                     </div>
                      <p className="text-2xs sm:text-xs text-muted-foreground">
-                      {format(new Date(log.date), "MMM d, yy 'at' h:mma")}
+                      {format(parseISO(log.date), "MMM d, yy 'at' h:mma")}
                     </p>
                     {log.notes && <p className="text-2xs sm:text-xs mt-1 pt-1 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                      {log.aiFeedback && (
@@ -834,7 +968,7 @@ export default function DashboardPage() {
         {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
           <div className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
             <h3 className="text-xs sm:text-sm font-semibold">
-              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {format(new Date(groceryList.generatedDate), "MMM d, yyyy")})</span>
+              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {format(parseISO(groceryList.generatedDate), "MMM d, yyyy")})</span>
             </h3>
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems).length > 0 ? Object.keys(groupedGroceryItems) : undefined }>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
