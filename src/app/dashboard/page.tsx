@@ -4,15 +4,15 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link'; // Added for leaderboard link
+import Link from 'next/link';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import SocialShareCard from '@/components/social-share-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy, ListOrdered } from 'lucide-react';
+import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog, UserProfile } from '@/types/wellness';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy, ListOrdered, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -34,10 +34,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format, differenceInDays, parseISO, isToday } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   ChartContainer,
@@ -45,8 +46,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"; // Removed Tooltip as it's not used directly
 import { CURRENT_CHALLENGE } from '@/config/challenge';
+import { generateShareImage as aiGenerateShareImage, type GenerateShareImageInput } from '@/ai/flows/generate-share-image';
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
@@ -81,11 +83,11 @@ const moodEmojiStrings = [
 ];
 
 const moodToValueMapping: { [key: string]: number } = {
-  "😊": 5, // Happy
-  "🙂": 4, // Okay
-  "😐": 3, // Neutral
-  "😕": 2, // Worried
-  "😞": 1, // Sad
+  "😊": 5, 
+  "🙂": 4, 
+  "😐": 3, 
+  "😕": 2, 
+  "😞": 1, 
 };
 
 const moodValueToLabel: { [key: number]: string } = {
@@ -128,6 +130,8 @@ export default function DashboardPage() {
     isLoadingUserChallenge,
     joinCurrentChallenge,
     logChallengeDay,
+    currentUserProfile,
+    updateUserDisplayName,
   } = usePlan();
   const { toast } = useToast();
 
@@ -136,6 +140,16 @@ export default function DashboardPage() {
   const [moodNotes, setMoodNotes] = useState("");
   const [logToDelete, setLogToDelete] = useState<string | null>(null);
   const [isSavingMood, setIsSavingMood] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(currentUserProfile?.displayName || "");
+  const [isUpdatingDisplayName, setIsUpdatingDisplayName] = useState(false);
+  const [isSharingChallenge, setIsSharingChallenge] = useState(false);
+
+
+  useEffect(() => {
+    if (currentUserProfile?.displayName) {
+      setNewDisplayName(currentUserProfile.displayName);
+    }
+  }, [currentUserProfile?.displayName]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -182,7 +196,7 @@ export default function DashboardPage() {
 
  useEffect(() => {
     const logsWithSelfies = [...moodLogs]
-      .filter(log => !!log.selfieDataUri && log.date) // Ensure log.date exists
+      .filter(log => !!log.selfieDataUri && log.date)
       .sort((a,b) => parseISO(a.date!).getTime() - parseISO(b.date!).getTime()); 
 
     if (logsWithSelfies.length >= 2) {
@@ -191,7 +205,7 @@ export default function DashboardPage() {
 
       for (let i = logsWithSelfies.length - 1; i > 0; i--) {
           const potentialAfterLog = logsWithSelfies[i];
-          if (isAdminUser || differenceInDays(parseISO(potentialAfterLog.date!), parseISO(firstSelfieLog.date!)) >= 14) {
+          if (isAdminUser || (potentialAfterLog.date && firstSelfieLog.date && differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14)) {
               suitableAfterLog = potentialAfterLog;
               break; 
           }
@@ -467,24 +481,71 @@ export default function DashboardPage() {
     return !!userActiveChallenge?.completedDates.includes(todayDateString);
   }, [userActiveChallenge, todayDateString]);
 
-  const handleChallengeShare = () => {
-    if (!userActiveChallenge) return;
+  const handleChallengeShare = async () => {
+    if (!userActiveChallenge || !currentUserProfile) return;
+    setIsSharingChallenge(true);
     const appUrl = typeof window !== "undefined" ? window.location.origin : "GroZenApp.com";
     const shareText = `I'm crushing Day ${userActiveChallenge.daysCompleted} of the ${CURRENT_CHALLENGE.title} on GroZen! Join the challenge! ${appUrl} #GroZenChallenge #${CURRENT_CHALLENGE.id.replace(/-/g, '')}`;
-    if (navigator.share) {
-      navigator.share({ title: "My GroZen Challenge Progress!", text: shareText, url: appUrl })
-        .then(() => toast({ title: "Shared successfully!" }))
-        .catch((error) => {
-           if (error.name !== 'AbortError') { 
-            console.error('Error sharing challenge progress:', error);
-            toast({ variant: "destructive", title: "Share Error", description: "Could not share progress." });
-           }
-        });
-    } else {
-      navigator.clipboard.writeText(shareText)
-        .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
-        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }))
+    let imageFile: File | null = null;
+
+    try {
+      toast({ title: "Generating your awesome share image..." });
+      const imageInput: GenerateShareImageInput = {
+        challengeTitle: CURRENT_CHALLENGE.title,
+        daysCompleted: userActiveChallenge.daysCompleted,
+        userName: currentUserProfile.displayName || "A GroZen User",
+      };
+      const imageResult = await aiGenerateShareImage(imageInput);
+      
+      if (imageResult.imageDataUri) {
+        const fetchRes = await fetch(imageResult.imageDataUri);
+        const blob = await fetchRes.blob();
+        imageFile = new File([blob], 'grozen-challenge-share.png', { type: blob.type });
+        toast({ title: "Image generated!", description: "Ready to share."});
+      } else {
+        toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not generate share image. Sharing text only." });
+      }
+    } catch (error) {
+      console.error("Error generating share image:", error);
+      toast({ variant: "destructive", title: "Image Generation Error", description: "Proceeding with text-only share." });
     }
+
+    try {
+      const shareData: ShareData = {
+        title: "My GroZen Challenge Progress!",
+        text: shareText,
+        url: appUrl,
+      };
+      if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+        shareData.files = [imageFile];
+      }
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast({ title: "Shared successfully!" });
+      } else {
+        navigator.clipboard.writeText(shareText)
+          .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
+          .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing challenge progress:', error);
+        toast({ variant: "destructive", title: "Share Error", description: "Could not share progress." });
+      }
+    } finally {
+      setIsSharingChallenge(false);
+    }
+  };
+
+  const handleSaveDisplayName = async () => {
+    if (!newDisplayName.trim()) {
+      toast({ variant: "destructive", title: "Invalid Name", description: "Display name cannot be empty." });
+      return;
+    }
+    setIsUpdatingDisplayName(true);
+    await updateUserDisplayName(newDisplayName.trim());
+    setIsUpdatingDisplayName(false);
   };
 
 
@@ -525,7 +586,7 @@ export default function DashboardPage() {
         <p className="mt-3 text-sm sm:text-md">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
         <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2" aria-label="New Plan or Edit Preferences">
-          New Plan / Edit Preferences
+          Create a New Plan
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-3 py-1 sm:px-4 sm:py-1.5" aria-label="Logout">
             <LogOut className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Logout
@@ -567,15 +628,15 @@ export default function DashboardPage() {
           <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
         </div>
       )}
+      
+      <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
+      </div>
 
       {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
         <>
-          <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
-            <h2 className="text-md sm:text-lg font-semibold text-foreground">Your GroZen Wellness Plan</h2>
-            <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
-          </div>
-
-          <SectionCard title="Meals" icon={<Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
+          <SectionCard title="Meals" icon={<Utensils className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.meals.map((meal, index) => (
@@ -593,7 +654,7 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
+          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.exercise.map((ex, index) => (
@@ -610,7 +671,7 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
+          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.mindfulness.map((mind, index) => (
@@ -639,11 +700,37 @@ export default function DashboardPage() {
         </Alert>
       )}
 
+      <SectionCard title="Your Profile" icon={<UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
+        <div className="space-y-2">
+          <div>
+            <Label htmlFor="displayName" className="text-xs sm:text-sm">Display Name (for Leaderboard)</Label>
+            <Input
+              id="displayName"
+              type="text"
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+              placeholder="Your public name"
+              className="mt-1 text-xs sm:text-sm"
+              disabled={isUpdatingDisplayName}
+            />
+          </div>
+          <Button 
+            onClick={handleSaveDisplayName} 
+            disabled={isUpdatingDisplayName || newDisplayName === (currentUserProfile?.displayName || "")}
+            variant="neumorphic-primary"
+            className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+          >
+            {isUpdatingDisplayName ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+            Save Display Name
+          </Button>
+        </div>
+      </SectionCard>
+
       <SectionCard 
         title="Current Wellness Challenge" 
-        icon={<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}
+        icon={<Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}
         action={
-            userActiveChallenge && ( // Only show leaderboard link if user is part of a challenge
+            userActiveChallenge && (
             <Link href="/leaderboard" passHref>
                 <Button
                     variant="outline"
@@ -656,8 +743,8 @@ export default function DashboardPage() {
             )
         }
       >
-        <CardTitle className="text-xs sm:text-sm mb-1">{CURRENT_CHALLENGE.title}</CardTitle>
-        <CardDescription className="text-2xs sm:text-xs mb-2.5 sm:mb-3">{CURRENT_CHALLENGE.description}</CardDescription>
+        <CardTitle className="text-sm sm:text-md mb-1">{CURRENT_CHALLENGE.title}</CardTitle>
+        <CardDescription className="text-xs sm:text-sm mb-2.5 sm:mb-3">{CURRENT_CHALLENGE.description}</CardDescription>
         {isLoadingUserChallenge ? (
           <div className="flex items-center justify-center py-2">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -703,10 +790,12 @@ export default function DashboardPage() {
             <Button
                 variant="outline"
                 onClick={handleChallengeShare}
+                disabled={isSharingChallenge}
                 className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                 aria-label="Share challenge progress"
             >
-                <ShareIcon className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5"/> Share My Progress
+                {isSharingChallenge ? <Loader2 className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" /> : <ShareIcon className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5"/>}
+                {isSharingChallenge ? 'Sharing...' : 'Share My Progress'}
             </Button>
           </div>
         )}
@@ -867,8 +956,8 @@ export default function DashboardPage() {
       </AlertDialog>
 
 
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} >
-         <CardDescription className="mb-2.5 sm:mb-3 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} >
+         <CardDescription className="mb-2.5 sm:mb-3 text-xs sm:text-sm">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 xs:space-x-1.5 sm:space-x-2 justify-center sm:justify-start">
           {moodEmojiStrings.map(moodObj => (
             <Button
@@ -885,7 +974,7 @@ export default function DashboardPage() {
         </div>
       </SectionCard>
       
-      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
         {moodChartData.length >= 2 ? (
           <div className="aspect-[16/9] sm:aspect-[2/1] lg:aspect-[3/1]">
             <ChartContainer config={chartConfig} className="h-full w-full">
@@ -961,14 +1050,14 @@ export default function DashboardPage() {
             </ChartContainer>
           </div>
         ) : (
-          <CardDescription className="text-center text-2xs sm:text-xs">
+          <CardDescription className="text-center text-xs sm:text-sm">
             Log your mood for at least two days to see your trend here!
           </CardDescription>
         )}
       </SectionCard>
 
 
-      <SectionCard title="Mood History" icon={<RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
+      <SectionCard title="Mood History" icon={<RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />} itemsCount={sortedMoodLogs.length}>
         <ScrollArea className="w-full h-[200px] sm:h-[250px] md:h-[300px] whitespace-nowrap rounded-md">
           <div className="flex flex-col space-y-1.5 sm:space-y-2 p-0.5 sm:p-1">
             {sortedMoodLogs.map(log => (
@@ -1007,7 +1096,7 @@ export default function DashboardPage() {
                     {log.notes && <p className="text-2xs sm:text-xs mt-1 pt-1 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                      {log.aiFeedback && (
                       <div className="mt-1 pt-1 border-t border-border/50">
-                          <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
+                          <p className="text-xs sm:text-sm flex items-center gap-0.5 text-primary/90">
                               <Sparkles className="h-3 w-3 mr-1.5 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
@@ -1021,25 +1110,25 @@ export default function DashboardPage() {
           <ScrollBar orientation="vertical" />
         </ScrollArea>
         {sortedMoodLogs.length === 0 && (
-            <CardDescription className="mt-2.5 text-center text-2xs sm:text-xs">
+            <CardDescription className="mt-2.5 text-center text-xs sm:text-sm">
                 No mood logs yet. Use the Mood Check-in above to start tracking!
             </CardDescription>
         )}
       </SectionCard>
 
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
-          <CardDescription className="text-2xs sm:text-xs">
+          <CardDescription className="text-xs sm:text-sm">
             Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first (or if you are an admin), your &apos;Before & After&apos; share card will appear here.
           </CardDescription>
         )}
       </SectionCard>
 
 
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
-        <CardDescription className="mb-2.5 sm:mb-3 text-2xs sm:text-xs">
+      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />}>
+        <CardDescription className="mb-2.5 sm:mb-3 text-xs sm:text-sm">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button
@@ -1061,7 +1150,7 @@ export default function DashboardPage() {
         )}
 
         {!groceryList && !isLoadingGroceryList && !errorGroceryList && (
-           <CardDescription className="mt-2.5 sm:mt-3 text-2xs sm:text-xs">
+           <CardDescription className="mt-2.5 sm:mt-3 text-xs sm:text-sm">
                No grocery list generated yet. Click the button above to create one based on your meal plan.
            </CardDescription>
         )}
@@ -1078,7 +1167,7 @@ export default function DashboardPage() {
                     {category} ({items.length})
                   </AccordionTrigger>
                   <AccordionContent className="p-2 sm:p-2.5">
-                    <ul className="list-disc pl-3 sm:pl-3.5 space-y-1 sm:space-y-1.5 text-3xs sm:text-2xs">
+                    <ul className="list-disc pl-3 sm:pl-3.5 space-y-1 sm:space-y-1.5 text-2xs sm:text-xs">
                       {items.map(item => (
                         <li key={item.id} className="break-words flex justify-between items-start gap-1">
                           <div>
@@ -1108,7 +1197,7 @@ export default function DashboardPage() {
           </div>
         )}
         {groceryList && !isLoadingGroceryList && groceryList.items.length === 0 && (
-            <CardDescription className="mt-2.5 sm:mt-3 text-2xs sm:text-xs">
+            <CardDescription className="mt-2.5 sm:mt-3 text-xs sm:text-sm">
                Your grocery list is currently empty. You can generate a new one if you have a meal plan.
             </CardDescription>
         )}
