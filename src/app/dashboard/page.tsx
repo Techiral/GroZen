@@ -48,13 +48,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
-  <Card className="neumorphic w-full mb-4 sm:mb-6">
+  <Card className="neumorphic w-full mb-4 sm:mb-5">
     <CardHeader className="flex flex-col space-y-1.5 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2 px-3 py-2.5 sm:px-4 sm:py-3">
       <div className="flex flex-row items-center">
-        <CardTitle className="text-sm sm:text-md md:text-lg font-medium flex items-center gap-1 sm:gap-1.5">
+        <CardTitle className="text-sm sm:text-md font-medium flex items-center gap-1.5 sm:gap-2">
           {icon} {title}
         </CardTitle>
-        {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-2xs sm:text-xs text-muted-foreground">({itemsCount} items)</span>}
+        {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-2xs text-muted-foreground">({itemsCount} items)</span>}
       </div>
       {action && <div className="w-full sm:w-auto pt-1.5 sm:pt-0">{action}</div>}
     </CardHeader>
@@ -65,7 +65,7 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
 );
 
 const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-2.5 sm:p-3 rounded-md min-w-[170px] xs:min-w-[190px] sm:min-w-[210px] md:min-w-[240px] snap-start", className)}>
+  <div className={cn("neumorphic-sm p-2.5 sm:p-3 rounded-md min-w-[170px] xs:min-w-[190px] sm:min-w-[210px] snap-start", className)}>
     {children}
   </div>
 );
@@ -186,8 +186,6 @@ export default function DashboardPage() {
 
       for (let i = logsWithSelfies.length - 1; i > 0; i--) {
           const potentialAfterLog = logsWithSelfies[i];
-          // Admin condition: any log after the first one is suitable for testing
-          // Regular user condition: must be at least 14 days after
           if (isAdminUser || differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14) {
               suitableAfterLog = potentialAfterLog;
               break; 
@@ -462,7 +460,7 @@ export default function DashboardPage() {
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Logo size="text-2xl sm:text-3xl" />
         <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading user data...</p>
       </div>
@@ -470,11 +468,9 @@ export default function DashboardPage() {
   }
   
   if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-     // This state implies user is logged in, not admin, not onboarded, and plan isn't loading (should be caught by useEffect for redirect to onboarding)
-     // If they reach here, likely means redirect hasn't fired yet, so show a generic loader.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Logo size="text-2xl sm:text-3xl" />
         <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Setting up your space...</p>
       </div>
@@ -484,8 +480,8 @@ export default function DashboardPage() {
   if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-        <p className="mt-3 text-sm sm:text-md md:text-lg">Generating your personalized plan...</p>
+        <Logo size="text-2xl sm:text-3xl" />
+        <p className="mt-3 text-sm sm:text-md">Generating your personalized plan...</p>
         <RotateCcw className="mt-3 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
       </div>
     );
@@ -494,7 +490,7 @@ export default function DashboardPage() {
   if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Logo size="text-2xl sm:text-3xl" />
         <p className="mt-3 text-sm sm:text-md">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
         <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2" aria-label="New Plan or Edit Preferences">
@@ -511,7 +507,7 @@ export default function DashboardPage() {
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
-        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Logo size="text-xl sm:text-2xl" />
         <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-0">
             {isAdminUser && (
                 <Button 
@@ -544,7 +540,7 @@ export default function DashboardPage() {
       {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
         <>
           <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
-            <h2 className="text-md sm:text-lg md:text-xl font-bold text-foreground">Your GroZen Wellness Plan</h2>
+            <h2 className="text-md sm:text-lg font-semibold text-foreground">Your GroZen Wellness Plan</h2>
             <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
           </div>
 
@@ -553,7 +549,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                    <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
                         <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
@@ -571,7 +567,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                     <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
                         <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
@@ -588,7 +584,7 @@ export default function DashboardPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-xs sm:text-sm mb-1 flex items-center">
+                    <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
                         <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
@@ -603,7 +599,7 @@ export default function DashboardPage() {
       )}
       
       {isAdminUser && !isPlanAvailable && !isLoadingPlan && (
-        <Alert className="mb-4 sm:mb-6 neumorphic">
+        <Alert className="mb-4 sm:mb-5 neumorphic">
           <AlertTitle className="text-sm sm:text-md">Admin View</AlertTitle>
           <AlertDescription className="text-2xs sm:text-xs">
             You are logged in as an admin. You can view your personal plan here if you create one, or proceed to the Admin Panel.

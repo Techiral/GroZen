@@ -47,8 +47,8 @@ export default function AdminPage() {
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
         <div className="flex items-center gap-1.5 sm:gap-2">
-            <Logo size="text-xl sm:text-2xl md:text-3xl" />
-            <span className="text-sm sm:text-md md:text-lg font-semibold text-primary">Admin Panel</span>
+            <Logo size="text-xl sm:text-2xl" />
+            <span className="text-sm sm:text-md font-semibold text-primary">Admin Panel</span>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-0">
             <Button 
@@ -67,10 +67,10 @@ export default function AdminPage() {
 
       <Card className="neumorphic">
         <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-md md:text-lg">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-md">
             <Users className="h-4 w-4 sm:h-5 sm:w-5 text-accent" /> User Management
           </CardTitle>
-          <CardDescription className="text-2xs sm:text-xs">
+          <CardDescription className="text-2xs sm:text-xs text-muted-foreground">
             List of all registered users. Click &apos;View Details&apos; to see their data.
           </CardDescription>
         </CardHeader>

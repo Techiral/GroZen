@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 const DetailSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; isEmpty?: boolean; emptyText?: string }> = ({ title, icon, children, isEmpty, emptyText = "No data available." }) => (
   <Card className="neumorphic w-full mb-4 sm:mb-5">
     <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
-      <CardTitle className="text-sm sm:text-md md:text-lg font-medium flex items-center gap-1.5 sm:gap-2">
+      <CardTitle className="text-sm sm:text-md font-medium flex items-center gap-1.5 sm:gap-2">
         {icon} {title}
       </CardTitle>
     </CardHeader>
@@ -94,7 +94,7 @@ export default function AdminUserDetailPage() {
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Logo size="text-xl sm:text-2xl md:text-3xl" />
+            <Logo size="text-xl sm:text-2xl" />
          </div>
         <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-0">
             <Button 
@@ -113,13 +113,13 @@ export default function AdminUserDetailPage() {
       
       <Card className="neumorphic mb-5 sm:mb-6">
         <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-md md:text-lg">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-md">
             <UserCircle className="h-4 w-4 sm:h-5 sm:w-5 text-accent" /> User Details
           </CardTitle>
-          <CardDescription className="text-2xs sm:text-xs">
-            Viewing data for User ID: <span className="font-mono text-foreground text-opacity-80">{userData.id}</span>
+          <CardDescription className="text-2xs sm:text-xs text-muted-foreground">
+            Viewing data for User ID: <span className="font-mono text-foreground/80">{userData.id}</span>
             <br />
-            Email: <span className="text-foreground text-opacity-80">{userData.email || 'N/A'}</span>
+            Email: <span className="text-foreground/80">{userData.email || 'N/A'}</span>
           </CardDescription>
         </CardHeader>
       </Card>
@@ -142,7 +142,7 @@ export default function AdminUserDetailPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 text-muted-foreground" /> {meal.day}</h5>
+                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}</h5>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
@@ -157,7 +157,7 @@ export default function AdminUserDetailPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 text-muted-foreground" /> {ex.day}</h5>
+                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}</h5>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
@@ -171,7 +171,7 @@ export default function AdminUserDetailPage() {
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 text-muted-foreground" /> {mind.day}</h5>
+                    <h5 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center"><CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}</h5>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
@@ -205,7 +205,10 @@ export default function AdminUserDetailPage() {
                     {log.notes && <p className="text-2xs sm:text-xs mt-1 pt-1 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                     {log.aiFeedback && (
                       <div className="mt-1 pt-1 border-t border-border/50">
-                        <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words"><em>Insight:</em> {log.aiFeedback}</p>
+                         <p className="text-3xs xs:text-2xs flex items-center gap-0.5 text-primary/80">
+                            <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
+                         </p>
+                        <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
                     )}
                   </div>
@@ -249,4 +252,3 @@ export default function AdminUserDetailPage() {
     </main>
   );
     
-

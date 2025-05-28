@@ -17,7 +17,7 @@
     --primary: 0 0% 82.7%; /* Light Gray - D3D3D3 - using this as the main interactive color */
     --primary-foreground: 0 0% 0%; /* Black text on light gray primary elements */
     
-    --secondary: 0 0% 20%; /* Dark Gray for secondary elements - Made lighter */
+    --secondary: 0 0% 20%; /* Dark Gray for secondary elements */
     --secondary-foreground: 0 0% 90%; /* Light Gray text for secondary elements */
 
     --muted: 0 0% 8%; /* Darker Gray for muted elements */
@@ -35,10 +35,10 @@
 
     --radius: 0.5rem;
 
-    /* Neumorphic specific variables */
+    /* Neumorphic specific variables - slightly softer shadows */
     --neumorphic-bg: hsl(var(--background));
-    --neumorphic-shadow-light: 5px 5px 10px rgba(255, 255, 255, 0.03), -5px -5px 10px rgba(0, 0, 0, 0.5);
-    --neumorphic-shadow-light-inset: inset 5px 5px 10px rgba(0, 0, 0, 0.5), inset -5px -5px 10px rgba(255, 255, 255, 0.03);
+    --neumorphic-shadow-light: 5px 5px 10px rgba(255, 255, 255, 0.02), -5px -5px 10px rgba(0, 0, 0, 0.35);
+    --neumorphic-shadow-light-inset: inset 5px 5px 10px rgba(0, 0, 0, 0.35), inset -5px -5px 10px rgba(255, 255, 255, 0.02);
 
      /* Sidebar variables (keeping them, might be useful later, ensuring they fit dark theme) */
     --sidebar-background: 0 0% 5%;
@@ -71,11 +71,11 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
   }
-  h1 { @apply text-3xl; } /* approx 32px */
-  h2 { @apply text-2xl; } /* approx 24px */
-  h3 { @apply text-xl; } /* approx 18px */
+  h1 { @apply text-2xl sm:text-3xl; } /* Responsive H1 */
+  h2 { @apply text-xl sm:text-2xl; } /* Responsive H2 */
+  h3 { @apply text-lg sm:text-xl; } /* Responsive H3 */
   p, span, div, li, td, th, label, input, textarea, select, button {
-    @apply text-base; /* 16px */
+    @apply text-sm sm:text-base; /* Responsive base text */
   }
 }
 
