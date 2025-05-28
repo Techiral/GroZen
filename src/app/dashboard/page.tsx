@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link'; // Added for leaderboard link
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import SocialShareCard from '@/components/social-share-card';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy } from 'lucide-react';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -131,27 +132,40 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [selectedMood, setSelectedMood] = useState(null);
   const [moodNotes, setMoodNotes] = useState("");
-  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+  const [logToDelete, setLogToDelete] = useState(null);
   const [isSavingMood, setIsSavingMood] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
-  const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
+  const videoRef = useRef(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [selfieStream, setSelfieStream] = useState(null);
+  const [capturedSelfie, setCapturedSelfie] = useState(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
+
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!currentUser) {
+        router.replace('/login');
+      } else if (!isAdminUser && !isPlanAvailable && isOnboardedState && !isLoadingPlan) {
+        // Stays on dashboard, dashboard handles "create plan" message
+      } else if (!isAdminUser && !isOnboardedState && !isLoadingPlan) {
+        router.replace('/onboarding');
+      }
+    }
+  }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
+
 
   const sortedMoodLogs = useMemo(() => {
     return [...moodLogs].sort((a, b) => {
       const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : parseISO(a.date).getTime();
       const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : parseISO(b.date).getTime();
-      return dateB - dateA; // Sort descending, newest first
+      return dateB - dateA; 
     });
   }, [moodLogs]);
 
-  const moodChartData: ChartMoodLog[] = useMemo(() => {
+  const moodChartData = useMemo(() => {
     return [...moodLogs] 
       .map(log => ({
         date: format(parseISO(log.date), "MMM d"),
@@ -162,28 +176,14 @@ export default function DashboardPage() {
       .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
   }, [moodLogs]);
 
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      if (!currentUser) {
-        router.replace('/login');
-      } else if (!isAdminUser && !isPlanAvailable && isOnboardedState && !isLoadingPlan) {
-        // Non-admin is onboarded but has no plan (e.g. plan generation failed or new login)
-        // Dashboard handles showing "create plan" message for this state
-      } else if (!isAdminUser && !isOnboardedState && !isLoadingPlan) {
-        // Non-admin is not onboarded
-        router.replace('/onboarding');
-      }
-    }
-  }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
 
-
-  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
-  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+  const [beforeShareLog, setBeforeShareLog] = useState(null);
+  const [afterShareLog, setAfterShareLog] = useState(null);
 
  useEffect(() => {
     const logsWithSelfies = [...moodLogs]
       .filter(log => !!log.selfieDataUri)
-      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort oldest first
+      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); 
 
     if (logsWithSelfies.length >= 2) {
       const firstSelfieLog = logsWithSelfies[0];
@@ -290,7 +290,6 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    // Cleanup for selfieStream when component unmounts or selfieStream changes
     const currentStream = selfieStream;
     return () => {
       if (currentStream) {
@@ -301,7 +300,7 @@ export default function DashboardPage() {
 
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); // Reset readiness
+    setIsVideoReadyForCapture(false); 
 
     if (isCameraActive && selfieStream) {
       selfieStream.getTracks().forEach(track => track.stop());
@@ -309,19 +308,18 @@ export default function DashboardPage() {
       setIsCameraActive(false);
       if (videoRef.current) videoRef.current.srcObject = null;
     } else {
-      setCapturedSelfie(null); // Clear any previous capture
-      setHasCameraPermission(null); // Reset permission state to trigger loading/prompt
-      setIsCameraActive(true); // Indicate camera is trying to activate
+      setCapturedSelfie(null); 
+      setHasCameraPermission(null); 
+      setIsCameraActive(true); 
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
         setSelfieStream(stream);
-        // useEffect will handle attaching stream to videoRef and playing
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false); // Ensure this is reset on error
+        setIsCameraActive(false); 
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -353,7 +351,6 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
         
-        // Stop the stream and camera after capture
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
         setIsCameraActive(false);
@@ -381,23 +378,21 @@ export default function DashboardPage() {
 
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
-    // Optionally, re-enable camera here or require user to click "Open Camera" again
   };
 
-  const handleMoodButtonClick = (mood: string) => {
+  const handleMoodButtonClick = (mood) => {
     setSelectedMood(mood);
     setMoodNotes("");
     setCapturedSelfie(null); 
     setIsVideoReadyForCapture(false);
 
-    // Ensure camera is fully reset if it was active
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null); // Reset permission status for next dialog open
+    setHasCameraPermission(null); 
     
     setIsMoodDialogOpen(true);
   };
@@ -408,7 +403,6 @@ export default function DashboardPage() {
       try {
         await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
         setIsMoodDialogOpen(false); 
-        // Dialog close will trigger handleDialogClose for cleanup
       } catch (error) {
         console.error("Error saving mood log:", error);
          toast({ variant: "destructive", title: "Save Error", description: "Could not save mood log." });
@@ -418,10 +412,9 @@ export default function DashboardPage() {
     }
   };
 
-  // Renamed from handleClose to avoid conflict if Dialog has internal handleClose
-  const handleDialogClose = (open: boolean) => {
+  const handleDialogClose = (open) => {
     setIsMoodDialogOpen(open);
-    if (!open) { // Cleanup when dialog is closed
+    if (!open) { 
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -432,9 +425,9 @@ export default function DashboardPage() {
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null); // Reset for next time
+        setHasCameraPermission(null); 
         setIsVideoReadyForCapture(false);
-        setIsSavingMood(false); // Ensure saving state is reset
+        setIsSavingMood(false); 
     }
   }
 
@@ -455,12 +448,11 @@ export default function DashboardPage() {
       }
       acc[category].push(item);
       return acc;
-    }, {} as Record<string, GroceryItem[]>);
+    }, {});
   }, [groceryList]);
 
   const handleLogout = async () => {
     await logoutUser();
-    // router.push('/login'); // onAuthStateChanged in context will handle this
   };
 
   const confirmDeleteMoodLog = async () => {
@@ -478,12 +470,12 @@ export default function DashboardPage() {
   const handleChallengeShare = () => {
     if (!userActiveChallenge) return;
     const appUrl = typeof window !== "undefined" ? window.location.origin : "GroZenApp.com";
-    const shareText = `I'm crushing Day ${userActiveChallenge.daysCompleted} of the ${CURRENT_CHALLENGE.title} on GroZen! Join the challenge! ${appUrl} #GroZenChallenge #${CURRENT_CHALLENGE.id}`;
+    const shareText = `I'm crushing Day ${userActiveChallenge.daysCompleted} of the ${CURRENT_CHALLENGE.title} on GroZen! Join the challenge! ${appUrl} #GroZenChallenge #${CURRENT_CHALLENGE.id.replace(/-/g, '')}`;
     if (navigator.share) {
       navigator.share({ title: "My GroZen Challenge Progress!", text: shareText, url: appUrl })
         .then(() => toast({ title: "Shared successfully!" }))
         .catch((error) => {
-           if (error.name !== 'AbortError') { // Don't toast if user cancelled
+           if (error.name !== 'AbortError') { 
             console.error('Error sharing challenge progress:', error);
             toast({ variant: "destructive", title: "Share Error", description: "Could not share progress." });
            }
@@ -491,7 +483,7 @@ export default function DashboardPage() {
     } else {
       navigator.clipboard.writeText(shareText)
         .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
-        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." });
     }
   };
 
@@ -507,8 +499,6 @@ export default function DashboardPage() {
   }
   
   if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-    // This case should be handled by the useEffect redirecting to /onboarding
-    // but as a fallback if redirect is slow or context updates are pending:
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -518,7 +508,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { // Plan is actively being generated
+  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -528,7 +518,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { // Onboarded, but no plan (e.g. generation failed)
+  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -560,7 +550,7 @@ export default function DashboardPage() {
                     <ShieldCheck className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Admin Panel
                 </Button>
             )}
-            {!isAdminUser && ( // Only show "New Plan / Edit Preferences" if not admin
+            {!isAdminUser && ( 
                 <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan or Edit Preferences">
                  New Plan / Edit Preferences
                 </Button>
@@ -571,14 +561,14 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {isLoadingPlan && _wellnessPlan && ( // Show overlay if plan is being re-generated but old plan still exists
+      {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
           <RotateCcw className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
           <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
         </div>
       )}
 
-      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && ( // User has a plan (or admin viewing their own plan)
+      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
         <>
           <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
             <h2 className="text-md sm:text-lg font-semibold text-foreground">Your GroZen Wellness Plan</h2>
@@ -588,10 +578,10 @@ export default function DashboardPage() {
           <SectionCard title="Meals" icon={<Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
-                {wellnessPlan.meals.map((meal: Meal, index: number) => (
+                {wellnessPlan.meals.map((meal, index) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {meal.day}
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
@@ -606,10 +596,10 @@ export default function DashboardPage() {
           <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
-                {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
+                {wellnessPlan.exercise.map((ex, index) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
                      <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {ex.day}
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
@@ -623,10 +613,10 @@ export default function DashboardPage() {
           <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
               <div className="flex space-x-2 sm:space-x-2.5 pb-2.5 sm:pb-3">
-                {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
+                {wellnessPlan.mindfulness.map((mind, index) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {mind.day}
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
@@ -639,7 +629,7 @@ export default function DashboardPage() {
         </>
       )}
       
-      {isAdminUser && !isPlanAvailable && !isLoadingPlan && ( // Admin has no personal plan, show message
+      {isAdminUser && !isPlanAvailable && !isLoadingPlan && ( 
         <Alert className="mb-4 sm:mb-5 neumorphic">
           <AlertTitle className="text-sm sm:text-md">Admin View</AlertTitle>
           <AlertDescription className="text-2xs sm:text-xs">
@@ -649,7 +639,23 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      <SectionCard title="Current Wellness Challenge" icon={<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard 
+        title="Current Wellness Challenge" 
+        icon={<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}
+        action={
+            userActiveChallenge && ( // Only show leaderboard link if user is part of a challenge
+            <Link href="/leaderboard" passHref>
+                <Button
+                    variant="outline"
+                    className="neumorphic-button text-2xs px-2 py-0.5 sm:text-xs sm:px-2.5 sm:py-1"
+                    aria-label="View Challenge Leaderboard"
+                >
+                    <ListOrdered className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> View Leaderboard
+                </Button>
+            </Link>
+            )
+        }
+      >
         <CardTitle className="text-xs sm:text-sm mb-1">{CURRENT_CHALLENGE.title}</CardTitle>
         <CardDescription className="text-2xs sm:text-xs mb-2.5 sm:mb-3">{CURRENT_CHALLENGE.description}</CardDescription>
         {isLoadingUserChallenge ? (
@@ -717,7 +723,7 @@ export default function DashboardPage() {
               How are you feeling? Add notes or a selfie to capture the moment.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-200px)] sm:max-h-[calc(70vh-200px)] -mx-1 px-1">
+          <ScrollArea className="max-h-[calc(80vh-180px)] sm:max-h-[calc(70vh-180px)] -mx-1 px-1">
             <div className="grid gap-2.5 sm:gap-3 py-2.5 sm:py-3">
               <div className="space-y-1">
                 <Label htmlFor="mood-notes" className="text-2xs sm:text-xs">Notes (Optional)</Label>
@@ -739,7 +745,7 @@ export default function DashboardPage() {
                           variant="outline"
                           onClick={handleToggleCamera}
                           className="neumorphic-button w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
-                          disabled={!!capturedSelfie || isSavingMood || (isCameraActive && !selfieStream && hasCameraPermission === null) } // Disable if loading permission
+                          disabled={!!capturedSelfie || isSavingMood || (isCameraActive && !selfieStream && hasCameraPermission === null) } 
                           aria-label={isCameraActive ? 'Close Camera' : 'Open Camera'}
                       >
                           {isCameraActive && !selfieStream && hasCameraPermission === null ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : (isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />)}
@@ -779,12 +785,12 @@ export default function DashboardPage() {
                         <p className="font-semibold text-destructive text-3xs sm:text-2xs">Camera Access Denied</p>
                         <p className="text-3xs">Enable in browser.</p>
                       </div>
-                    ) : isCameraActive && hasCameraPermission === null ? ( // Explicitly checking for camera active and permission pending
+                    ) : isCameraActive && hasCameraPermission === null ? ( 
                       <div className="p-1 sm:p-1.5">
                         <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5 animate-spin" />
                         <p className="text-3xs sm:text-2xs">Requesting camera...</p>
                       </div>
-                    ) : ( // Default: camera off or not yet requested fully
+                    ) : ( 
                       <div className="p-1 sm:p-1.5">
                         <Camera className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5" />
                         <p className="text-3xs sm:text-2xs">Camera is off.</p>
@@ -795,7 +801,7 @@ export default function DashboardPage() {
                   {capturedSelfie && (
                       <div className="mt-2 space-y-1">
                           <p className="text-2xs sm:text-xs font-medium">Selfie Preview:</p>
-                          <div className="relative aspect-video w-full max-w-[120px] sm:max-w-[180px] neumorphic-sm rounded-md overflow-hidden">
+                          <div className="relative aspect-video w-full max-w-[150px] sm:max-w-[180px] neumorphic-sm rounded-md overflow-hidden">
                                <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                           </div>
                           <Button
@@ -923,7 +929,7 @@ export default function DashboardPage() {
                           const { payload } = props as any; 
                           return (
                             <div className="flex flex-col items-center gap-0.5 p-1">
-                              <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue as number]}</span>
+                              <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue] as number]}</span>
                               <span className="text-xs text-muted-foreground">{payload.date}</span>
                             </div>
                           );
@@ -965,7 +971,7 @@ export default function DashboardPage() {
       <SectionCard title="Mood History" icon={<RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
         <ScrollArea className="w-full h-[200px] sm:h-[250px] md:h-[300px] whitespace-nowrap rounded-md">
           <div className="flex flex-col space-y-1.5 sm:space-y-2 p-0.5 sm:p-1">
-            {sortedMoodLogs.map((log: MoodLog) => (
+            {sortedMoodLogs.map(log => (
               <ItemCard key={log.id} className="bg-card w-full min-w-0 p-2.5 sm:p-3">
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
@@ -1073,7 +1079,7 @@ export default function DashboardPage() {
                   </AccordionTrigger>
                   <AccordionContent className="p-2 sm:p-2.5">
                     <ul className="list-disc pl-3 sm:pl-3.5 space-y-1 sm:space-y-1.5 text-3xs sm:text-2xs">
-                      {items.map((item) => (
+                      {items.map(item => (
                         <li key={item.id} className="break-words flex justify-between items-start gap-1">
                           <div>
                             <strong>{item.name}</strong>

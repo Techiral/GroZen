@@ -54,10 +54,11 @@ export interface GroceryList {
   generatedDate: string; // ISO string
 }
 
-// For Admin Dashboard
+// For Admin Dashboard & Leaderboard
 export interface UserListItem {
   id: string; // UID
   email: string | null;
+  displayName?: string | null; // Added for leaderboard & general use
 }
 
 export interface FullUserDetail extends UserListItem {
@@ -65,7 +66,7 @@ export interface FullUserDetail extends UserListItem {
   wellnessPlan: WellnessPlan | null;
   moodLogs: MoodLog[];
   groceryList: GroceryList | null;
-  activeChallengeProgress?: UserActiveChallenge | null; // Added for admin view
+  activeChallengeProgress?: UserActiveChallenge | null;
 }
 
 // For Mood Chart
@@ -89,4 +90,10 @@ export interface UserActiveChallenge {
   joinedDate: string; // ISO String
   completedDates: string[]; // Array of "YYYY-MM-DD" date strings
   daysCompleted: number;
+}
+
+// For Leaderboard display
+export interface LeaderboardEntry extends UserListItem { // Extends UserListItem to include id, email, displayName
+  daysCompleted: number;
+  rank?: number; // Optional rank, to be assigned client-side
 }
