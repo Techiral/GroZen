@@ -46,7 +46,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"; // Removed Tooltip as it's not used directly
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import { generateShareImage as aiGenerateShareImage, type GenerateShareImageInput } from '@/ai/flows/generate-share-image';
 
@@ -510,32 +510,42 @@ export default function DashboardPage() {
       toast({ variant: "destructive", title: "Image Generation Error", description: "Proceeding with text-only share." });
     }
 
-    try {
-      const shareData: ShareData = {
-        title: "My GroZen Challenge Progress!",
-        text: shareText,
-        url: appUrl,
-      };
-      if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-        shareData.files = [imageFile];
-      }
+    const shareData: ShareData = {
+      title: "My GroZen Challenge Progress!",
+      text: shareText,
+      url: appUrl,
+    };
+    if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+      shareData.files = [imageFile];
+    }
 
-      if (navigator.share) {
+    if (navigator.share) {
+      try {
         await navigator.share(shareData);
         toast({ title: "Shared successfully!" });
-      } else {
-        navigator.clipboard.writeText(shareText)
-          .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
-          .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          toast({ title: "Share Canceled", variant: "default" });
+        } else if (error.name === 'NotAllowedError') {
+          toast({ title: "Share Permission Denied", description: "Trying to copy to clipboard instead.", variant: "default" });
+          navigator.clipboard.writeText(shareText)
+            .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
+            .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+        } else {
+          console.error('Error sharing challenge progress:', error);
+          toast({ variant: "destructive", title: "Share Error", description: "Could not share progress. Trying to copy to clipboard." });
+           navigator.clipboard.writeText(shareText)
+            .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
+            .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+        }
       }
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('Error sharing challenge progress:', error);
-        toast({ variant: "destructive", title: "Share Error", description: "Could not share progress." });
-      }
-    } finally {
-      setIsSharingChallenge(false);
+    } else {
+      // Fallback for browsers that don't support navigator.share
+      navigator.clipboard.writeText(shareText)
+        .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
+        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
     }
+    setIsSharingChallenge(false);
   };
 
   const handleSaveDisplayName = async () => {
