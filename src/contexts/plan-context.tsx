@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, CurrentChallenge } from '@/types/wellness';
+import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, UserProfile } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
@@ -9,15 +9,15 @@ import { generateGroceryList as aiGenerateGroceryList, type GenerateGroceryListI
 import { useToast } from "@/hooks/use-toast";
 import { auth, db, GoogleAuthProvider, signInWithPopup } from '@/lib/firebase';
 import {
-  User, 
+  User,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  getAdditionalUserInfo,
+  updateProfile, // Added for updating user profile
   type AuthProvider
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc, Timestamp, updateDoc, where, limit } from 'firebase/firestore'; 
+import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc, Timestamp, updateDoc, where, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import { format, parseISO } from 'date-fns';
@@ -26,10 +26,12 @@ interface PlanContextType {
   currentUser: User | null;
   isAdminUser: boolean;
   isLoadingAuth: boolean;
+  currentUserProfile: UserProfile | null; // For displayName and potentially other profile details
   signupWithEmail: (email: string, pass: string) => Promise<User | null>;
   loginWithEmail: (email: string, pass: string) => Promise<User | null>;
   signInWithGoogle: () => Promise<User | null>;
   logoutUser: () => Promise<void>;
+  updateUserDisplayName: (newName: string) => Promise<void>;
   onboardingData: OnboardingData | null;
   wellnessPlan: WellnessPlan | null;
   isLoadingPlan: boolean;
@@ -64,6 +66,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [_onboardingData, _setOnboardingData] = useState<OnboardingData | null>(defaultOnboardingData);
   const [_wellnessPlan, _setWellnessPlan] = useState<WellnessPlan | null>(null);
   const [_isLoadingPlan, _setIsLoadingPlan] = useState(false);
@@ -90,11 +93,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setErrorGroceryList(null);
       _setIsLoadingPlan(false);
       _setIsLoadingGroceryList(false);
-      // _setUserActiveChallenge(null); // Challenge progress persists unless full logout/reset
+      // Note: onboardingData and userActiveChallenge are not cleared here
+      // moodLogs are also not cleared here, they persist unless full logout/reset
       return;
     }
 
-    // Full clear (except potentially auth state itself if not isFullLogout)
+    // Full clear (except auth state if not isFullLogout)
     _setOnboardingData(defaultOnboardingData);
     _setWellnessPlan(null);
     _setIsOnboardedState(false);
@@ -106,19 +110,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setIsLoadingGroceryList(false);
     _setUserActiveChallenge(null);
     _setIsLoadingUserChallenge(false);
+    setCurrentUserProfile(null); // Clear profile on full reset
 
     if (isFullLogout) {
-      // Remove from localStorage if we were using it as a fallback, though now Firestore is primary
-      // localStorage.removeItem('grozen_onboardingData_anonymous'); 
-      // ... etc. for other keys if they were ever used for anonymous users
+      // localStorage.removeItem('grozen_onboardingData'); // Example if we were using it more
     }
   };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      clearPlanAndData(true, false); 
+      clearPlanAndData(true, false);
       setCurrentUser(user);
-      setIsAdminUser(false); 
+      setIsAdminUser(false);
+      setCurrentUserProfile(null);
+
 
       if (user) {
         if (process.env.NEXT_PUBLIC_ADMIN_UID && user.uid === process.env.NEXT_PUBLIC_ADMIN_UID) {
@@ -130,6 +135,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
+             setCurrentUserProfile({
+              displayName: userData.displayName || user.displayName || user.email?.split('@')[0] || 'GroZen User',
+              email: user.email || '',
+            });
             if (userData.onboardingData) {
               _setOnboardingData(userData.onboardingData as OnboardingData);
               _setIsOnboardedState(true);
@@ -140,30 +149,28 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (userData.wellnessPlan) {
                try {
-                  const plan = userData.wellnessPlan as WellnessPlan; 
-                   if(plan.meals && Array.isArray(plan.meals) && plan.exercise && Array.isArray(plan.exercise) && plan.mindfulness && Array.isArray(plan.mindfulness)) { 
+                  const plan = userData.wellnessPlan as WellnessPlan;
+                   if(plan.meals && Array.isArray(plan.meals) && plan.exercise && Array.isArray(plan.exercise) && plan.mindfulness && Array.isArray(plan.mindfulness)) {
                     _setWellnessPlan(plan);
                   } else {
-                    console.warn("Wellness plan from DB is malformed for user:", user.uid);
-                    _setWellnessPlan(null); 
+                    _setWellnessPlan(null);
                   }
               } catch (e) {
-                  console.error("Error processing wellness plan from DB for user:", user.uid, e);
                   _setWellnessPlan(null);
               }
             } else {
                _setWellnessPlan(null);
             }
-            
+
             if (userData.currentGroceryList) {
               let loadedGroceryList = userData.currentGroceryList as GroceryList;
               if (loadedGroceryList.items && Array.isArray(loadedGroceryList.items)) {
                 loadedGroceryList.items = loadedGroceryList.items.map(gItem => ({
                   ...gItem,
-                  id: gItem.id || crypto.randomUUID(), 
+                  id: gItem.id || crypto.randomUUID(),
                 }));
               } else {
-                loadedGroceryList.items = []; 
+                loadedGroceryList.items = [];
               }
               _setGroceryList(loadedGroceryList);
             } else {
@@ -182,55 +189,51 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const moodLogsSnap = await getDocs(moodLogsQuery);
             const fetchedMoodLogs = moodLogsSnap.docs.map(docSnap => {
               const data = docSnap.data();
-              let dateStr = new Date().toISOString(); 
+              let dateStr = new Date().toISOString();
               if (data.createdAt && data.createdAt instanceof Timestamp) {
                   dateStr = data.createdAt.toDate().toISOString();
-              } else if (data.date && typeof data.date === 'string') { 
+              } else if (data.date && typeof data.date === 'string') {
                   dateStr = data.date;
               }
               return {
                 id: docSnap.id,
                 mood: data.mood,
                 notes: data.notes || undefined,
-                selfieDataUri: data.selfieDataUri || undefined, 
+                selfieDataUri: data.selfieDataUri || undefined,
                 aiFeedback: data.aiFeedback || undefined,
-                date: dateStr, 
+                date: dateStr,
                 createdAt: data.createdAt || null,
               } as MoodLog;
             });
             _setMoodLogs(fetchedMoodLogs);
 
-          } else { 
-            // New user, create document
-            _setOnboardingData(defaultOnboardingData);
+          } else {
+            const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
+            setCurrentUserProfile({ displayName: initialProfileName, email: user.email || '' });
+            await setDoc(userDocRef, {
+              email: user.email || null,
+              displayName: initialProfileName,
+              createdAt: serverTimestamp(),
+              onboardingData: null,
+              wellnessPlan: null,
+              currentGroceryList: null,
+              activeChallengeProgress: null,
+            });
+             _setOnboardingData(defaultOnboardingData);
             _setWellnessPlan(null);
             _setIsOnboardedState(false);
             _setGroceryList(null);
             _setMoodLogs([]);
             _setUserActiveChallenge(null);
-            await setDoc(userDocRef, { 
-              email: user.email || null, 
-              displayName: user.displayName || user.email?.split('@')[0] || 'GroZen User',
-              createdAt: serverTimestamp(),
-              onboardingData: null, 
-              wellnessPlan: null,
-              currentGroceryList: null,
-              activeChallengeProgress: null,
-            });
           }
         } catch (error) {
           console.error("Error fetching user data from Firestore:", error);
           toast({ variant: "destructive", title: "Error Loading Data", description: "Could not load your saved data." });
-          _setOnboardingData(defaultOnboardingData);
-          _setWellnessPlan(null);
-          _setIsOnboardedState(false);
-          _setMoodLogs([]);
-          _setGroceryList(null);
-          _setUserActiveChallenge(null);
+          clearPlanAndData(true, false); // Perform a full reset
         } finally {
           setIsLoadingAuth(false);
         }
-      } else { 
+      } else {
         setIsLoadingAuth(false);
       }
     });
@@ -243,7 +246,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged handles Firestore doc creation
       toast({ title: "Signup Successful", description: "Welcome to GroZen! Please complete your onboarding." });
       return userCredential.user;
     } catch (error: any) {
@@ -261,7 +263,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: error.message || "Could not create account."
         });
       }
-      setIsLoadingAuth(false); 
+      setIsLoadingAuth(false);
       return null;
     }
   };
@@ -285,7 +287,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      // onAuthStateChanged handles Firestore doc creation
       toast({ title: "Signed In with Google", description: "Welcome!" });
       return result.user;
     } catch (error: any) {
@@ -301,12 +302,41 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login'); 
+      router.push('/login');
     } catch (error: any) {
       console.error("Logout error", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not log out." });
     }
   };
+
+  const updateUserDisplayName = async (newName: string) => {
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to update your display name." });
+      return;
+    }
+    if (!newName.trim()) {
+        toast({ variant: "destructive", title: "Invalid Name", description: "Display name cannot be empty."});
+        return;
+    }
+
+    const userDocRef = doc(db, "users", currentUser.uid);
+    try {
+      await updateDoc(userDocRef, { displayName: newName.trim() });
+      // Also update the displayName on the Firebase Auth user object, if possible
+      if (auth.currentUser) { // Check if auth.currentUser is not null
+          await updateProfile(auth.currentUser, { displayName: newName.trim() });
+      }
+
+
+      setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '' });
+
+      toast({ title: "Display Name Updated", description: "Your new display name has been saved." });
+    } catch (error: any) {
+      console.error("Error updating display name:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: error.message || "Could not update display name." });
+    }
+  };
+
 
   const completeOnboarding = async (data: OnboardingData) => {
     if (!currentUser) {
@@ -314,7 +344,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       router.push('/login');
       return;
     }
-    _setOnboardingData(data); 
+    _setOnboardingData(data);
     _setIsOnboardedState(true);
     try {
       const userDocRef = doc(db, "users", currentUser.uid);
@@ -334,13 +364,16 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     _setIsLoadingPlan(true);
     _setErrorPlan(null);
-    
+
     try {
-      // Save onboarding data first
       const userDocRef = doc(db, "users", currentUser.uid);
-      await setDoc(userDocRef, { onboardingData: data, updatedAt: serverTimestamp() }, { merge: true });
-      _setOnboardingData(data); 
-      _setIsOnboardedState(true);
+      // Ensure onboarding data is saved first if it has changed or is new
+      if (JSON.stringify(data) !== JSON.stringify(_onboardingData)) {
+        await setDoc(userDocRef, { onboardingData: data, updatedAt: serverTimestamp() }, { merge: true });
+        _setOnboardingData(data);
+        _setIsOnboardedState(true);
+      }
+
 
       const input: GenerateWellnessPlanInput = {
         goals: data.goals,
@@ -356,19 +389,19 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error("Failed to parse wellness plan JSON from AI:", parseError, "Raw plan string:", result.plan);
         _setErrorPlan("The AI returned an invalid plan format. Please try again.");
         toast({ variant: "destructive", title: "Plan Generation Error", description: "Received an invalid plan format from AI." });
-        _setWellnessPlan(null); 
+        _setWellnessPlan(null);
         _setIsLoadingPlan(false);
         return;
       }
-      
+
       if (
         parsedPlanCandidate &&
         typeof parsedPlanCandidate === 'object' &&
         Array.isArray(parsedPlanCandidate.meals) && parsedPlanCandidate.meals.length > 0 &&
         parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string' && typeof m.lunch === 'string' && typeof m.dinner === 'string') &&
-        Array.isArray(parsedPlanCandidate.exercise) && 
+        Array.isArray(parsedPlanCandidate.exercise) &&
         parsedPlanCandidate.exercise.every((e: any) => typeof e.day === 'string' && typeof e.activity === 'string' && typeof e.duration === 'string') &&
-        Array.isArray(parsedPlanCandidate.mindfulness) && 
+        Array.isArray(parsedPlanCandidate.mindfulness) &&
         parsedPlanCandidate.mindfulness.every((m: any) => typeof m.day === 'string' && typeof m.practice === 'string' && typeof m.duration === 'string')
       ) {
         const planToSet = parsedPlanCandidate as WellnessPlan;
@@ -391,7 +424,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
       _setErrorPlan(errorMessage);
       toast({ variant: "destructive", title: "Error Generating Plan", description: errorMessage });
-       _setWellnessPlan(null); 
+       _setWellnessPlan(null);
     } finally {
       _setIsLoadingPlan(false);
     }
@@ -417,28 +450,26 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       notes: notes || null,
       selfieDataUri: selfieDataUri || null,
       aiFeedback: aiFeedbackText || null,
-      createdAt: serverTimestamp() as FieldValue, // Firestore server timestamp
-      userId: currentUser.uid, // Good for potential cross-user queries if rules allowed
+      createdAt: serverTimestamp() as FieldValue,
+      userId: currentUser.uid,
     };
 
     try {
       const moodLogsColRef = collection(db, "users", currentUser.uid, "moodLogs");
       const docRef = await addDoc(moodLogsColRef, newLogData);
-      
-      // Construct the log for local state with a client-side date for immediate display
+
       const newLogForState: MoodLog = {
         id: docRef.id,
         mood: newLogData.mood,
         notes: newLogData.notes || undefined,
         selfieDataUri: newLogData.selfieDataUri || undefined,
         aiFeedback: newLogData.aiFeedback || undefined,
-        date: new Date().toISOString(), // Client-generated date for local state consistency
-        createdAt: new Date() // Client-generated for immediate sorting, Firestore has its own
+        date: new Date().toISOString(),
+        createdAt: new Date()
       };
-      _setMoodLogs(prevLogs => [...prevLogs, newLogForState].sort((a, b) => 
-         new Date(b.createdAt instanceof Date ? b.createdAt.toISOString() : b.date).getTime() - 
-         new Date(a.createdAt instanceof Date ? a.createdAt.toISOString() : a.date).getTime()
-      )); 
+      _setMoodLogs(prevLogs => [...prevLogs, newLogForState].sort((a, b) =>
+         new Date(b.date).getTime() - new Date(a.date).getTime()
+      ));
       toast({
         title: "Mood Logged",
         description: `${aiFeedbackText ? "GroZen Insight: " + aiFeedbackText : "Your mood has been recorded."}`
@@ -457,7 +488,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const logDocRef = doc(db, "users", currentUser.uid, "moodLogs", logId);
       await deleteDoc(logDocRef);
-      _setMoodLogs(prevLogs => prevLogs.filter(log => log.id !== logId)); 
+      _setMoodLogs(prevLogs => prevLogs.filter(log => log.id !== logId));
       toast({ title: "Mood Log Deleted", description: "Your mood entry has been removed." });
     } catch (error) {
       console.error("Error deleting mood log from Firestore:", error);
@@ -478,7 +509,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setErrorGroceryList(null);
     try {
       const input: GenerateGroceryListInput = {
-        meals: currentPlan.meals.map(meal => ({ 
+        meals: currentPlan.meals.map(meal => ({
           day: meal.day,
           breakfast: meal.breakfast,
           lunch: meal.lunch,
@@ -489,11 +520,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const itemsWithIds: GroceryItem[] = result.items.map(item => ({
         ...item,
-        id: crypto.randomUUID(), // Always assign client-generated ID
+        id: crypto.randomUUID(),
       }));
 
       const newGroceryList: GroceryList = {
-        id: _groceryList?.id || crypto.randomUUID(), 
+        id: _groceryList?.id || crypto.randomUUID(),
         items: itemsWithIds,
         generatedDate: new Date().toISOString(),
       };
@@ -525,7 +556,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       items: updatedItems,
     };
 
-    _setGroceryList(updatedGroceryList); 
+    _setGroceryList(updatedGroceryList);
 
     try {
       const userDocRef = doc(db, "users", currentUser.uid);
@@ -533,7 +564,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Item Deleted", description: "Grocery item removed." });
     } catch (error) {
       console.error("Error deleting grocery item from Firestore:", error);
-      _setGroceryList(_groceryList); // Revert local state on save error
+      _setGroceryList(_groceryList);
       toast({ variant: "destructive", title: "Save Error", description: "Could not update grocery list in cloud." });
     }
   };
@@ -582,7 +613,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             let dateStr = new Date().toISOString();
             if (data.createdAt && data.createdAt instanceof Timestamp) {
                 dateStr = data.createdAt.toDate().toISOString();
-            } else if (data.date && typeof data.date === 'string') { 
+            } else if (data.date && typeof data.date === 'string') {
                 dateStr = data.date;
             }
             return {
@@ -592,20 +623,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               selfieDataUri: data.selfieDataUri || undefined,
               aiFeedback: data.aiFeedback || undefined,
               date: dateStr,
-              createdAt: data.createdAt || null, 
+              createdAt: data.createdAt || null,
             } as MoodLog;
         });
-        
+
         let processedGroceryList: GroceryList | null = null;
         if (userData.currentGroceryList) {
             const loadedList = userData.currentGroceryList as GroceryList;
             if (loadedList.items && Array.isArray(loadedList.items)) {
                 loadedList.items = loadedList.items.map(gItem => ({
                     ...gItem,
-                    id: gItem.id || crypto.randomUUID(), // Ensure ID exists
+                    id: gItem.id || crypto.randomUUID(),
                 }));
             } else {
-                loadedList.items = []; 
+                loadedList.items = [];
             }
             processedGroceryList = loadedList;
         }
@@ -688,17 +719,15 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
     if (!currentUser) {
-      // toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to view the leaderboard." });
-      // No toast here, page will handle redirect if needed
       return [];
     }
     try {
       const usersCollectionRef = collection(db, "users");
       const q = query(
-        usersCollectionRef, 
-        where(`activeChallengeProgress.challengeId`, "==", CURRENT_CHALLENGE.id), 
+        usersCollectionRef,
+        where(`activeChallengeProgress.challengeId`, "==", CURRENT_CHALLENGE.id),
         orderBy(`activeChallengeProgress.daysCompleted`, "desc"),
-        limit(10) 
+        limit(10)
       );
       const querySnapshot = await getDocs(q);
       const leaderboardEntries: LeaderboardEntry[] = [];
@@ -727,17 +756,19 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       currentUser,
       isAdminUser,
       isLoadingAuth,
+      currentUserProfile,
       signupWithEmail,
       loginWithEmail,
       signInWithGoogle,
       logoutUser,
+      updateUserDisplayName,
       onboardingData: _onboardingData,
       wellnessPlan: _wellnessPlan,
       isLoadingPlan: _isLoadingPlan,
       errorPlan: _errorPlan,
       generatePlan,
       clearPlanAndData,
-      isPlanAvailable, // Now correctly included
+      isPlanAvailable,
       isOnboardedState: _isOnboardedState,
       completeOnboarding,
       moodLogs: _moodLogs,
@@ -771,3 +802,4 @@ export const usePlan = (): PlanContextType => {
   }
   return context;
 };
+

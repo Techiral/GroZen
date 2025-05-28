@@ -54,11 +54,17 @@ export interface GroceryList {
   generatedDate: string; // ISO string
 }
 
+// For User's public profile aspects like display name
+export interface UserProfile {
+  displayName: string | null;
+  email: string | null; // Can be useful to have email alongside display name
+}
+
 // For Admin Dashboard & Leaderboard
 export interface UserListItem {
   id: string; // UID
   email: string | null;
-  displayName?: string | null; // Added for leaderboard & general use
+  displayName?: string | null;
 }
 
 export interface FullUserDetail extends UserListItem {
@@ -93,7 +99,8 @@ export interface UserActiveChallenge {
 }
 
 // For Leaderboard display
-export interface LeaderboardEntry extends UserListItem { // Extends UserListItem to include id, email, displayName
+export interface LeaderboardEntry extends UserListItem {
   daysCompleted: number;
   rank?: number; // Optional rank, to be assigned client-side
 }
+
