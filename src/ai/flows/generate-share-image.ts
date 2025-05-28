@@ -28,10 +28,10 @@ export async function generateShareImage(input: GenerateShareImageInput): Promis
   return generateShareImageFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const generateShareImagePrompt = ai.definePrompt({
   name: 'generateShareImagePrompt',
   input: {schema: GenerateShareImageInputSchema},
-  output: {schema: GenerateShareImageOutputSchema},
+  // Removed output schema here, as gemini-2.0-flash-exp doesn't support JSON output with image generation
   model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Image generation model
   config: {
     responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE
@@ -55,8 +55,8 @@ Image Generation Guidelines:
 
 Alt Text Generation Guidelines:
 - Provide a concise (1-2 sentence) descriptive alt text for the generated image. This text should describe the visual elements and mood of the image. Example: "Abstract background with flowing blue and gold lines creating a sense of motion and achievement."
+- Your text response should ONLY be the alt text. Do not include any other conversational text or markdown.
 
-The output should be a JSON object adhering to the GenerateShareImageOutputSchema, containing 'imageDataUri' and 'altText'.
 Example of a good alt text: "Vibrant abstract background with streaks of light, symbolizing energy and progress for a wellness challenge."
 `,
 });
@@ -65,20 +65,26 @@ const generateShareImageFlow = ai.defineFlow(
   {
     name: 'generateShareImageFlow',
     inputSchema: GenerateShareImageInputSchema,
-    outputSchema: GenerateShareImageOutputSchema,
+    outputSchema: GenerateShareImageOutputSchema, // The flow's output will still match this schema
   },
   async (input) => {
     try {
-      const {media, output} = await prompt(input);
-      if (!media?.url) {
-        console.error('generateShareImageFlow: AI did not return an image. Media:', media);
+      const response = await generateShareImagePrompt(input); // This will be a GenerateResponse object
+      
+      const imageDataUri = response.media?.url;
+      const altText = response.text?.trim(); // Get the text part of the response
+
+      if (!imageDataUri) {
+        console.error('generateShareImageFlow: AI did not return an image. Media:', response.media);
         throw new Error('AI did not return an image.');
       }
-      if (!output?.altText || typeof output.altText !== 'string') {
-        console.error('generateShareImageFlow: AI did not return valid alt text. Output:', output);
-        throw new Error('AI did not return valid alt text.');
+      if (!altText || typeof altText !== 'string' || altText.length === 0) {
+        console.error('generateShareImageFlow: AI did not return valid alt text. Text response:', altText);
+        // Fallback alt text if AI fails to provide one or provides empty
+        const fallbackAlt = `Wellness challenge progress for ${input.challengeTitle} - ${input.daysCompleted} days completed.`;
+        return { imageDataUri, altText: fallbackAlt };
       }
-      return { imageDataUri: media.url, altText: output.altText };
+      return { imageDataUri, altText };
     } catch (error) {
       console.error('generateShareImageFlow: Error during AI image generation or processing. Input:', input, 'Error:', error);
       if (error instanceof Error) {
@@ -88,3 +94,4 @@ const generateShareImageFlow = ai.defineFlow(
     }
   }
 );
+
