@@ -132,15 +132,15 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
-  const [selectedMood, setSelectedMood] = useState(null);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
-  const [logToDelete, setLogToDelete] = useState(null);
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
   const [isSavingMood, setIsSavingMood] = useState(false);
 
-  const videoRef = useRef(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [selfieStream, setSelfieStream] = useState(null);
-  const [capturedSelfie, setCapturedSelfie] = useState(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
+  const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
 
@@ -159,31 +159,31 @@ export default function DashboardPage() {
 
   const sortedMoodLogs = useMemo(() => {
     return [...moodLogs].sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : parseISO(a.date).getTime();
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : parseISO(b.date).getTime();
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.date ? parseISO(a.date).getTime() : 0);
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.date ? parseISO(b.date).getTime() : 0);
       return dateB - dateA; 
     });
   }, [moodLogs]);
 
-  const moodChartData = useMemo(() => {
+  const moodChartData: ChartMoodLog[] = useMemo(() => {
     return [...moodLogs] 
       .map(log => ({
-        date: format(parseISO(log.date), "MMM d"),
+        date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
         moodValue: moodToValueMapping[log.mood] || 0, 
         moodEmoji: log.mood,
-        fullDate: log.date,
+        fullDate: log.date || new Date(0).toISOString(),
       }))
       .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
   }, [moodLogs]);
 
 
-  const [beforeShareLog, setBeforeShareLog] = useState(null);
-  const [afterShareLog, setAfterShareLog] = useState(null);
+  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
+  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
 
  useEffect(() => {
     const logsWithSelfies = [...moodLogs]
-      .filter(log => !!log.selfieDataUri)
-      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); 
+      .filter(log => !!log.selfieDataUri && log.date) // Ensure log.date exists
+      .sort((a,b) => parseISO(a.date!).getTime() - parseISO(b.date!).getTime()); 
 
     if (logsWithSelfies.length >= 2) {
       const firstSelfieLog = logsWithSelfies[0];
@@ -191,7 +191,7 @@ export default function DashboardPage() {
 
       for (let i = logsWithSelfies.length - 1; i > 0; i--) {
           const potentialAfterLog = logsWithSelfies[i];
-          if (isAdminUser || differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14) {
+          if (isAdminUser || differenceInDays(parseISO(potentialAfterLog.date!), parseISO(firstSelfieLog.date!)) >= 14) {
               suitableAfterLog = potentialAfterLog;
               break; 
           }
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                 } else if (video) {
                     console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
                     setTimeout(() => {
-                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
                             setIsVideoReadyForCapture(true);
                         } else {
                             console.error("Video dimensions still 0 after delay on 'playing' event.");
@@ -251,7 +251,7 @@ export default function DashboardPage() {
         };
         
         const handleCanPlay = () => {
-            if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+             if (video && video.videoWidth > 0 && video.videoHeight > 0) {
                 setIsVideoReadyForCapture(true);
             }
         };
@@ -380,7 +380,7 @@ export default function DashboardPage() {
     setCapturedSelfie(null);
   };
 
-  const handleMoodButtonClick = (mood) => {
+  const handleMoodButtonClick = (mood: string) => {
     setSelectedMood(mood);
     setMoodNotes("");
     setCapturedSelfie(null); 
@@ -412,7 +412,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDialogClose = (open) => {
+  const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
     if (!open) { 
         if (selfieStream) {
@@ -448,7 +448,7 @@ export default function DashboardPage() {
       }
       acc[category].push(item);
       return acc;
-    }, {});
+    }, {} as Record<string, GroceryItem[]>);
   }, [groceryList]);
 
   const handleLogout = async () => {
@@ -483,7 +483,7 @@ export default function DashboardPage() {
     } else {
       navigator.clipboard.writeText(shareText)
         .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
-        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." });
+        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }))
     }
   };
 
@@ -581,7 +581,7 @@ export default function DashboardPage() {
                 {wellnessPlan.meals.map((meal, index) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                 {wellnessPlan.exercise.map((ex, index) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
                      <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
@@ -616,7 +616,7 @@ export default function DashboardPage() {
                 {wellnessPlan.mindfulness.map((mind, index) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
@@ -756,7 +756,7 @@ export default function DashboardPage() {
                               type="button"
                               variant="neumorphic-primary"
                               onClick={handleCaptureSelfie}
-                              disabled={!isVideoReadyForCapture || isSavingMood}
+                              disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
                               className="w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                               aria-label="Capture Selfie"
                           >
@@ -929,7 +929,7 @@ export default function DashboardPage() {
                           const { payload } = props as any; 
                           return (
                             <div className="flex flex-col items-center gap-0.5 p-1">
-                              <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue] as number]}</span>
+                              <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue as number]}</span>
                               <span className="text-xs text-muted-foreground">{payload.date}</span>
                             </div>
                           );
@@ -976,7 +976,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5">
                   {log.selfieDataUri && (
                     <div className="relative w-full sm:w-16 md:w-20 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(parseISO(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
+                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${log.date ? format(parseISO(log.date), "MMM d") : 'Unknown Date'}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                     </div>
                   )}
                   <div className="flex-1">
@@ -996,19 +996,19 @@ export default function DashboardPage() {
                                 size="icon" 
                                 onClick={() => setLogToDelete(log.id)} 
                                 className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-muted-foreground hover:text-destructive"
-                                aria-label={`Delete mood log from ${format(parseISO(log.date), "MMM d, yy 'at' h:mma")}`}
+                                aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
                             >
                                 <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             </Button>
                     </div>
                      <p className="text-2xs sm:text-xs text-muted-foreground">
-                      {format(parseISO(log.date), "MMM d, yy 'at' h:mma")}
+                      {log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : "Date not available"}
                     </p>
                     {log.notes && <p className="text-2xs sm:text-xs mt-1 pt-1 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
                      {log.aiFeedback && (
                       <div className="mt-1 pt-1 border-t border-border/50">
                           <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-3 w-3 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
+                              <Sparkles className="h-3 w-3 mr-1.5 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-2xs sm:text-xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
@@ -1069,7 +1069,7 @@ export default function DashboardPage() {
         {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
           <div className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
             <h3 className="text-xs sm:text-sm font-semibold">
-              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {format(parseISO(groceryList.generatedDate), "MMM d, yyyy")})</span>
+              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {groceryList.generatedDate ? format(parseISO(groceryList.generatedDate), "MMM d, yyyy") : 'Unknown'})</span>
             </h3>
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems).length > 0 ? Object.keys(groupedGroceryItems) : undefined }>
               {Object.entries(groupedGroceryItems).map(([category, items]) => (
@@ -1117,3 +1117,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
