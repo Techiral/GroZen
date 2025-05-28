@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon } from 'lucide-react';
+import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO, isToday } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   ChartContainer,
@@ -45,6 +45,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { CURRENT_CHALLENGE } from '@/config/challenge';
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
@@ -121,7 +122,11 @@ export default function DashboardPage() {
     errorGroceryList,
     generateGroceryList: generateGroceryListFromContext,
     deleteGroceryItem,
-    isPlanAvailable
+    isPlanAvailable,
+    userActiveChallenge,
+    isLoadingUserChallenge,
+    joinCurrentChallenge,
+    logChallengeDay,
   } = usePlan();
   const { toast } = useToast();
 
@@ -285,6 +290,7 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
+    // Cleanup for selfieStream when component unmounts or selfieStream changes
     const currentStream = selfieStream;
     return () => {
       if (currentStream) {
@@ -295,7 +301,7 @@ export default function DashboardPage() {
 
 
   const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false);
+    setIsVideoReadyForCapture(false); // Reset readiness
 
     if (isCameraActive && selfieStream) {
       selfieStream.getTracks().forEach(track => track.stop());
@@ -303,18 +309,19 @@ export default function DashboardPage() {
       setIsCameraActive(false);
       if (videoRef.current) videoRef.current.srcObject = null;
     } else {
-      setCapturedSelfie(null);
-      setHasCameraPermission(null); 
-      setIsCameraActive(true);
+      setCapturedSelfie(null); // Clear any previous capture
+      setHasCameraPermission(null); // Reset permission state to trigger loading/prompt
+      setIsCameraActive(true); // Indicate camera is trying to activate
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
         setSelfieStream(stream);
+        // useEffect will handle attaching stream to videoRef and playing
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraActive(false);
+        setIsCameraActive(false); // Ensure this is reset on error
         setSelfieStream(null);
         toast({
           variant: 'destructive',
@@ -346,6 +353,7 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
         
+        // Stop the stream and camera after capture
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
         setIsCameraActive(false);
@@ -373,6 +381,7 @@ export default function DashboardPage() {
 
   const clearCapturedSelfie = () => {
     setCapturedSelfie(null);
+    // Optionally, re-enable camera here or require user to click "Open Camera" again
   };
 
   const handleMoodButtonClick = (mood: string) => {
@@ -381,13 +390,14 @@ export default function DashboardPage() {
     setCapturedSelfie(null); 
     setIsVideoReadyForCapture(false);
 
+    // Ensure camera is fully reset if it was active
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
-    setHasCameraPermission(null);
+    setHasCameraPermission(null); // Reset permission status for next dialog open
     
     setIsMoodDialogOpen(true);
   };
@@ -398,6 +408,7 @@ export default function DashboardPage() {
       try {
         await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
         setIsMoodDialogOpen(false); 
+        // Dialog close will trigger handleDialogClose for cleanup
       } catch (error) {
         console.error("Error saving mood log:", error);
          toast({ variant: "destructive", title: "Save Error", description: "Could not save mood log." });
@@ -407,9 +418,10 @@ export default function DashboardPage() {
     }
   };
 
+  // Renamed from handleClose to avoid conflict if Dialog has internal handleClose
   const handleDialogClose = (open: boolean) => {
     setIsMoodDialogOpen(open);
-    if (!open) {
+    if (!open) { // Cleanup when dialog is closed
         if (selfieStream) {
           selfieStream.getTracks().forEach(track => track.stop());
           setSelfieStream(null);
@@ -420,9 +432,9 @@ export default function DashboardPage() {
         setCapturedSelfie(null);
         setSelectedMood(null);
         setMoodNotes("");
-        setHasCameraPermission(null);
+        setHasCameraPermission(null); // Reset for next time
         setIsVideoReadyForCapture(false);
-        setIsSavingMood(false); 
+        setIsSavingMood(false); // Ensure saving state is reset
     }
   }
 
@@ -448,6 +460,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     await logoutUser();
+    // router.push('/login'); // onAuthStateChanged in context will handle this
   };
 
   const confirmDeleteMoodLog = async () => {
@@ -456,6 +469,32 @@ export default function DashboardPage() {
       setLogToDelete(null);
     }
   };
+  
+  const todayDateString = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+  const isChallengeDayLoggedToday = useMemo(() => {
+    return !!userActiveChallenge?.completedDates.includes(todayDateString);
+  }, [userActiveChallenge, todayDateString]);
+
+  const handleChallengeShare = () => {
+    if (!userActiveChallenge) return;
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "GroZenApp.com";
+    const shareText = `I'm crushing Day ${userActiveChallenge.daysCompleted} of the ${CURRENT_CHALLENGE.title} on GroZen! Join the challenge! ${appUrl} #GroZenChallenge #${CURRENT_CHALLENGE.id}`;
+    if (navigator.share) {
+      navigator.share({ title: "My GroZen Challenge Progress!", text: shareText, url: appUrl })
+        .then(() => toast({ title: "Shared successfully!" }))
+        .catch((error) => {
+           if (error.name !== 'AbortError') { // Don't toast if user cancelled
+            console.error('Error sharing challenge progress:', error);
+            toast({ variant: "destructive", title: "Share Error", description: "Could not share progress." });
+           }
+        });
+    } else {
+      navigator.clipboard.writeText(shareText)
+        .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
+        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
+    }
+  };
+
 
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
@@ -468,6 +507,8 @@ export default function DashboardPage() {
   }
   
   if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
+    // This case should be handled by the useEffect redirecting to /onboarding
+    // but as a fallback if redirect is slow or context updates are pending:
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -477,7 +518,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) {
+  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { // Plan is actively being generated
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -487,7 +528,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) {
+  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { // Onboarded, but no plan (e.g. generation failed)
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-2xl sm:text-3xl" />
@@ -519,7 +560,7 @@ export default function DashboardPage() {
                     <ShieldCheck className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Admin Panel
                 </Button>
             )}
-            {!isAdminUser && (
+            {!isAdminUser && ( // Only show "New Plan / Edit Preferences" if not admin
                 <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan or Edit Preferences">
                  New Plan / Edit Preferences
                 </Button>
@@ -530,14 +571,14 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {isLoadingPlan && wellnessPlan && ( 
+      {isLoadingPlan && _wellnessPlan && ( // Show overlay if plan is being re-generated but old plan still exists
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
           <RotateCcw className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
           <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
         </div>
       )}
 
-      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
+      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && ( // User has a plan (or admin viewing their own plan)
         <>
           <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
             <h2 className="text-md sm:text-lg font-semibold text-foreground">Your GroZen Wellness Plan</h2>
@@ -550,7 +591,7 @@ export default function DashboardPage() {
                 {wellnessPlan.meals.map((meal: Meal, index: number) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {meal.day}
+                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
@@ -568,7 +609,7 @@ export default function DashboardPage() {
                 {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
                      <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {ex.day}
+                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
@@ -585,7 +626,7 @@ export default function DashboardPage() {
                 {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" /> {mind.day}
+                        <CalendarDays className="h-3 w-3 mr-1.5 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
@@ -598,7 +639,7 @@ export default function DashboardPage() {
         </>
       )}
       
-      {isAdminUser && !isPlanAvailable && !isLoadingPlan && (
+      {isAdminUser && !isPlanAvailable && !isLoadingPlan && ( // Admin has no personal plan, show message
         <Alert className="mb-4 sm:mb-5 neumorphic">
           <AlertTitle className="text-sm sm:text-md">Admin View</AlertTitle>
           <AlertDescription className="text-2xs sm:text-xs">
@@ -607,6 +648,63 @@ export default function DashboardPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <SectionCard title="Current Wellness Challenge" icon={<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+        <CardTitle className="text-xs sm:text-sm mb-1">{CURRENT_CHALLENGE.title}</CardTitle>
+        <CardDescription className="text-2xs sm:text-xs mb-2.5 sm:mb-3">{CURRENT_CHALLENGE.description}</CardDescription>
+        {isLoadingUserChallenge ? (
+          <div className="flex items-center justify-center py-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <p className="ml-2 text-2xs sm:text-xs text-muted-foreground">Loading challenge status...</p>
+          </div>
+        ) : !userActiveChallenge ? (
+          <Button
+            variant="neumorphic-primary"
+            onClick={joinCurrentChallenge}
+            className="w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+            aria-label={`Join ${CURRENT_CHALLENGE.title} challenge`}
+          >
+            Join Challenge
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-2xs sm:text-xs">
+              Your Progress: <span className="font-semibold">{userActiveChallenge.daysCompleted}</span> / {CURRENT_CHALLENGE.durationDays} days completed
+            </p>
+            {userActiveChallenge.daysCompleted >= CURRENT_CHALLENGE.durationDays ? (
+                 <Alert variant="default" className="neumorphic-sm">
+                    <Trophy className="h-4 w-4 text-yellow-400" />
+                    <AlertTitle className="text-xs sm:text-sm text-yellow-300">Challenge Complete!</AlertTitle>
+                    <AlertDescription className="text-2xs sm:text-xs">
+                        Congratulations on completing the {CURRENT_CHALLENGE.title}!
+                    </AlertDescription>
+                </Alert>
+            ) : isChallengeDayLoggedToday ? (
+              <div className="flex items-center gap-1.5 p-2 neumorphic-inset-sm rounded-md">
+                <CheckSquare className="h-4 w-4 text-green-400" />
+                <p className="text-2xs sm:text-xs text-green-300">Today&apos;s challenge logged! Keep it up!</p>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={logChallengeDay}
+                className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+                aria-label="Log today's challenge completion"
+              >
+                <CheckSquare className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5"/> Log Today&apos;s Completion
+              </Button>
+            )}
+            <Button
+                variant="outline"
+                onClick={handleChallengeShare}
+                className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
+                aria-label="Share challenge progress"
+            >
+                <ShareIcon className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5"/> Share My Progress
+            </Button>
+          </div>
+        )}
+      </SectionCard>
 
 
       <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
@@ -641,18 +739,18 @@ export default function DashboardPage() {
                           variant="outline"
                           onClick={handleToggleCamera}
                           className="neumorphic-button w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
-                          disabled={!!capturedSelfie || isSavingMood}
+                          disabled={!!capturedSelfie || isSavingMood || (isCameraActive && !selfieStream && hasCameraPermission === null) } // Disable if loading permission
                           aria-label={isCameraActive ? 'Close Camera' : 'Open Camera'}
                       >
-                          {isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
-                          {isCameraActive ? 'Close Camera' : 'Open Camera'}
+                          {isCameraActive && !selfieStream && hasCameraPermission === null ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : (isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <Camera className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />)}
+                          {isCameraActive && !selfieStream && hasCameraPermission === null ? 'Starting...' : (isCameraActive ? 'Close Camera' : 'Open Camera')}
                       </Button>
                       {isCameraActive && selfieStream && hasCameraPermission === true && (
                            <Button
                               type="button"
                               variant="neumorphic-primary"
                               onClick={handleCaptureSelfie}
-                              disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
+                              disabled={!isVideoReadyForCapture || isSavingMood}
                               className="w-full xs:w-auto text-2xs px-2.5 py-1 sm:text-xs sm:px-3 sm:py-1.5"
                               aria-label="Capture Selfie"
                           >
@@ -681,12 +779,12 @@ export default function DashboardPage() {
                         <p className="font-semibold text-destructive text-3xs sm:text-2xs">Camera Access Denied</p>
                         <p className="text-3xs">Enable in browser.</p>
                       </div>
-                    ) : isCameraActive && hasCameraPermission === null ? (
+                    ) : isCameraActive && hasCameraPermission === null ? ( // Explicitly checking for camera active and permission pending
                       <div className="p-1 sm:p-1.5">
                         <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5 animate-spin" />
                         <p className="text-3xs sm:text-2xs">Requesting camera...</p>
                       </div>
-                    ) : (
+                    ) : ( // Default: camera off or not yet requested fully
                       <div className="p-1 sm:p-1.5">
                         <Camera className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-0.5" />
                         <p className="text-3xs sm:text-2xs">Camera is off.</p>
@@ -1013,4 +1111,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

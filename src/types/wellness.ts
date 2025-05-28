@@ -58,7 +58,6 @@ export interface GroceryList {
 export interface UserListItem {
   id: string; // UID
   email: string | null;
-  // Add other simple fields like displayName if available/needed
 }
 
 export interface FullUserDetail extends UserListItem {
@@ -66,6 +65,7 @@ export interface FullUserDetail extends UserListItem {
   wellnessPlan: WellnessPlan | null;
   moodLogs: MoodLog[];
   groceryList: GroceryList | null;
+  activeChallengeProgress?: UserActiveChallenge | null; // Added for admin view
 }
 
 // For Mood Chart
@@ -74,4 +74,19 @@ export interface ChartMoodLog {
   moodValue: number; // Numerical representation of mood
   moodEmoji: string; // Original mood emoji for tooltip
   fullDate: string; // Full ISO date string for sorting/original reference
+}
+
+// For Wellness Challenges
+export interface CurrentChallenge {
+  id: string;
+  title: string;
+  description: string;
+  durationDays: number;
+}
+
+export interface UserActiveChallenge {
+  challengeId: string;
+  joinedDate: string; // ISO String
+  completedDates: string[]; // Array of "YYYY-MM-DD" date strings
+  daysCompleted: number;
 }
