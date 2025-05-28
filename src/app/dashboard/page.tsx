@@ -34,8 +34,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -224,7 +224,7 @@ export default function DashboardPage() {
     }
   }, [moodLogs, isAdminUser]);
 
-  useEffect(() => {
+ useEffect(() => {
     const video = videoRef.current;
     if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
         video.srcObject = selfieStream;
@@ -503,11 +503,17 @@ export default function DashboardPage() {
         imageFile = new File([blob], 'grozen-challenge-share.png', { type: blob.type });
         toast({ title: "Image generated!", description: "Ready to share."});
       } else {
+        // This case is theoretically hit if the flow returns a result but imageDataUri is falsy (though the flow itself should throw an error before this)
         toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not generate share image. Sharing text only." });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating share image:", error);
-      toast({ variant: "destructive", title: "Image Generation Error", description: "Proceeding with text-only share." });
+      if (error.message && error.message.includes("AI did not return an image")) {
+        toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
+      } else {
+        toast({ variant: "destructive", title: "Image Generation Error", description: "Proceeding with text-only share." });
+      }
+      // imageFile remains null, shareData will be text-only
     }
 
     const shareData: ShareData = {
@@ -540,7 +546,6 @@ export default function DashboardPage() {
         }
       }
     } else {
-      // Fallback for browsers that don't support navigator.share
       navigator.clipboard.writeText(shareText)
         .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
         .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
@@ -622,7 +627,7 @@ export default function DashboardPage() {
                 </Button>
             )}
             {!isAdminUser && ( 
-                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan or Edit Preferences">
+                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5" aria-label="New Plan / Edit Preferences">
                  New Plan / Edit Preferences
                 </Button>
             )}
