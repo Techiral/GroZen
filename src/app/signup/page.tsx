@@ -37,8 +37,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
-      // Redirection is handled by PlanProvider or specific pages like dashboard/onboarding
-      // router.replace('/onboarding'); 
+      router.replace('/'); // Redirect to home page, which will then route to dashboard/onboarding
     }
   }, [currentUser, isLoadingAuth, router]);
 
@@ -49,30 +48,26 @@ export default function SignupPage() {
       return;
     }
     setIsSubmitting(true);
-    setIsGoogleSubmitting(false); // Ensure only one submit type is active
-    const user = await signupWithEmail(email, password);
-    if (user) {
-      // Redirection is handled by useEffect or PlanProvider logic
-    }
+    setIsGoogleSubmitting(false); 
+    await signupWithEmail(email, password);
+    // User state change will trigger useEffect for redirection
     setIsSubmitting(false);
   };
 
   const handleGoogleSignIn = async () => {
     setIsGoogleSubmitting(true);
-    setIsSubmitting(false); // Ensure only one submit type is active
-    const user = await signInWithGoogle();
-    if (user) {
-      // Redirection is handled by useEffect or PlanProvider logic
-    }
+    setIsSubmitting(false); 
+    await signInWithGoogle();
+    // User state change will trigger useEffect for redirection
     setIsGoogleSubmitting(false);
   };
 
   if (isLoadingAuth || (!isLoadingAuth && currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-3xl sm:text-4xl" />
-        <Loader2 className="mt-4 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading...</p>
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
     );
   }
