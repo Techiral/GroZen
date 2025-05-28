@@ -9,7 +9,7 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown } from 'lucide-react';
+import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown, Sparkles } from 'lucide-react';
 import type { FullUserDetail, Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -251,4 +251,7 @@ export default function AdminUserDetailPage() {
 
     </main>
   );
+    
+
+
     
