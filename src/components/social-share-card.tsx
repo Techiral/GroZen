@@ -6,8 +6,8 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { MoodLog } from '@/types/wellness';
-import { Share2, CalendarDays } from 'lucide-react';
-import { format } from 'date-fns';
+import { Share2, CalendarDays, Zap } from 'lucide-react'; // Added Zap for visual flair
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface SocialShareCardProps {
@@ -18,42 +18,56 @@ interface SocialShareCardProps {
 const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }) => {
   const { toast } = useToast();
 
+  if (!beforeLog.selfieDataUri || !afterLog.selfieDataUri) {
+    return <p className="text-muted-foreground text-2xs sm:text-xs">Selfie data is missing for one or both logs. Cannot generate share card.</p>;
+  }
+  
+  const daysBetween = differenceInDays(parseISO(afterLog.date), parseISO(beforeLog.date));
+
   const handleShare = async () => {
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "GroZenApp.com"; // Fallback URL
     const shareData = {
       title: 'My GroZen Progress!',
-      text: `Check out my wellness journey with GroZen! From ${format(new Date(beforeLog.date), 'MMM d, yyyy')} to ${format(new Date(afterLog.date), 'MMM d, yyyy')}. #GroZen #WellnessJourney`,
-      // url: window.location.href, // You might want to add a relevant URL if you have public profiles or a landing page.
+      text: `Check out my GroZen progress over ${daysBetween} days! Feeling great. Start your wellness journey with GroZen! ${appUrl} #GroZenProgress #WellnessJourney`,
+      url: appUrl,
     };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
         toast({ title: 'Shared!', description: 'Your progress has been shared.' });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+        toast({ title: 'Copied to Clipboard', description: 'Share content copied! Paste it to share.' });
       } else {
-        navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}${shareData.url ? `\n${shareData.url}` : ''}`);
-        toast({ title: 'Copied to Clipboard', description: 'Share content copied. Paste it to share!' });
+         toast({ variant: 'default', title: 'Sharing Not Available', description: 'Your browser does not support direct sharing or clipboard access for this.' });
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Could not share your progress.';
-      if (errorMessage.toLowerCase().includes('share() is not available') || 
-          errorMessage.toLowerCase().includes('user canceled') || 
-          errorMessage.toLowerCase().includes('aborted') ||
-          errorMessage.toLowerCase().includes('share Canceled')) {
-         toast({ variant: 'default', title: 'Share Canceled', description: 'Sharing was canceled or not available.' });
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+      if (errorMessage.includes('share is not supported') || 
+          errorMessage.includes('user denied permission') ||
+          errorMessage.includes('aborted') ||
+          errorMessage.includes('share canceled') || // Note: 'share Canceled' was specific, this is broader
+          errorMessage.includes('cancelled')) {
+         toast({ variant: 'default', title: 'Share Canceled or Unavailable', description: 'Sharing was canceled or is not available on this device/browser.' });
       } else {
         toast({ variant: 'destructive', title: 'Error Sharing', description: 'Could not share your progress at this time.' });
       }
     }
   };
 
-  if (!beforeLog.selfieDataUri || !afterLog.selfieDataUri) {
-    return <p className="text-muted-foreground text-2xs sm:text-xs">Selfie data is missing for one or both logs.</p>;
-  }
 
   return (
     <Card className="neumorphic w-full">
       <CardHeader className="p-3 sm:p-4">
-        <CardTitle className="text-sm sm:text-md md:text-lg font-bold text-center">My GroZen Journey!</CardTitle>
+        <CardTitle className="text-sm sm:text-md md:text-lg font-bold text-center flex items-center justify-center gap-1.5">
+            <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-accent" /> My GroZen Progress! <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+        </CardTitle>
+         {daysBetween >= 0 && (
+            <p className="text-center text-xs sm:text-sm text-muted-foreground mt-1">
+                Over {daysBetween} Days!
+            </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5 items-center">
@@ -69,13 +83,13 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
                 data-ai-hint="progress selfie" 
               />
             </div>
-            <p className="text-2xs sm:text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-              <CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {format(new Date(beforeLog.date), 'MMM d, yy')}
+            <p className="text-2xs sm:text-xs text-muted-foreground text-center flex items-center justify-center gap-0.5 sm:gap-1">
+              <CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {format(parseISO(beforeLog.date), 'MMM d, yy')}
             </p>
           </div>
           <div className="space-y-1">
             <h3 className="text-xs sm:text-sm font-semibold text-center">
-              After ({format(new Date(afterLog.date), 'MMM d')})
+              After
             </h3>
             <div className="relative aspect-square w-full rounded-lg overflow-hidden neumorphic-inset-sm">
               <Image 
@@ -87,8 +101,8 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
                 data-ai-hint="progress selfie"
               />
             </div>
-             <p className="text-2xs sm:text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-              <CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {format(new Date(afterLog.date), 'MMM d, yy')}
+             <p className="text-2xs sm:text-xs text-muted-foreground text-center flex items-center justify-center gap-0.5 sm:gap-1">
+              <CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {format(parseISO(afterLog.date), 'MMM d, yy')}
             </p>
           </div>
         </div>

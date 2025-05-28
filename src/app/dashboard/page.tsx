@@ -51,7 +51,7 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
   <Card className="neumorphic w-full mb-4 sm:mb-6">
     <CardHeader className="flex flex-col space-y-1.5 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2 px-3 py-2.5 sm:px-4 sm:py-3">
       <div className="flex flex-row items-center">
-        <CardTitle className="text-sm sm:text-md md:text-lg font-medium flex items-center gap-1.5 sm:gap-2">
+        <CardTitle className="text-sm sm:text-md md:text-lg font-medium flex items-center gap-1 sm:gap-1.5">
           {icon} {title}
         </CardTitle>
         {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-2xs sm:text-xs text-muted-foreground">({itemsCount} items)</span>}
@@ -94,19 +94,19 @@ const moodValueToLabel: { [key: number]: string } = {
   1: "Sad",
 };
 
-const moodValueToColor: { [key: number]: string } = {
-  5: "hsl(var(--chart-1))", // Greenish
-  4: "hsl(var(--chart-2))", // Bluish
-  3: "hsl(var(--chart-3))", // Yellowish/Neutral
-  2: "hsl(var(--chart-4))", // Orangish
-  1: "hsl(var(--chart-5))", // Reddish
-};
+// const moodValueToColor: { [key: number]: string } = {
+//   5: "hsl(var(--chart-1))", // Greenish
+//   4: "hsl(var(--chart-2))", // Bluish
+//   3: "hsl(var(--chart-3))", // Yellowish/Neutral
+//   2: "hsl(var(--chart-4))", // Orangish
+//   1: "hsl(var(--chart-5))", // Reddish
+// };
 
 
 const chartConfig = {
   mood: {
     label: "Mood",
-    color: "hsl(var(--primary))", // Use primary color for the line
+    color: "hsl(var(--primary))", 
   },
 } satisfies ChartConfig;
 
@@ -148,19 +148,23 @@ export default function DashboardPage() {
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
 
   const sortedMoodLogs = useMemo(() => {
-    return [...moodLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return [...moodLogs].sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : parseISO(a.date).getTime();
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : parseISO(b.date).getTime();
+      return dateB - dateA; // Sort descending, newest first
+    });
   }, [moodLogs]);
 
   const moodChartData: ChartMoodLog[] = useMemo(() => {
-    return sortedMoodLogs
+    return [...moodLogs] // Use original moodLogs for chart data to maintain consistent sort for lines
       .map(log => ({
         date: format(parseISO(log.date), "MMM d"),
-        moodValue: moodToValueMapping[log.mood] || 0, // Default to 0 if mood not in map
+        moodValue: moodToValueMapping[log.mood] || 0, 
         moodEmoji: log.mood,
         fullDate: log.date,
       }))
-      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); // Ensure chronological for chart
-  }, [sortedMoodLogs]);
+      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
+  }, [moodLogs]);
 
  useEffect(() => {
     if (!isLoadingAuth) {
@@ -265,37 +269,37 @@ export default function DashboardPage() {
   }, [selfieStream]);
 
   useEffect(() => {
-    if (sortedMoodLogs.length >= 2) {
-      const logsWithSelfies = sortedMoodLogs.filter(log => !!log.selfieDataUri).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Use moodLogs directly as sortedMoodLogs is already sorted by newest first
+    // For share card, we need oldest with selfie and newest with selfie (with a gap)
+    const logsWithSelfies = [...moodLogs]
+      .filter(log => !!log.selfieDataUri)
+      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort oldest first
 
-      if (logsWithSelfies.length >= 2) {
-        const firstSelfieLog = logsWithSelfies[0];
-        let suitableAfterLog = null;
+    if (logsWithSelfies.length >= 2) {
+      const firstSelfieLog = logsWithSelfies[0];
+      let suitableAfterLog = null;
 
-        for (let i = logsWithSelfies.length -1; i > 0; i--) {
-            const potentialAfterLog = logsWithSelfies[i];
-            if (differenceInDays(new Date(potentialAfterLog.date), new Date(firstSelfieLog.date)) >= 14) {
-                suitableAfterLog = potentialAfterLog;
-                break;
-            }
-        }
+      // Iterate from newest to oldest to find a suitable "after" log
+      for (let i = logsWithSelfies.length - 1; i > 0; i--) {
+          const potentialAfterLog = logsWithSelfies[i];
+          if (differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14) {
+              suitableAfterLog = potentialAfterLog;
+              break; // Found the newest suitable "after" log
+          }
+      }
 
-        if (suitableAfterLog) {
-          setBeforeShareLog(firstSelfieLog);
-          setAfterShareLog(suitableAfterLog);
-        } else {
-          setBeforeShareLog(null);
-          setAfterShareLog(null);
-        }
+      if (suitableAfterLog) {
+        setBeforeShareLog(firstSelfieLog);
+        setAfterShareLog(suitableAfterLog);
       } else {
-         setBeforeShareLog(null);
-         setAfterShareLog(null);
+        setBeforeShareLog(null);
+        setAfterShareLog(null);
       }
     } else {
-      setBeforeShareLog(null);
-      setAfterShareLog(null);
+       setBeforeShareLog(null);
+       setAfterShareLog(null);
     }
-  }, [sortedMoodLogs]);
+  }, [moodLogs]);
 
   const handleToggleCamera = async () => {
     setIsVideoReadyForCapture(false);
@@ -496,7 +500,7 @@ export default function DashboardPage() {
         <Logo size="text-2xl sm:text-3xl md:text-4xl" />
         <p className="mt-3 text-sm sm:text-md">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2">
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-4 py-1.5 sm:px-5 sm:py-2" aria-label="New Plan or Edit Preferences">
           New Plan / Edit Preferences
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-3 py-1 sm:px-4 sm:py-1.5" aria-label="Logout">
@@ -794,7 +798,7 @@ export default function DashboardPage() {
                   margin={{
                     top: 5,
                     right: 10,
-                    left: -25, // Adjust left margin to make Y-axis labels visible
+                    left: -25, 
                     bottom: 0,
                   }}
                   accessibilityLayer
@@ -805,14 +809,14 @@ export default function DashboardPage() {
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 6)} // Shorten date e.g. "Jan 1"
+                    tickFormatter={(value) => value.slice(0, 6)} 
                     className="text-2xs sm:text-xs"
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    domain={[0, 5]} // Fixed domain from 0 to 5
+                    domain={[0, 5]} 
                     ticks={[1, 2, 3, 4, 5]}
                     tickFormatter={(value) => moodValueToLabel[value] || ''}
                     className="text-2xs sm:text-xs"
@@ -825,7 +829,7 @@ export default function DashboardPage() {
                         nameKey="moodValue"
                         labelKey="date"
                         formatter={(value, name, props) => {
-                          const { payload } = props as any; // Type assertion
+                          const { payload } = props as any; 
                           return (
                             <div className="flex flex-col items-center gap-0.5 p-1">
                               <span className="text-sm font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue as number]}</span>
@@ -880,9 +884,9 @@ export default function DashboardPage() {
                   )}
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-0.5">
-                      <h4 className="font-semibold text-sm sm:text-md flex items-center gap-1 sm:gap-1.5">
+                      <h4 className="font-semibold text-sm sm:text-md flex items-center gap-0.5 sm:gap-1">
                         <span className="text-lg sm:text-xl">{log.mood}</span>
-                        {moodEmojiStrings.find(m => m.emoji === log.mood) && typeof moodEmojiStrings.find(m => m.emoji === log.mood) !== 'string' && 
+                        {moodEmojiStrings.find(m => m.emoji === log.mood) && 
                            (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" aria-hidden="true"/> :
                             moodToValueMapping[log.mood] === 4 ? <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" aria-hidden="true"/> :
                             moodToValueMapping[log.mood] === 3 ? <Meh className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" aria-hidden="true"/> :
