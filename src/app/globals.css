@@ -71,12 +71,23 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
   }
-  h1 { @apply text-2xl sm:text-3xl; } /* Responsive H1 */
-  h2 { @apply text-xl sm:text-2xl; } /* Responsive H2 */
-  h3 { @apply text-lg sm:text-xl; } /* Responsive H3 */
-  p, span, div, li, td, th, label, input, textarea, select, button {
-    @apply text-sm sm:text-base; /* Responsive base text */
+  /* Responsive base text sizes */
+  p, span, div, li, td, th, label, input, textarea, select, button, a {
+    @apply text-xs sm:text-sm; /* Base for mobile, sm and up get slightly larger */
   }
+
+  h1 { @apply text-xl sm:text-2xl md:text-3xl; } 
+  h2 { @apply text-lg sm:text-xl md:text-2xl; } 
+  h3 { @apply text-base sm:text-lg md:text-xl; }
+  h4 { @apply text-sm sm:text-base md:text-lg; }
+  h5 { @apply text-xs sm:text-sm md:text-base; }
+  h6 { @apply text-xs sm:text-xs md:text-sm; }
+
+  /* Input and Textarea base responsive sizing */
+  input, textarea, select {
+    @apply text-xs sm:text-sm;
+  }
+
 }
 
 @layer components {
@@ -103,13 +114,9 @@
   }
 
   .neumorphic-button {
-    @apply neumorphic py-2 px-4 text-foreground hover:opacity-80 active:neumorphic-inset;
-    background-color: hsl(var(--accent)); /* Using accent for button background */
-    color: hsl(var(--accent-foreground)); /* Text on button */
+    @apply neumorphic py-1.5 px-3 sm:py-2 sm:px-4 text-accent-foreground bg-accent active:neumorphic-inset hover:opacity-90 text-xs sm:text-sm;
   }
    .neumorphic-button-primary {
-    @apply neumorphic py-2 px-4 text-primary-foreground hover:opacity-80 active:neumorphic-inset;
-    background-color: hsl(var(--primary)); 
-    color: hsl(var(--primary-foreground));
+    @apply neumorphic py-1.5 px-3 sm:py-2 sm:px-4 text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90 text-xs sm:text-sm;
   }
 }

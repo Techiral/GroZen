@@ -23,10 +23,10 @@ export default function HomePage() {
       if (currentUser) {
         if (isPlanAvailable) {
           router.replace('/dashboard');
-        } else if (isOnboardedState) { // User is logged in, onboarded, but no plan (e.g. plan generation failed or new login)
-          router.replace('/dashboard'); // Dashboard handles showing "create plan"
+        } else if (isOnboardedState) { 
+          router.replace('/dashboard'); 
         }
-         else { // User is logged in but not onboarded yet
+         else { 
           router.replace('/onboarding');
         }
       } else {
@@ -35,17 +35,16 @@ export default function HomePage() {
     }
   }, [isClient, currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, router]);
 
-  if (!isClient || isLoadingAuth || (isClient && !isLoadingAuth && currentUser)) { // Show loader if not client, or loading auth, or if client but logged in (implies redirect is pending)
+  if (!isClient || isLoadingAuth || (isClient && !isLoadingAuth && currentUser)) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-3xl sm:text-4xl md:text-5xl" />
-        <Loader2 className="mt-5 h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
-        <p className="mt-3 text-sm sm:text-md">Loading your GroZen experience...</p>
+        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm">Loading your GroZen experience...</p>
       </div>
     );
   }
   
-  // This content is for non-logged-in users.
   return (
     <main className="flex flex-col items-center justify-center min-h-screen text-center p-3 sm:p-4 md:p-6">
       <div className="absolute inset-0 z-[-1] opacity-10">
@@ -58,22 +57,22 @@ export default function HomePage() {
           priority
         />
       </div>
-      <div className="relative z-10 p-4 sm:p-6 md:p-8 neumorphic rounded-xl max-w-xs sm:max-w-md md:max-w-lg bg-background/80 backdrop-blur-sm">
-        <div className="mb-4 sm:mb-6">
-          <Logo size="text-2xl sm:text-3xl md:text-4xl" />
+      <div className="relative z-10 p-4 sm:p-6 neumorphic rounded-xl max-w-xs sm:max-w-sm md:max-w-md bg-background/80 backdrop-blur-sm">
+        <div className="mb-3 sm:mb-4">
+          <Logo size="text-xl sm:text-2xl md:text-3xl" />
         </div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-foreground">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3 text-foreground">
           Welcome to GroZen
         </h1>
-        <p className="text-xs sm:text-sm md:text-md text-muted-foreground mb-5 sm:mb-6">
+        <p className="text-2xs sm:text-xs md:text-sm text-muted-foreground mb-4 sm:mb-5">
           Your personalized AI wellness companion for a healthier, more balanced life. Get tailored meal plans, fitness routines, and mindfulness practices.
         </p>
-        <div className="flex flex-col space-y-2.5 sm:space-y-3">
+        <div className="flex flex-col space-y-2 sm:space-y-2.5">
             <Button 
             variant="neumorphic-primary" 
             size="lg" 
             onClick={() => router.push('/signup')}
-            className="text-xs sm:text-sm md:text-base px-4 py-2 sm:px-5 sm:py-2.5"
+            className="text-xs sm:text-sm px-4 py-2"
             >
             Get Started
             </Button>
@@ -81,7 +80,7 @@ export default function HomePage() {
             variant="outline" 
             size="lg" 
             onClick={() => router.push('/login')}
-            className="text-xs sm:text-sm md:text-base px-4 py-2 sm:px-5 sm:py-2.5 neumorphic-button"
+            className="text-xs sm:text-sm px-4 py-2 neumorphic-button"
             >
             Login
             </Button>

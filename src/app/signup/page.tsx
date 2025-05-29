@@ -14,9 +14,8 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 
-// A simple Google Icon SVG (can be moved to a shared component if used elsewhere)
 const GoogleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" data-ai-hint="google logo">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" data-ai-hint="google logo">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -37,7 +36,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
-      router.replace('/'); // Redirect to home page, which will then route to dashboard/onboarding
+      router.replace('/'); 
     }
   }, [currentUser, isLoadingAuth, router]);
 
@@ -50,7 +49,6 @@ export default function SignupPage() {
     setIsSubmitting(true);
     setIsGoogleSubmitting(false); 
     await signupWithEmail(email, password);
-    // User state change will trigger useEffect for redirection
     setIsSubmitting(false);
   };
 
@@ -58,33 +56,32 @@ export default function SignupPage() {
     setIsGoogleSubmitting(true);
     setIsSubmitting(false); 
     await signInWithGoogle();
-    // User state change will trigger useEffect for redirection
     setIsGoogleSubmitting(false);
   };
 
   if (isLoadingAuth || (!isLoadingAuth && currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <Logo size="text-2xl sm:text-3xl" />
+        <Loader2 className="mt-4 h-6 w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 md:p-6">
-      <Card className="w-full max-w-sm neumorphic">
-        <CardHeader className="text-center px-4 pt-5 sm:px-5 sm:pt-6">
-          <div className="mx-auto mb-3 sm:mb-4">
-            <Logo size="text-xl sm:text-2xl" />
+    <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4">
+      <Card className="w-full max-w-xs sm:max-w-sm neumorphic">
+        <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
+          <div className="mx-auto mb-2 sm:mb-3">
+            <Logo size="text-lg sm:text-xl" />
           </div>
-          <CardTitle className="text-lg sm:text-xl">Create your GroZen Account</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">Join us to start your wellness journey.</CardDescription>
+          <CardTitle className="text-base sm:text-lg">Create your GroZen Account</CardTitle>
+          <CardDescription className="text-2xs sm:text-xs">Join us to start your wellness journey.</CardDescription>
         </CardHeader>
-        <CardContent className="px-4 pb-5 sm:px-5 sm:pb-6">
-          <form onSubmit={handleEmailSubmit} className="space-y-3 sm:space-y-4">
-            <div className="space-y-1.5">
+        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-5">
+          <form onSubmit={handleEmailSubmit} className="space-y-3 sm:space-y-3.5">
+            <div className="space-y-1">
               <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
               <Input
                 id="email"
@@ -93,11 +90,11 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="text-xs sm:text-sm"
+                className="h-9 sm:h-10 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label htmlFor="password" className="text-xs sm:text-sm">Password</Label>
               <Input
                 id="password"
@@ -106,11 +103,11 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
                 required
-                className="text-xs sm:text-sm"
+                className="h-9 sm:h-10 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label htmlFor="confirm-password" className="text-xs sm:text-sm">Confirm Password</Label>
               <Input
                 id="confirm-password"
@@ -119,33 +116,33 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Retype your password"
                 required
-                className="text-xs sm:text-sm"
+                className="h-9 sm:h-10 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
-            <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm h-9 sm:h-10" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
               Sign Up with Email
             </Button>
           </form>
 
-          <div className="my-4 sm:my-5 flex items-center w-full">
+          <div className="my-3 sm:my-4 flex items-center w-full">
             <Separator className="flex-1" />
-            <span className="px-2 text-xs text-muted-foreground">OR</span>
+            <span className="px-2 text-2xs sm:text-xs text-muted-foreground">OR</span>
             <Separator className="flex-1" />
           </div>
 
           <Button 
             variant="outline" 
-            className="w-full text-xs sm:text-sm neumorphic-button" 
+            className="w-full text-xs sm:text-sm h-9 sm:h-10 neumorphic-button" 
             onClick={handleGoogleSignIn}
             disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}
           >
-            {isGoogleSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon />}
+            {isGoogleSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <GoogleIcon />}
             Sign up with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-center text-xs sm:text-sm pt-4 pb-5 px-4 sm:px-5 sm:pb-6">
+        <CardFooter className="flex flex-col items-center text-center text-2xs sm:text-xs pt-3 pb-4 px-4 sm:px-6 sm:pb-5">
           <p>Already have an account?</p>
           <Link href="/login" className="font-medium text-primary hover:underline">
             Login here
