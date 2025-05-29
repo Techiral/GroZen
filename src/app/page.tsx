@@ -38,15 +38,15 @@ export default function HomePage() {
   if (!isClient || isLoadingAuth || (isClient && !isLoadingAuth && currentUser)) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl md:text-4xl" />
-        <Loader2 className="mt-4 h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm">Loading your GroZen experience...</p>
       </div>
     );
   }
   
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen text-center p-3 sm:p-4 md:p-6">
+    <main className="flex flex-col items-center justify-center min-h-screen text-center p-3 sm:p-4">
       <div className="absolute inset-0 z-[-1] opacity-10">
          <Image 
           src="https://placehold.co/1200x800.png" 
@@ -57,22 +57,22 @@ export default function HomePage() {
           priority
         />
       </div>
-      <div className="relative z-10 p-4 sm:p-6 neumorphic rounded-xl max-w-xs sm:max-w-sm md:max-w-md bg-background/80 backdrop-blur-sm">
-        <div className="mb-3 sm:mb-4">
-          <Logo size="text-xl sm:text-2xl md:text-3xl" />
+      <div className="relative z-10 p-3 sm:p-4 md:p-6 neumorphic rounded-xl max-w-[90vw] xs:max-w-xs sm:max-w-sm md:max-w-md bg-background/80 backdrop-blur-sm">
+        <div className="mb-2 sm:mb-3">
+          <Logo size="text-lg sm:text-xl md:text-2xl" />
         </div>
-        <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3 text-foreground">
+        <h1 className="text-base sm:text-lg md:text-xl font-bold mb-1.5 sm:mb-2 text-foreground">
           Welcome to GroZen
         </h1>
-        <p className="text-2xs sm:text-xs md:text-sm text-muted-foreground mb-4 sm:mb-5">
+        <p className="text-2xs sm:text-xs md:text-sm text-muted-foreground mb-3 sm:mb-4">
           Your personalized AI wellness companion for a healthier, more balanced life. Get tailored meal plans, fitness routines, and mindfulness practices.
         </p>
-        <div className="flex flex-col space-y-2 sm:space-y-2.5">
+        <div className="flex flex-col space-y-1.5 sm:space-y-2">
             <Button 
             variant="neumorphic-primary" 
             size="lg" 
             onClick={() => router.push('/signup')}
-            className="text-xs sm:text-sm px-4 py-2"
+            className="text-xs sm:text-sm px-3 py-1.5 h-9 sm:h-10"
             >
             Get Started
             </Button>
@@ -80,7 +80,7 @@ export default function HomePage() {
             variant="outline" 
             size="lg" 
             onClick={() => router.push('/login')}
-            className="text-xs sm:text-sm px-4 py-2 neumorphic-button"
+            className="text-xs sm:text-sm px-3 py-1.5 h-9 sm:h-10 neumorphic-button"
             >
             Login
             </Button>

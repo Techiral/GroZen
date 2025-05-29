@@ -73,9 +73,8 @@ export default function OnboardingPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (isPlanAvailable && currentStep !== steps.length -1) { // Allow reaching summary step even if plan exists if user came via "New Plan"
-         // If user has a plan and lands here NOT on summary (e.g. direct navigation), redirect.
-         // If they came via "New Plan" button, they'd already be on step 0 or progressing.
+      } else if (isPlanAvailable && currentStep !== steps.length -1) { 
+        // Allow reaching summary step even if plan exists if user came via "New Plan"
       }
     }
   }, [currentUser, isLoadingAuth, isPlanAvailable, router, currentStep]);
@@ -114,7 +113,6 @@ export default function OnboardingPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error("Onboarding submission error:", error);
-      // Toast for error already handled in context functions
     } finally {
       setIsSubmitting(false);
     }
@@ -123,8 +121,8 @@ export default function OnboardingPage() {
   if (isLoadingAuth || (!isLoadingAuth && !currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-2xl sm:text-3xl" />
-        <Loader2 className="mt-4 h-6 w-8 animate-spin text-primary" />
+        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
     );
@@ -132,7 +130,7 @@ export default function OnboardingPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4">
-      <Card className="w-full max-w-sm sm:max-w-md neumorphic shadow-lg">
+      <Card className="w-full max-w-[90vw] xs:max-w-sm sm:max-w-md neumorphic shadow-lg">
         <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
           <div className="mx-auto mb-2 sm:mb-3">
             <Logo size="text-lg sm:text-xl" />
@@ -151,7 +149,7 @@ export default function OnboardingPage() {
                     <FormItem>
                       <FormLabel className="text-xs sm:text-sm">Goals</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[40px] xs:min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
@@ -166,7 +164,7 @@ export default function OnboardingPage() {
                     <FormItem>
                       <FormLabel className="text-xs sm:text-sm">Dietary Preferences</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[40px] xs:min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>

@@ -57,7 +57,6 @@
     --chart-5: 27 87% 67%;
   }
 
-  /* Removed .dark class selector as the app is dark by default */
 }
 
 @layer base {
@@ -66,28 +65,32 @@
   }
   body {
     @apply bg-background text-foreground;
-    @apply font-sans; /* Apply Inter font by default */
+    @apply font-sans; 
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
   }
+  
   /* Responsive base text sizes */
-  p, span, div, li, td, th, label, input, textarea, select, button, a {
+  p, span, div, li, td, th, label, a, button {
     @apply text-xs sm:text-sm; /* Base for mobile, sm and up get slightly larger */
   }
+  /* Specific overrides for very small text if needed */
+  .text-3xs { @apply text-[0.625rem] leading-tight; } /* 10px */
+  .text-2xs { @apply text-[0.7rem] leading-tight; } /* 11.2px, common for very small labels */
 
-  h1 { @apply text-xl sm:text-2xl md:text-3xl; } 
-  h2 { @apply text-lg sm:text-xl md:text-2xl; } 
-  h3 { @apply text-base sm:text-lg md:text-xl; }
-  h4 { @apply text-sm sm:text-base md:text-lg; }
-  h5 { @apply text-xs sm:text-sm md:text-base; }
-  h6 { @apply text-xs sm:text-xs md:text-sm; }
+
+  h1 { @apply text-lg sm:text-xl md:text-2xl; } 
+  h2 { @apply text-base sm:text-lg md:text-xl; } 
+  h3 { @apply text-sm sm:text-base md:text-lg; }
+  h4 { @apply text-xs sm:text-sm md:text-base; }
+  h5 { @apply text-2xs sm:text-xs md:text-sm; }
+  h6 { @apply text-3xs sm:text-2xs md:text-xs; }
 
   /* Input and Textarea base responsive sizing */
   input, textarea, select {
     @apply text-xs sm:text-sm;
   }
-
 }
 
 @layer components {
@@ -114,9 +117,11 @@
   }
 
   .neumorphic-button {
-    @apply neumorphic py-1.5 px-3 sm:py-2 sm:px-4 text-accent-foreground bg-accent active:neumorphic-inset hover:opacity-90 text-xs sm:text-sm;
+    @apply neumorphic text-accent-foreground bg-accent active:neumorphic-inset hover:opacity-90;
+    @apply text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9; /* Adjusted default padding and height */
   }
    .neumorphic-button-primary {
-    @apply neumorphic py-1.5 px-3 sm:py-2 sm:px-4 text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90 text-xs sm:text-sm;
+    @apply neumorphic text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90;
+    @apply text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9; /* Adjusted default padding and height */
   }
 }

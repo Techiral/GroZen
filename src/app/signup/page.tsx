@@ -62,8 +62,8 @@ export default function SignupPage() {
   if (isLoadingAuth || (!isLoadingAuth && currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-2xl sm:text-3xl" />
-        <Loader2 className="mt-4 h-6 w-6 animate-spin text-primary" />
+        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
     );
@@ -71,7 +71,7 @@ export default function SignupPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4">
-      <Card className="w-full max-w-xs sm:max-w-sm neumorphic">
+      <Card className="w-full max-w-[90vw] xs:max-w-xs sm:max-w-sm neumorphic">
         <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
           <div className="mx-auto mb-2 sm:mb-3">
             <Logo size="text-lg sm:text-xl" />
@@ -121,7 +121,7 @@ export default function SignupPage() {
               />
             </div>
             <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm h-9 sm:h-10" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+              {isSubmitting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
               Sign Up with Email
             </Button>
           </form>
@@ -138,7 +138,7 @@ export default function SignupPage() {
             onClick={handleGoogleSignIn}
             disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}
           >
-            {isGoogleSubmitting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <GoogleIcon />}
+            {isGoogleSubmitting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <GoogleIcon />}
             Sign up with Google
           </Button>
         </CardContent>

@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Import AlertDialogTrigger
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -47,39 +47,48 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { LineChart, CartesianGrid, XAxis, YAxis } from "recharts"; 
+
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import { generateShareImage as aiGenerateShareImage, type GenerateShareImageInput } from '@/ai/flows/generate-share-image';
 
-
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
-  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-6 w-6 animate-spin" /></div>,
+  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-5 w-5 animate-spin" /></div>,
 });
 const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), {
   ssr: false,
-  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-6 w-6 animate-spin" /></div>,
+  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-5 w-5 animate-spin" /></div>,
 });
 const RechartsLine = dynamic(() => import('recharts').then(mod => mod.Line), { 
   ssr: false,
 });
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { 
+  ssr: false,
+});
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { 
+  ssr: false,
+});
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { 
+  ssr: false,
+});
+
 
 const SocialShareCard = dynamic(() => import('@/components/social-share-card'), {
   ssr: false,
-  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin" /> <span className="ml-2 text-sm text-muted-foreground">Loading share card...</span></div>,
+  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-5 w-5 animate-spin" /> <span className="ml-2 text-2xs text-muted-foreground">Loading share card...</span></div>,
 });
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
   <Card className="neumorphic w-full mb-3 sm:mb-4">
-    <CardHeader className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
+    <CardHeader className="flex flex-col space-y-1 xs:flex-row xs:items-center xs:justify-between xs:space-y-0 pb-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
       <div className="flex flex-row items-center">
         <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1 sm:gap-1.5">
           {icon} {title}
         </CardTitle>
         {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-3xs sm:text-2xs text-muted-foreground">({itemsCount} items)</span>}
       </div>
-      {action && <div className="w-full sm:w-auto pt-1 sm:pt-0">{action}</div>}
+      {action && <div className="w-full xs:w-auto pt-1 xs:pt-0">{action}</div>}
     </CardHeader>
     <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
       {children}
@@ -87,11 +96,13 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
   </Card>
 );
 
-const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[170px] sm:min-w-[190px] snap-start", className)}>
+const ItemCardInternal: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[160px] xs:min-w-[170px] sm:min-w-[190px] snap-start", className)}>
     {children}
   </div>
 );
+const ItemCard = React.memo(ItemCardInternal);
+
 
 const moodEmojiStrings = [
     { emoji: "😊", label: "Happy" }, 
@@ -160,7 +171,6 @@ export default function DashboardPage() {
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
-  // const [logToDelete, setLogToDelete] = useState<string | null>(null); // No longer needed as state, AlertDialog handles its own open state
   const [isSavingMood, setIsSavingMood] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
   const [isUpdatingDisplayName, setIsUpdatingDisplayName] = useState(false);
@@ -177,23 +187,14 @@ export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // 4. useEffect Hooks
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      if (!currentUser) {
-        if (router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
-          router.replace('/login');
-        }
-      } else { 
-        if (!isAdminUser) { 
-          if (!isOnboardedState && !isLoadingPlan) { 
-            if (router.isReady && router.pathname !== '/onboarding') {
-              router.replace('/onboarding');
-            }
-          }
-        }
-      }
+ useEffect(() => {
+    if (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
+      router.replace('/login');
+    } else if (currentUser && !isAdminUser && !isOnboardedState && !isLoadingPlan && router.isReady && router.pathname !== '/onboarding') {
+      router.replace('/onboarding');
     }
   }, [currentUser, isAdminUser, isLoadingAuth, isOnboardedState, isLoadingPlan, router, isPlanAvailable]);
+
 
   useEffect(() => {
     if (currentUserProfile?.displayName) {
@@ -340,6 +341,7 @@ export default function DashboardPage() {
   }, [moodLogs]);
 
   const moodChartData: ChartMoodLog[] = useMemo(() => {
+    if (!RechartsLine || !CartesianGrid || !XAxis || !YAxis) return []; // Guard against SSR issues with dynamic imports
     return [...moodLogs] 
       .map(log => ({
         date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
@@ -515,10 +517,9 @@ export default function DashboardPage() {
     await logoutUser();
   };
 
-  const confirmDeleteMoodLog = async (logId: string) => { // Accept logId as parameter
+  const confirmDeleteMoodLog = async (logId: string) => { 
     if (logId) {
       await deleteMoodLog(logId);
-      // setLogToDelete(null); // No longer needed as AlertDialog controls itself
     }
   };
   
@@ -544,7 +545,11 @@ export default function DashboardPage() {
         imageFile = new File([blob], 'grozen-challenge-share.png', { type: blob.type });
         toast({ title: "Image generated!", description: "Ready to share."});
       } else {
-        toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
+         if (imageResult.altText && imageResult.altText.includes("AI did not return an image")) {
+          toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
+        } else {
+          toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image. Sharing your progress with text!" });
+        }
       }
     } catch (error: any) {
       console.error("Error generating share image:", error);
@@ -560,7 +565,7 @@ export default function DashboardPage() {
       text: shareText,
       url: appUrl,
     };
-    if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+    if (imageFile && navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
       shareData.files = [imageFile];
     }
 
@@ -607,8 +612,8 @@ export default function DashboardPage() {
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-2xl sm:text-3xl" />
-        <Loader2 className="mt-4 h-6 w-6 animate-spin text-primary" />
+        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading user data...</p>
       </div>
     );
@@ -617,14 +622,14 @@ export default function DashboardPage() {
   if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-xl sm:text-2xl" />
+        <Logo size="text-lg sm:text-xl" />
         <p className="mt-3 text-sm sm:text-base">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9" aria-label="Create a New Plan">
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-2xs sm:text-xs px-2.5 py-1 h-8 sm:px-3 sm:py-1.5 sm:h-9" aria-label="Create a New Plan">
           Create a New Plan
         </Button>
-         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8" aria-label="Logout">
-            <LogOut className="mr-1 h-3 w-3" /> Logout
+         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8" aria-label="Logout">
+            <LogOut className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
         </Button>
       </div>
     );
@@ -633,7 +638,7 @@ export default function DashboardPage() {
   if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-xl sm:text-2xl" />
+        <Logo size="text-lg sm:text-xl" />
         <p className="mt-3 text-sm sm:text-base">Generating your personalized plan...</p>
         <RotateCcw className="mt-3 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
       </div>
@@ -642,8 +647,8 @@ export default function DashboardPage() {
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
-      <header className="flex flex-col xs:flex-row justify-between items-center mb-4 sm:mb-5">
-        <Logo size="text-lg sm:text-xl" />
+      <header className="flex flex-col xs:flex-row justify-between items-center mb-3 sm:mb-4">
+        <Logo size="text-base sm:text-lg md:text-xl" />
         <div className="flex items-center gap-1.5 sm:gap-2 mt-2 xs:mt-0">
             {isAdminUser && (
                 <Button 
@@ -652,7 +657,7 @@ export default function DashboardPage() {
                     className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
                     aria-label="Admin Panel"
                 >
-                    <ShieldCheck className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Admin
+                    <ShieldCheck className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Admin
                 </Button>
             )}
             {!isAdminUser && ( 
@@ -661,7 +666,7 @@ export default function DashboardPage() {
                 </Button>
             )}
             <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
-                <LogOut className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
+                <LogOut className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
             </Button>
         </div>
       </header>
@@ -673,24 +678,24 @@ export default function DashboardPage() {
         </div>
       )}
       
-      <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
-        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
+      <div className="mb-3 sm:mb-4 p-3 sm:p-4 neumorphic rounded-lg">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
         <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
       </div>
 
       {(isPlanAvailable || (isAdminUser && wellnessPlan)) && wellnessPlan && ( 
         <>
-          <SectionCard title="Meals" icon={<Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
+          <SectionCard title="Meals" icon={<Utensils className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-2.5 pb-2 sm:pb-2.5">
+              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                 {wellnessPlan.meals.map((meal, index) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {meal.day}
+                    <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
                     </h4>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -698,16 +703,16 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
+          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-2.5 pb-2 sm:pb-2.5">
+              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                 {wellnessPlan.exercise.map((ex, index) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
-                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {ex.day}
+                     <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
                     </h4>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -715,16 +720,16 @@ export default function DashboardPage() {
             </ScrollArea>
           </SectionCard>
 
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
+          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-2 sm:space-x-2.5 pb-2 sm:pb-2.5">
+              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                 {wellnessPlan.mindfulness.map((mind, index) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {mind.day}
+                    <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
                     </h4>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
-                    <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
+                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
                   </ItemCard>
                 ))}
               </div>
@@ -744,17 +749,17 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      <SectionCard title="Your Profile" icon={<UserIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard title="Your Profile" icon={<UserIcon className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
         <div className="space-y-1.5 sm:space-y-2">
           <div>
-            <Label htmlFor="displayName" className="text-xs sm:text-sm">Display Name (for Leaderboard)</Label>
+            <Label htmlFor="displayName" className="text-2xs sm:text-xs">Display Name (for Leaderboard)</Label>
             <Input
               id="displayName"
               type="text"
               value={newDisplayName}
               onChange={(e) => setNewDisplayName(e.target.value)}
               placeholder="Your public name"
-              className="mt-1 text-xs sm:text-sm h-9 sm:h-10"
+              className="mt-1 text-xs sm:text-sm h-8 sm:h-9"
               disabled={isUpdatingDisplayName}
             />
           </div>
@@ -762,9 +767,9 @@ export default function DashboardPage() {
             onClick={handleSaveDisplayName} 
             disabled={isUpdatingDisplayName || newDisplayName === (currentUserProfile?.displayName || "")}
             variant="neumorphic-primary"
-            className="w-full sm:w-auto text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9"
+            className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
           >
-            {isUpdatingDisplayName ? <Loader2 className="mr-1.5 h-2.5 w-2.5 animate-spin" /> : null}
+            {isUpdatingDisplayName ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : null}
             Save Display Name
           </Button>
         </div>
@@ -772,33 +777,33 @@ export default function DashboardPage() {
 
       <SectionCard 
         title="Current Wellness Challenge" 
-        icon={<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}
+        icon={<Trophy className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}
         action={
             userActiveChallenge && (
             <Link href="/leaderboard" passHref>
                 <Button
                     variant="outline"
-                    className="neumorphic-button text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1 h-7 sm:h-8"
+                    className="neumorphic-button text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1 h-6 sm:h-7"
                     aria-label="View Challenge Leaderboard"
                 >
-                    <ListOrdered className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
+                    <ListOrdered className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
                 </Button>
             </Link>
             )
         }
       >
         <CardTitle className="text-sm sm:text-base mb-0.5">{CURRENT_CHALLENGE.title}</CardTitle>
-        <CardDescription className="text-2xs sm:text-xs mb-2 sm:mb-2.5">{CURRENT_CHALLENGE.description}</CardDescription>
+        <CardDescription className="text-2xs sm:text-xs mb-1.5 sm:mb-2">{CURRENT_CHALLENGE.description}</CardDescription>
         {isLoadingUserChallenge ? (
-          <div className="flex items-center justify-center py-1.5">
-            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
+          <div className="flex items-center justify-center py-1">
+            <Loader2 className="h-4 w-4 sm:h-4 sm:w-4 animate-spin text-primary" />
             <p className="ml-1.5 text-2xs sm:text-xs text-muted-foreground">Loading challenge...</p>
           </div>
         ) : !userActiveChallenge ? (
           <Button
             variant="neumorphic-primary"
             onClick={joinCurrentChallenge}
-            className="w-full sm:w-auto text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9"
+            className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
             aria-label={`Join ${CURRENT_CHALLENGE.title} challenge`}
           >
             Join Challenge
@@ -809,8 +814,8 @@ export default function DashboardPage() {
               Your Progress: <span className="font-semibold">{userActiveChallenge.daysCompleted}</span> / {CURRENT_CHALLENGE.durationDays} days
             </p>
             {userActiveChallenge.daysCompleted >= CURRENT_CHALLENGE.durationDays ? (
-                 <Alert variant="default" className="neumorphic-sm p-2 sm:p-2.5">
-                    <Trophy className="h-3.5 w-3.5 text-yellow-400" />
+                 <Alert variant="default" className="neumorphic-sm p-1.5 sm:p-2">
+                    <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-400" />
                     <AlertTitle className="text-2xs sm:text-xs text-yellow-300">Challenge Complete!</AlertTitle>
                     <AlertDescription className="text-3xs sm:text-2xs">
                         Congratulations on completing the {CURRENT_CHALLENGE.title}!
@@ -825,20 +830,20 @@ export default function DashboardPage() {
               <Button
                 variant="outline"
                 onClick={logChallengeDay}
-                className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9"
+                className="neumorphic-button w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
                 aria-label="Log today's challenge completion"
               >
-                <CheckSquare className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3"/> Log Today
+                <CheckSquare className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3"/> Log Today
               </Button>
             )}
             <Button
                 variant="outline"
                 onClick={handleChallengeShare}
                 disabled={isSharingChallenge}
-                className="neumorphic-button w-full sm:w-auto text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9"
+                className="neumorphic-button w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
                 aria-label="Share challenge progress"
             >
-                {isSharingChallenge ? <Loader2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : <ShareIcon className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3"/>}
+                {isSharingChallenge ? <Loader2 className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : <ShareIcon className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3"/>}
                 {isSharingChallenge ? 'Sharing...' : 'Share Progress'}
             </Button>
           </div>
@@ -877,11 +882,11 @@ export default function DashboardPage() {
                           type="button"
                           variant="outline"
                           onClick={handleToggleCamera}
-                          className="neumorphic-button w-full xs:w-auto text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1 h-7 sm:h-8"
+                          className="neumorphic-button w-full xs:w-auto text-3xs px-1.5 py-0.5 h-7 sm:text-2xs sm:px-2 sm:py-1 sm:h-8"
                           disabled={!!capturedSelfie || isSavingMood || (isCameraActive && !selfieStream && hasCameraPermission === null) } 
                           aria-label={isCameraActive ? 'Close Camera' : 'Open Camera'}
                       >
-                          {isCameraActive && !selfieStream && hasCameraPermission === null ? <Loader2 className="mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" /> : (isCameraActive ? <VideoOff className="mr-1 h-2.5 w-2.5" /> : <Camera className="mr-1 h-2.5 w-2.5" />)}
+                          {isCameraActive && !selfieStream && hasCameraPermission === null ? <Loader2 className="mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" /> : (isCameraActive ? <VideoOff className="mr-0.5 h-2.5 w-2.5" /> : <Camera className="mr-0.5 h-2.5 w-2.5" />)}
                           {isCameraActive && !selfieStream && hasCameraPermission === null ? 'Starting...' : (isCameraActive ? 'Close Cam' : 'Open Cam')}
                       </Button>
                       {isCameraActive && selfieStream && hasCameraPermission === true && (
@@ -890,14 +895,14 @@ export default function DashboardPage() {
                               variant="neumorphic-primary"
                               onClick={handleCaptureSelfie}
                               disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
-                              className="w-full xs:w-auto text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1 h-7 sm:h-8"
+                              className="w-full xs:w-auto text-3xs px-1.5 py-0.5 h-7 sm:text-2xs sm:px-2 sm:py-1 sm:h-8"
                               aria-label="Capture Selfie"
                           >
-                              <Camera className="mr-1 h-2.5 w-2.5" /> Capture
+                              <Camera className="mr-0.5 h-2.5 w-2.5" /> Capture
                           </Button>
                       )}
                   </div>
-                  {/* Responsive Video Container */}
+                  
                   <div className={cn(
                       "mt-1.5 rounded-md overflow-hidden border border-border neumorphic-inset-sm bg-muted/20 flex items-center justify-center text-center p-1",
                       "aspect-[3/4] sm:aspect-square md:aspect-video" 
@@ -937,7 +942,7 @@ export default function DashboardPage() {
                   {capturedSelfie && (
                       <div className="mt-1.5 space-y-0.5">
                           <p className="text-2xs sm:text-xs font-medium">Selfie Preview:</p>
-                          <div className="relative aspect-video w-full max-w-[120px] sm:max-w-[150px] neumorphic-sm rounded-md overflow-hidden">
+                          <div className="relative aspect-video w-full max-w-[100px] sm:max-w-[120px] neumorphic-sm rounded-md overflow-hidden">
                                <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
                           </div>
                           <Button
@@ -945,11 +950,11 @@ export default function DashboardPage() {
                               variant="outline"
                               size="sm"
                               onClick={clearCapturedSelfie}
-                              className="neumorphic-button items-center text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1 h-6 sm:h-7"
+                              className="neumorphic-button items-center text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7"
                               disabled={isSavingMood}
                               aria-label="Clear captured selfie"
                           >
-                              <Trash2 className="mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5 text-destructive" /> Clear
+                              <Trash2 className="mr-0.5 h-2 w-2 sm:h-2.5 sm:w-2.5 text-destructive" /> Clear
                           </Button>
                       </div>
                   )}
@@ -975,8 +980,8 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} >
-         <CardDescription className="mb-2 sm:mb-2.5 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
+      <SectionCard title="Mood Check-in" icon={<Smile className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} >
+         <CardDescription className="mb-1.5 sm:mb-2 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
         <div className="flex space-x-1 xs:space-x-1.5 justify-center sm:justify-start">
           {moodEmojiStrings.map(moodObj => (
             <Button
@@ -984,7 +989,7 @@ export default function DashboardPage() {
               variant="outline"
               size="icon"
               onClick={() => handleMoodButtonClick(moodObj.emoji)}
-              className="text-base sm:text-lg neumorphic-button h-9 w-9 sm:h-10 sm:w-10 hover:neumorphic-inset"
+              className="text-base sm:text-lg neumorphic-button h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 hover:neumorphic-inset"
               aria-label={`Log mood: ${moodObj.label}`}
             >
               {moodObj.emoji}
@@ -993,12 +998,13 @@ export default function DashboardPage() {
         </div>
       </SectionCard>
       
-      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
         {moodChartData.length >= 2 ? (
-          <div className="h-[180px] sm:h-[200px] md:h-[220px]">
+          <div className="h-[160px] xs:h-[180px] sm:h-[200px] md:h-[220px]">
+           {ChartContainer && ResponsiveContainer && RechartsLine && CartesianGrid && XAxis && YAxis && ( 
             <ChartContainer config={chartConfig} className="h-full w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <RechartsLine
                   data={moodChartData}
                   margin={{
                     top: 5,
@@ -1046,7 +1052,7 @@ export default function DashboardPage() {
                       />
                     }
                   />
-                  { RechartsLine && 
+                  
                     <RechartsLine
                       dataKey="moodValue"
                       type="monotone"
@@ -1065,10 +1071,11 @@ export default function DashboardPage() {
                          strokeWidth: 2,
                       }}
                     />
-                  }
-                </LineChart>
+                  
+                </RechartsLine>
               </ResponsiveContainer>
             </ChartContainer>
+           )}
           </div>
         ) : (
           <CardDescription className="text-center text-2xs sm:text-xs py-2">
@@ -1078,14 +1085,14 @@ export default function DashboardPage() {
       </SectionCard>
 
 
-      <SectionCard title="Mood History" icon={<RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
+      <SectionCard title="Mood History" icon={<RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
         <ScrollArea className="w-full h-[180px] sm:h-[220px] md:h-[250px] whitespace-nowrap rounded-md">
           <div className="flex flex-col space-y-1.5 sm:space-y-2 p-0.5">
             {sortedMoodLogs.map(log => (
-              <ItemCard key={log.id} className="bg-card w-full min-w-0 p-2 sm:p-2.5">
+              <div key={log.id} className="bg-card w-full min-w-0 p-2 sm:p-2.5 neumorphic-sm">
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
                   {log.selfieDataUri && (
-                    <div className="relative w-full sm:w-14 md:w-16 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                    <div className="relative w-full sm:w-12 md:w-14 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
                       <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${log.date ? format(parseISO(log.date), "MMM d") : 'Unknown Date'}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
                     </div>
                   )}
@@ -1094,11 +1101,11 @@ export default function DashboardPage() {
                       <h4 className="font-semibold text-sm sm:text-base flex items-center gap-0.5 sm:gap-1">
                         <span className="text-base sm:text-lg">{log.mood}</span>
                         {moodEmojiStrings.find(m => m.emoji === log.mood) && 
-                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3.5 w-3.5 text-green-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3.5 w-3.5 text-blue-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3.5 w-3.5 text-yellow-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3.5 w-3.5 text-orange-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3.5 w-3.5 text-red-400" aria-hidden="true"/> : '')
+                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-400" aria-hidden="true"/> : '')
                         }
                       </h4>
                       <AlertDialog>
@@ -1106,10 +1113,10 @@ export default function DashboardPage() {
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-4 w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
+                                className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
                                 aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
                             >
-                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                <Trash2 className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-3 sm:w-3" />
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="neumorphic p-3 sm:p-4">
@@ -1144,14 +1151,14 @@ export default function DashboardPage() {
                      {log.aiFeedback && (
                       <div className="mt-0.5 pt-0.5 border-t border-border/50">
                           <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-3 w-3 mr-1 text-accent" /> <em>GroZen Insight:</em>
+                              <Sparkles className="h-2.5 w-2.5 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-3xs sm:text-2xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
                     )}
                   </div>
                 </div>
-              </ItemCard>
+              </div>
             ))}
           </div>
           <ScrollBar orientation="vertical" />
@@ -1163,7 +1170,7 @@ export default function DashboardPage() {
         )}
       </SectionCard>
 
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
+      <SectionCard title="Share Your Progress" icon={<Gift className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
         {beforeShareLog && afterShareLog ? (
           <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
         ) : (
@@ -1174,18 +1181,18 @@ export default function DashboardPage() {
       </SectionCard>
 
 
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />}>
-        <CardDescription className="mb-2 sm:mb-2.5 text-2xs sm:text-xs">
+      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
+        <CardDescription className="mb-1.5 sm:mb-2 text-2xs sm:text-xs">
           Let GroZen generate a grocery list based on your current wellness plan.
         </CardDescription>
         <Button
           onClick={handleGenerateGroceryListClick}
           disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
           variant="neumorphic-primary"
-          className="w-full sm:w-auto text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9"
+          className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
           aria-label="Generate Grocery List"
         >
-          {isLoadingGroceryList ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <ShoppingCart className="mr-1 h-2.5 w-2.5" />}
+          {isLoadingGroceryList ? <Loader2 className="mr-0.5 h-2.5 w-2.5 animate-spin" /> : <ShoppingCart className="mr-0.5 h-2.5 w-2.5" />}
           Generate Grocery List
         </Button>
 
@@ -1203,7 +1210,7 @@ export default function DashboardPage() {
         )}
 
         {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
-          <div className="mt-2.5 sm:mt-3 space-y-2 sm:space-y-2.5">
+          <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2">
             <h3 className="text-xs sm:text-sm font-semibold">
               Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {groceryList.generatedDate ? format(parseISO(groceryList.generatedDate), "MMM d, yyyy") : 'Unknown'})</span>
             </h3>
@@ -1226,10 +1233,10 @@ export default function DashboardPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => deleteGroceryItem(item.id)}
-                            className="h-3.5 w-3.5 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1 sm:ml-1.5"
+                            className="h-3 w-3 xs:h-3.5 xs:w-3.5 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1 sm:ml-1.5"
                             aria-label={`Delete ${item.name} from grocery list`}
                           >
-                            <Trash2 className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                            <Trash2 className="h-2 w-2 xs:h-2.5 xs:w-2.5" />
                           </Button>
                         </li>
                       ))}
@@ -1253,5 +1260,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    

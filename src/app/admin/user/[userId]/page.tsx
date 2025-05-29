@@ -190,7 +190,7 @@ export default function AdminUserDetailPage() {
               <ItemCard key={log.id} className="bg-card w-full min-w-0 p-2 sm:p-2.5">
                 <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
                   {log.selfieDataUri && (
-                    <div className="relative w-full sm:w-14 md:w-16 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
+                    <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded-md overflow-hidden neumorphic-inset-sm">
                       <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${format(new Date(log.date), "MMM d")}`} fill={true} className="object-cover" data-ai-hint="selfie person"/>
                     </div>
                   )}
@@ -250,3 +250,4 @@ export default function AdminUserDetailPage() {
       </DetailSection>
     </main>
   );
+}
