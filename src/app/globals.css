@@ -37,8 +37,9 @@
 
     /* Neumorphic specific variables - slightly softer shadows */
     --neumorphic-bg: hsl(var(--background));
-    --neumorphic-shadow-light: 5px 5px 10px rgba(255, 255, 255, 0.02), -5px -5px 10px rgba(0, 0, 0, 0.35);
-    --neumorphic-shadow-light-inset: inset 5px 5px 10px rgba(0, 0, 0, 0.35), inset -5px -5px 10px rgba(255, 255, 255, 0.02);
+    --neumorphic-shadow-light: 2px 2px 5px rgba(255, 255, 255, 0.015), -2px -2px 5px rgba(0, 0, 0, 0.3);
+    --neumorphic-shadow-light-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -2px -2px 5px rgba(255, 255, 255, 0.015);
+
 
      /* Sidebar variables (keeping them, might be useful later, ensuring they fit dark theme) */
     --sidebar-background: 0 0% 5%;
@@ -118,10 +119,11 @@
 
   .neumorphic-button {
     @apply neumorphic text-accent-foreground bg-accent active:neumorphic-inset hover:opacity-90;
-    @apply text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9; /* Adjusted default padding and height */
+    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8;
   }
    .neumorphic-button-primary {
     @apply neumorphic text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90;
-    @apply text-2xs px-2.5 py-1 h-8 sm:text-xs sm:px-3 sm:py-1.5 sm:h-9; /* Adjusted default padding and height */
+    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8;
   }
 }
+

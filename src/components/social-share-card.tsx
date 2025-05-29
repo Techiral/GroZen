@@ -48,7 +48,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
          toast({ variant: 'default', title: 'Share Canceled', description: 'Sharing was canceled.' });
       } else if (errorMessage.includes('permission denied') || errorMessage.includes('not allowed')) {
           toast({ variant: 'default', title: 'Share Permission Denied', description: 'Could not share. Content copied to clipboard instead!', duration: 5000 });
-          if (navigator.clipboard) { // Ensure clipboard is available before attempting to use it
+          if (navigator.clipboard) { 
             await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
           }
       } else {
@@ -63,9 +63,9 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
 
   return (
     <Card className="neumorphic w-full">
-      <CardHeader className="p-2 sm:p-2.5 md:p-3">
-        <CardTitle className="text-sm sm:text-base font-bold text-center flex items-center justify-center gap-1 sm:gap-1.5">
-            <Zap className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" /> My GroZen Progress! <Zap className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />
+      <CardHeader className="p-2 sm:p-2.5">
+        <CardTitle className="text-sm sm:text-base font-semibold text-center flex items-center justify-center gap-1 sm:gap-1.5">
+            <Zap className="h-3 w-3 sm:h-3.5 text-accent" /> My GroZen Progress! <Zap className="h-3 w-3 sm:h-3.5 text-accent" />
         </CardTitle>
          {daysBetween >= 0 && (
             <p className="text-center text-2xs sm:text-xs text-muted-foreground mt-0.5">
@@ -73,7 +73,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
             </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-2 sm:space-y-2.5 p-2 sm:p-2.5 md:p-3">
+      <CardContent className="space-y-2 sm:space-y-2.5 p-2 sm:p-2.5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5 items-center">
           <div className="space-y-0.5">
             <h3 className="text-2xs sm:text-xs font-semibold text-center">Before</h3>
@@ -83,7 +83,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
                 alt="Before selfie" 
                 fill={true}
                 className="object-cover"
-                sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) 80vw, (max-width: 768px) 40vw, 200px"
                 data-ai-hint="progress selfie" 
               />
             </div>
@@ -101,7 +101,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
                 alt="After selfie" 
                 fill={true}
                 className="object-cover"
-                sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) 80vw, (max-width: 768px) 40vw, 200px"
                 data-ai-hint="progress selfie"
               />
             </div>
@@ -110,7 +110,7 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
             </p>
           </div>
         </div>
-        <Button onClick={handleShare} variant="neumorphic-primary" className="w-full text-2xs px-2 py-1 h-8 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-9">
+        <Button onClick={handleShare} variant="neumorphic-primary" className="w-full text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8">
           <Share2 className="mr-1 h-2.5 w-2.5 sm:mr-1.5 sm:h-3 sm:w-3" /> Share My Progress
         </Button>
       </CardContent>
@@ -119,3 +119,4 @@ const SocialShareCard: React.FC<SocialShareCardProps> = ({ beforeLog, afterLog }
 };
 
 export default SocialShareCard;
+

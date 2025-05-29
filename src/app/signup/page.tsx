@@ -62,7 +62,7 @@ export default function SignupPage() {
   if (isLoadingAuth || (!isLoadingAuth && currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Logo size="text-xl sm:text-2xl" />
         <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
@@ -72,17 +72,17 @@ export default function SignupPage() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4">
       <Card className="w-full max-w-[90vw] xs:max-w-xs sm:max-w-sm neumorphic">
-        <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
-          <div className="mx-auto mb-2 sm:mb-3">
+        <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-3.5">
+          <div className="mx-auto mb-2 sm:mb-2.5">
             <Logo size="text-lg sm:text-xl" />
           </div>
           <CardTitle className="text-base sm:text-lg">Create your GroZen Account</CardTitle>
           <CardDescription className="text-2xs sm:text-xs">Join us to start your wellness journey.</CardDescription>
         </CardHeader>
-        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-5">
+        <CardContent className="px-4 pb-3 sm:px-5 sm:pb-4">
           <form onSubmit={handleEmailSubmit} className="space-y-3 sm:space-y-3.5">
             <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
+              <Label htmlFor="email" className="text-2xs sm:text-xs">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -90,12 +90,12 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="h-9 sm:h-10 text-xs sm:text-sm"
+                className="h-8 sm:h-9 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password" className="text-xs sm:text-sm">Password</Label>
+              <Label htmlFor="password" className="text-2xs sm:text-xs">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -103,12 +103,12 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
                 required
-                className="h-9 sm:h-10 text-xs sm:text-sm"
+                className="h-8 sm:h-9 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="confirm-password" className="text-xs sm:text-sm">Confirm Password</Label>
+              <Label htmlFor="confirm-password" className="text-2xs sm:text-xs">Confirm Password</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -116,17 +116,17 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Retype your password"
                 required
-                className="h-9 sm:h-10 text-xs sm:text-sm"
+                className="h-8 sm:h-9 text-xs sm:text-sm"
                 disabled={isSubmitting || isGoogleSubmitting}
               />
             </div>
-            <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm h-9 sm:h-10" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
+            <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm h-8 sm:h-9" disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}>
               {isSubmitting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
               Sign Up with Email
             </Button>
           </form>
 
-          <div className="my-3 sm:my-4 flex items-center w-full">
+          <div className="my-3 sm:my-3.5 flex items-center w-full">
             <Separator className="flex-1" />
             <span className="px-2 text-2xs sm:text-xs text-muted-foreground">OR</span>
             <Separator className="flex-1" />
@@ -134,7 +134,7 @@ export default function SignupPage() {
 
           <Button 
             variant="outline" 
-            className="w-full text-xs sm:text-sm h-9 sm:h-10 neumorphic-button" 
+            className="w-full text-xs sm:text-sm h-8 sm:h-9 neumorphic-button" 
             onClick={handleGoogleSignIn}
             disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}
           >
@@ -142,7 +142,7 @@ export default function SignupPage() {
             Sign up with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-center text-2xs sm:text-xs pt-3 pb-4 px-4 sm:px-6 sm:pb-5">
+        <CardFooter className="flex flex-col items-center text-center text-2xs sm:text-xs pt-2.5 pb-3.5 px-4 sm:px-5 sm:pb-4">
           <p>Already have an account?</p>
           <Link href="/login" className="font-medium text-primary hover:underline">
             Login here
@@ -152,3 +152,4 @@ export default function SignupPage() {
     </main>
   );
 }
+

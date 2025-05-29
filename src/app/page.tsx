@@ -21,12 +21,9 @@ export default function HomePage() {
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
       if (currentUser) {
-        if (isPlanAvailable) {
-          router.replace('/dashboard');
-        } else if (isOnboardedState) { 
+        if (isOnboardedState) { 
           router.replace('/dashboard'); 
-        }
-         else { 
+        } else { 
           router.replace('/onboarding');
         }
       } else {
@@ -50,37 +47,35 @@ export default function HomePage() {
       <div className="absolute inset-0 z-[-1] opacity-10">
          <Image 
           src="https://placehold.co/1200x800.png" 
-          alt="Abstract background"
+          alt="Abstract wellness background"
           data-ai-hint="wellness abstract" 
           fill={true}
           className="object-cover"
           priority
         />
       </div>
-      <div className="relative z-10 p-3 sm:p-4 md:p-6 neumorphic rounded-xl max-w-[90vw] xs:max-w-xs sm:max-w-sm md:max-w-md bg-background/80 backdrop-blur-sm">
+      <div className="relative z-10 p-4 sm:p-5 md:p-6 neumorphic rounded-xl max-w-[90vw] xs:max-w-xs sm:max-w-sm md:max-w-md bg-background/80 backdrop-blur-sm">
         <div className="mb-2 sm:mb-3">
-          <Logo size="text-lg sm:text-xl md:text-2xl" />
+          <Logo size="text-lg sm:text-xl" />
         </div>
-        <h1 className="text-base sm:text-lg md:text-xl font-bold mb-1.5 sm:mb-2 text-foreground">
+        <h1 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 text-foreground">
           Welcome to GroZen
         </h1>
-        <p className="text-2xs sm:text-xs md:text-sm text-muted-foreground mb-3 sm:mb-4">
+        <p className="text-2xs sm:text-xs text-muted-foreground mb-3 sm:mb-4">
           Your personalized AI wellness companion for a healthier, more balanced life. Get tailored meal plans, fitness routines, and mindfulness practices.
         </p>
-        <div className="flex flex-col space-y-1.5 sm:space-y-2">
+        <div className="flex flex-col space-y-2 sm:space-y-2.5">
             <Button 
             variant="neumorphic-primary" 
-            size="lg" 
             onClick={() => router.push('/signup')}
-            className="text-xs sm:text-sm px-3 py-1.5 h-9 sm:h-10"
+            className="text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9"
             >
             Get Started
             </Button>
             <Button 
             variant="outline" 
-            size="lg" 
             onClick={() => router.push('/login')}
-            className="text-xs sm:text-sm px-3 py-1.5 h-9 sm:h-10 neumorphic-button"
+            className="text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9 neumorphic-button"
             >
             Login
             </Button>
@@ -89,3 +84,4 @@ export default function HomePage() {
     </main>
   );
 }
+

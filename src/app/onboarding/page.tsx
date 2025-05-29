@@ -41,7 +41,6 @@ export default function OnboardingPage() {
     generatePlan, 
     isLoadingPlan, 
     onboardingData: initialData,
-    isPlanAvailable 
   } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,11 +72,9 @@ export default function OnboardingPage() {
     if (!isLoadingAuth) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (isPlanAvailable && currentStep !== steps.length -1) { 
-        // Allow reaching summary step even if plan exists if user came via "New Plan"
       }
     }
-  }, [currentUser, isLoadingAuth, isPlanAvailable, router, currentStep]);
+  }, [currentUser, isLoadingAuth, router]);
 
 
   const { control, handleSubmit, trigger, getValues } = form;
@@ -121,7 +118,7 @@ export default function OnboardingPage() {
   if (isLoadingAuth || (!isLoadingAuth && !currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Logo size="text-xl sm:text-2xl" />
         <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading...</p>
       </div>
@@ -131,25 +128,25 @@ export default function OnboardingPage() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4">
       <Card className="w-full max-w-[90vw] xs:max-w-sm sm:max-w-md neumorphic shadow-lg">
-        <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
-          <div className="mx-auto mb-2 sm:mb-3">
+        <CardHeader className="text-center px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-3.5">
+          <div className="mx-auto mb-2 sm:mb-2.5">
             <Logo size="text-lg sm:text-xl" />
           </div>
           <CardTitle className="text-base sm:text-lg">{steps[currentStep].title}</CardTitle>
           <CardDescription className="text-2xs sm:text-xs">{steps[currentStep].description}</CardDescription>
         </CardHeader>
-        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-5">
+        <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
           <FormProvider {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-3.5">
               {currentStep === 0 && (
                 <FormField
                   control={control}
                   name="goals"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs sm:text-sm">Goals</FormLabel>
+                      <FormLabel className="text-2xs sm:text-xs">Goals</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[40px] xs:min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., lose weight, gain energy, build muscle" {...field} className="min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
@@ -162,9 +159,9 @@ export default function OnboardingPage() {
                   name="dietPreferences"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs sm:text-sm">Dietary Preferences</FormLabel>
+                      <FormLabel className="text-2xs sm:text-xs">Dietary Preferences</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[40px] xs:min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
+                        <Textarea placeholder="e.g., vegetarian, gluten-free, allergies to nuts" {...field} className="min-h-[50px] sm:min-h-[60px] neumorphic-inset-sm text-xs sm:text-sm" />
                       </FormControl>
                       <FormMessage className="text-2xs sm:text-xs"/>
                     </FormItem>
@@ -177,7 +174,7 @@ export default function OnboardingPage() {
                   name="budget"
                   render={({ field }) => (
                     <FormItem className="space-y-1 sm:space-y-1.5">
-                      <FormLabel className="text-xs sm:text-sm">Weekly Budget</FormLabel>
+                      <FormLabel className="text-2xs sm:text-xs">Weekly Budget</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
@@ -212,18 +209,18 @@ export default function OnboardingPage() {
 
               <div className="flex flex-col sm:flex-row justify-between pt-1.5 sm:pt-2 gap-2 sm:gap-3">
                 {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-2xs sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 h-8 sm:h-9">
+                  <Button type="button" variant="outline" onClick={handlePrev} className="neumorphic-button w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 h-8 sm:h-9">
                     Previous
                   </Button>
                 )}
                 {currentStep === 0 && <div className="hidden sm:block sm:flex-grow"></div>} 
                 {currentStep < steps.length - 1 && (
-                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-2xs sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 h-8 sm:h-9">
+                  <Button type="button" variant="neumorphic-primary" onClick={handleNext} className="w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 h-8 sm:h-9">
                     Next
                   </Button>
                 )}
                 {currentStep === steps.length - 1 && (
-                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan || isSubmitting} className="w-full sm:w-auto text-2xs sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 h-8 sm:h-9">
+                  <Button type="submit" variant="neumorphic-primary" disabled={isLoadingPlan || isSubmitting} className="w-full sm:w-auto text-2xs sm:text-xs px-2.5 py-1 h-8 sm:h-9">
                     {(isLoadingPlan || isSubmitting) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
                     Generate My Plan
                   </Button>
@@ -231,11 +228,11 @@ export default function OnboardingPage() {
               </div>
             </form>
           </FormProvider>
-          <div className="flex justify-center mt-3 sm:mt-4 space-x-1 sm:space-x-1.5">
+          <div className="flex justify-center mt-3 sm:mt-3.5 space-x-1 sm:space-x-1.5">
             {steps.map((_, index) => (
               <div
                 key={index}
-                className={`h-1 sm:h-1.5 w-3 sm:w-4 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
+                className={`h-1.5 w-3 rounded-full ${currentStep >= index ? 'bg-primary' : 'bg-muted'}`}
               />
             ))}
           </div>
@@ -244,3 +241,4 @@ export default function OnboardingPage() {
     </main>
   );
 }
+
