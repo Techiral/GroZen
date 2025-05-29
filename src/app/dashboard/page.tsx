@@ -5,9 +5,9 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import dynamic from 'next/dynamic'; 
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
-import SocialShareCard from '@/components/social-share-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -32,23 +32,42 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Import AlertDialogTrigger
 } from "@/components/ui/alert-dialog"
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 import {
-  ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { LineChart, CartesianGrid, XAxis, YAxis } from "recharts"; 
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import { generateShareImage as aiGenerateShareImage, type GenerateShareImageInput } from '@/ai/flows/generate-share-image';
+
+
+const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
+  ssr: false,
+  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-6 w-6 animate-spin" /></div>,
+});
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), {
+  ssr: false,
+  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-6 w-6 animate-spin" /></div>,
+});
+const RechartsLine = dynamic(() => import('recharts').then(mod => mod.Line), { 
+  ssr: false,
+});
+
+const SocialShareCard = dynamic(() => import('@/components/social-share-card'), {
+  ssr: false,
+  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin" /> <span className="ml-2 text-sm text-muted-foreground">Loading share card...</span></div>,
+});
 
 
 const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
@@ -107,7 +126,9 @@ const chartConfig = {
 
 
 export default function DashboardPage() {
+  // 1. Context Hooks
   const router = useRouter();
+  const { toast } = useToast();
   const {
     currentUser,
     isAdminUser,
@@ -133,13 +154,13 @@ export default function DashboardPage() {
     currentUserProfile,
     updateUserDisplayName,
   } = usePlan();
-  const { toast } = useToast();
+  
 
-  // useState Hooks
+  // 2. useState Hooks
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
-  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+  // const [logToDelete, setLogToDelete] = useState<string | null>(null); // No longer needed as state, AlertDialog handles its own open state
   const [isSavingMood, setIsSavingMood] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
   const [isUpdatingDisplayName, setIsUpdatingDisplayName] = useState(false);
@@ -152,10 +173,28 @@ export default function DashboardPage() {
   const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
   const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
 
-  // useRef Hooks
+  // 3. useRef Hooks
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // useEffect Hooks - Grouped together
+  // 4. useEffect Hooks
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!currentUser) {
+        if (router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
+          router.replace('/login');
+        }
+      } else { 
+        if (!isAdminUser) { 
+          if (!isOnboardedState && !isLoadingPlan) { 
+            if (router.isReady && router.pathname !== '/onboarding') {
+              router.replace('/onboarding');
+            }
+          }
+        }
+      }
+    }
+  }, [currentUser, isAdminUser, isLoadingAuth, isOnboardedState, isLoadingPlan, router, isPlanAvailable]);
+
   useEffect(() => {
     if (currentUserProfile?.displayName) {
       setNewDisplayName(currentUserProfile.displayName);
@@ -163,25 +202,6 @@ export default function DashboardPage() {
         setNewDisplayName(currentUser.email?.split('@')[0] || "GroZen User");
     }
   }, [currentUserProfile, currentUser]);
-
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      if (!currentUser) {
-        if (router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
-          router.replace('/login');
-        }
-      } else { // User is authenticated
-        if (!isAdminUser) { // Not an admin
-          if (!isOnboardedState && !isLoadingPlan) { // Not onboarded, and plan not loading
-            if (router.isReady && router.pathname !== '/onboarding') {
-              router.replace('/onboarding');
-            }
-          }
-          // The case for (isOnboardedState && !isPlanAvailable && !isLoadingPlan) is handled by UI below, not redirection.
-        }
-      }
-    }
-  }, [currentUser, isAdminUser, isLoadingAuth, isOnboardedState, isLoadingPlan, router, isPlanAvailable]);
 
 
   useEffect(() => {
@@ -216,7 +236,9 @@ export default function DashboardPage() {
  useEffect(() => {
     const video = videoRef.current;
     if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
-        video.srcObject = selfieStream;
+        if (video.srcObject !== selfieStream) { 
+            video.srcObject = selfieStream;
+        }
 
         const handleLoadedMetadata = () => {
             video.play().catch(err => {
@@ -234,7 +256,7 @@ export default function DashboardPage() {
             setTimeout(() => {
                 if (video && video.videoWidth > 0 && video.videoHeight > 0) {
                     setIsVideoReadyForCapture(true);
-                } else if (video) {
+                } else if (video) { 
                     console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
                     setTimeout(() => {
                         if (video && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -287,10 +309,14 @@ export default function DashboardPage() {
                 video.removeEventListener('waiting', handleWaiting);
                 video.removeEventListener('stalled', handleStalled);
             }
-            setIsVideoReadyForCapture(false);
+            setIsVideoReadyForCapture(false); 
         };
     } else {
         setIsVideoReadyForCapture(false);
+        if (video && video.srcObject && !isCameraActive) {
+            (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
     }
 }, [selfieStream, isCameraActive, hasCameraPermission, toast]);
 
@@ -304,11 +330,11 @@ export default function DashboardPage() {
     };
   }, [selfieStream]);
 
-  // useMemo Hooks - Grouped together
+  // 5. useMemo Hooks
   const sortedMoodLogs = useMemo(() => {
     return [...moodLogs].sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.date ? parseISO(a.date).getTime() : 0);
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.date ? parseISO(b.date).getTime() : 0);
+      const dateA = a.date ? parseISO(a.date).getTime() : (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+      const dateB = b.date ? parseISO(b.date).getTime() : (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
       return dateB - dateA; 
     });
   }, [moodLogs]);
@@ -319,8 +345,9 @@ export default function DashboardPage() {
         date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
         moodValue: moodToValueMapping[log.mood] || 0, 
         moodEmoji: log.mood,
-        fullDate: log.date || new Date(0).toISOString(),
+        fullDate: log.date || new Date(0).toISOString(), 
       }))
+      .filter(log => log.moodValue > 0) 
       .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
   }, [moodLogs]);
   
@@ -346,12 +373,12 @@ export default function DashboardPage() {
   const handleToggleCamera = async () => {
     setIsVideoReadyForCapture(false); 
 
-    if (isCameraActive && selfieStream) {
+    if (isCameraActive && selfieStream) { 
       selfieStream.getTracks().forEach(track => track.stop());
       setSelfieStream(null); 
       setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null;
-    } else {
+      if (videoRef.current) videoRef.current.srcObject = null; 
+    } else { 
       setCapturedSelfie(null); 
       setHasCameraPermission(null); 
       setIsCameraActive(true); 
@@ -359,7 +386,7 @@ export default function DashboardPage() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         setHasCameraPermission(true);
-        setSelfieStream(stream);
+        setSelfieStream(stream); 
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
@@ -376,7 +403,7 @@ export default function DashboardPage() {
 
   const handleCaptureSelfie = () => {
     const video = videoRef.current;
-    if (isVideoReadyForCapture && video && selfieStream) {
+    if (isVideoReadyForCapture && video && selfieStream) { 
        if (video.videoWidth === 0 || video.videoHeight === 0) {
             toast({
                 variant: 'destructive',
@@ -395,7 +422,9 @@ export default function DashboardPage() {
         const dataUri = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedSelfie(dataUri);
         
-        selfieStream.getTracks().forEach(track => track.stop());
+        if (selfieStream) {
+            selfieStream.getTracks().forEach(track => track.stop());
+        }
         setSelfieStream(null);
         setIsCameraActive(false);
         setIsVideoReadyForCapture(false); 
@@ -429,13 +458,12 @@ export default function DashboardPage() {
     setMoodNotes("");
     setCapturedSelfie(null); 
     setIsVideoReadyForCapture(false);
-
     if (selfieStream) {
         selfieStream.getTracks().forEach(track => track.stop());
         setSelfieStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
-    setIsCameraActive(false);
+    setIsCameraActive(false); 
     setHasCameraPermission(null); 
     
     setIsMoodDialogOpen(true);
@@ -487,10 +515,10 @@ export default function DashboardPage() {
     await logoutUser();
   };
 
-  const confirmDeleteMoodLog = async () => {
-    if (logToDelete) {
-      await deleteMoodLog(logToDelete);
-      setLogToDelete(null);
+  const confirmDeleteMoodLog = async (logId: string) => { // Accept logId as parameter
+    if (logId) {
+      await deleteMoodLog(logId);
+      // setLogToDelete(null); // No longer needed as AlertDialog controls itself
     }
   };
   
@@ -516,7 +544,7 @@ export default function DashboardPage() {
         imageFile = new File([blob], 'grozen-challenge-share.png', { type: blob.type });
         toast({ title: "Image generated!", description: "Ready to share."});
       } else {
-        toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not generate share image. Sharing text only." });
+        toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
       }
     } catch (error: any) {
       console.error("Error generating share image:", error);
@@ -556,7 +584,7 @@ export default function DashboardPage() {
             .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
         }
       }
-    } else {
+    } else { 
       navigator.clipboard.writeText(shareText)
         .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
         .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
@@ -575,7 +603,7 @@ export default function DashboardPage() {
   };
 
 
-  // Conditional Returns (AFTER ALL HOOKS)
+  // Conditional Returns 
   if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -592,7 +620,7 @@ export default function DashboardPage() {
         <Logo size="text-xl sm:text-2xl" />
         <p className="mt-3 text-sm sm:text-base">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9" aria-label="New Plan or Edit Preferences">
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9" aria-label="Create a New Plan">
           Create a New Plan
         </Button>
          <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8" aria-label="Logout">
@@ -612,7 +640,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Main Component JSX
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col xs:flex-row justify-between items-center mb-4 sm:mb-5">
@@ -651,7 +678,7 @@ export default function DashboardPage() {
         <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
       </div>
 
-      {(isPlanAvailable || (isAdminUser && isPlanAvailable)) && wellnessPlan && (
+      {(isPlanAvailable || (isAdminUser && wellnessPlan)) && wellnessPlan && ( 
         <>
           <SectionCard title="Meals" icon={<Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
@@ -880,7 +907,7 @@ export default function DashboardPage() {
                           ref={videoRef}
                           className="w-full h-full object-cover"
                           muted
-                          playsInline
+                          playsInline 
                        />
                     ) : capturedSelfie ? (
                       <div className="p-1 sm:p-1.5 text-muted-foreground">
@@ -947,34 +974,6 @@ export default function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
-        <AlertDialogContent className="neumorphic p-3 sm:p-4">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm sm:text-base">Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-2xs sm:text-xs">
-              This action cannot be undone. This will permanently delete this mood log.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-1.5 sm:gap-2 pt-2.5 sm:pt-3">
-            <AlertDialogCancel
-              onClick={() => setLogToDelete(null)}
-              className="neumorphic-button w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
-              aria-label="Cancel mood log deletion"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteMoodLog}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
-              aria-label="Confirm mood log deletion"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
 
       <SectionCard title="Mood Check-in" icon={<Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />} >
          <CardDescription className="mb-2 sm:mb-2.5 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
@@ -1047,24 +1046,26 @@ export default function DashboardPage() {
                       />
                     }
                   />
-                  <Line
-                    dataKey="moodValue"
-                    type="monotone"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={1.5}
-                    dot={{
-                      r: 3,
-                      fill: "hsl(var(--primary))",
-                      stroke: "hsl(var(--background))",
-                      strokeWidth: 1.5,
-                    }}
-                    activeDot={{
-                       r: 4,
-                       fill: "hsl(var(--primary))",
-                       stroke: "hsl(var(--background))",
-                       strokeWidth: 2,
-                    }}
-                  />
+                  { RechartsLine && 
+                    <RechartsLine
+                      dataKey="moodValue"
+                      type="monotone"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={1.5}
+                      dot={{
+                        r: 3,
+                        fill: "hsl(var(--primary))",
+                        stroke: "hsl(var(--background))",
+                        strokeWidth: 1.5,
+                      }}
+                      activeDot={{
+                         r: 4,
+                         fill: "hsl(var(--primary))",
+                         stroke: "hsl(var(--background))",
+                         strokeWidth: 2,
+                      }}
+                    />
+                  }
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -1100,15 +1101,41 @@ export default function DashboardPage() {
                             moodToValueMapping[log.mood] === 1 ? <Frown className="h-3.5 w-3.5 text-red-400" aria-hidden="true"/> : '')
                         }
                       </h4>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setLogToDelete(log.id)} 
-                            className="h-4 w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
-                            aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
-                        >
-                            <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                        </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-4 w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
+                                aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
+                            >
+                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="neumorphic p-3 sm:p-4">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-sm sm:text-base">Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-2xs sm:text-xs">
+                              This action cannot be undone. This will permanently delete this mood log.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-col sm:flex-row gap-1.5 sm:gap-2 pt-2.5 sm:pt-3">
+                            <AlertDialogCancel
+                              className="neumorphic-button w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
+                              aria-label="Cancel mood log deletion"
+                            >
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => confirmDeleteMoodLog(log.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
+                              aria-label="Confirm mood log deletion"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                      <p className="text-3xs sm:text-2xs text-muted-foreground">
                       {log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : "Date not available"}
@@ -1117,7 +1144,7 @@ export default function DashboardPage() {
                      {log.aiFeedback && (
                       <div className="mt-0.5 pt-0.5 border-t border-border/50">
                           <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-3.5 w-3.5 mr-1 text-accent" /> <em>GroZen Insight:</em>
+                              <Sparkles className="h-3 w-3 mr-1 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-3xs sm:text-2xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
@@ -1226,3 +1253,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    
