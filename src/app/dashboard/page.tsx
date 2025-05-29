@@ -69,7 +69,7 @@ const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: Re
 );
 
 const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[160px] xs:min-w-[170px] sm:min-w-[190px] snap-start", className)}>
+  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[170px] sm:min-w-[190px] snap-start", className)}>
     {children}
   </div>
 );
@@ -135,69 +135,59 @@ export default function DashboardPage() {
   } = usePlan();
   const { toast } = useToast();
 
+  // useState Hooks
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodNotes, setMoodNotes] = useState("");
   const [logToDelete, setLogToDelete] = useState<string | null>(null);
   const [isSavingMood, setIsSavingMood] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState(currentUserProfile?.displayName || "");
+  const [newDisplayName, setNewDisplayName] = useState("");
   const [isUpdatingDisplayName, setIsUpdatingDisplayName] = useState(false);
   const [isSharingChallenge, setIsSharingChallenge] = useState(false);
-
-
-  useEffect(() => {
-    if (currentUserProfile?.displayName) {
-      setNewDisplayName(currentUserProfile.displayName);
-    }
-  }, [currentUserProfile?.displayName]);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
   const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
+  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
+  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+
+  // useRef Hooks
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // useEffect Hooks - Grouped together
+  useEffect(() => {
+    if (currentUserProfile?.displayName) {
+      setNewDisplayName(currentUserProfile.displayName);
+    } else if (currentUser && !currentUserProfile?.displayName) {
+        setNewDisplayName(currentUser.email?.split('@')[0] || "GroZen User");
+    }
+  }, [currentUserProfile, currentUser]);
 
   useEffect(() => {
     if (!isLoadingAuth) {
       if (!currentUser) {
-        router.replace('/login');
-      } else if (!isAdminUser && !isPlanAvailable && isOnboardedState && !isLoadingPlan) {
-        // Stays on dashboard, dashboard handles "create plan" message
-      } else if (!isAdminUser && !isOnboardedState && !isLoadingPlan) {
-        router.replace('/onboarding');
+        if (router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
+          router.replace('/login');
+        }
+      } else { // User is authenticated
+        if (!isAdminUser) { // Not an admin
+          if (!isOnboardedState && !isLoadingPlan) { // Not onboarded, and plan not loading
+            if (router.isReady && router.pathname !== '/onboarding') {
+              router.replace('/onboarding');
+            }
+          }
+          // The case for (isOnboardedState && !isPlanAvailable && !isLoadingPlan) is handled by UI below, not redirection.
+        }
       }
     }
-  }, [currentUser, isAdminUser, isLoadingAuth, isPlanAvailable, isLoadingPlan, isOnboardedState, router]);
+  }, [currentUser, isAdminUser, isLoadingAuth, isOnboardedState, isLoadingPlan, router, isPlanAvailable]);
 
 
-  const sortedMoodLogs = useMemo(() => {
-    return [...moodLogs].sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.date ? parseISO(a.date).getTime() : 0);
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.date ? parseISO(b.date).getTime() : 0);
-      return dateB - dateA; 
-    });
-  }, [moodLogs]);
-
-  const moodChartData: ChartMoodLog[] = useMemo(() => {
-    return [...moodLogs] 
-      .map(log => ({
-        date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
-        moodValue: moodToValueMapping[log.mood] || 0, 
-        moodEmoji: log.mood,
-        fullDate: log.date || new Date(0).toISOString(),
-      }))
-      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
-  }, [moodLogs]);
-
-
-  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
-  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
-
- useEffect(() => {
+  useEffect(() => {
     const logsWithSelfies = [...moodLogs]
       .filter(log => !!log.selfieDataUri && log.date)
-      .sort((a,b) => parseISO(a.date!).getTime() - parseISO(b.date!).getTime()); 
+      .sort((a, b) => (a.date && b.date ? parseISO(a.date).getTime() - parseISO(b.date).getTime() : 0));
 
     if (logsWithSelfies.length >= 2) {
       const firstSelfieLog = logsWithSelfies[0];
@@ -210,7 +200,6 @@ export default function DashboardPage() {
               break; 
           }
       }
-
       if (suitableAfterLog) {
         setBeforeShareLog(firstSelfieLog);
         setAfterShareLog(suitableAfterLog);
@@ -284,7 +273,10 @@ export default function DashboardPage() {
                 setIsVideoReadyForCapture(true);
             }
         } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
-            video.play().catch(err => console.error("Error attempting to play already loaded video", err));
+            video.play().catch(err => {
+                 console.error("Error attempting to play already loaded video", err);
+                 toast({ variant: "destructive", title: "Camera Error", description: "Failed to resume video." });
+            });
         }
 
         return () => {
@@ -312,7 +304,45 @@ export default function DashboardPage() {
     };
   }, [selfieStream]);
 
+  // useMemo Hooks - Grouped together
+  const sortedMoodLogs = useMemo(() => {
+    return [...moodLogs].sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.date ? parseISO(a.date).getTime() : 0);
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.date ? parseISO(b.date).getTime() : 0);
+      return dateB - dateA; 
+    });
+  }, [moodLogs]);
 
+  const moodChartData: ChartMoodLog[] = useMemo(() => {
+    return [...moodLogs] 
+      .map(log => ({
+        date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
+        moodValue: moodToValueMapping[log.mood] || 0, 
+        moodEmoji: log.mood,
+        fullDate: log.date || new Date(0).toISOString(),
+      }))
+      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
+  }, [moodLogs]);
+  
+  const groupedGroceryItems = React.useMemo(() => {
+    if (!groceryList) return {};
+    return groceryList.items.reduce((acc, item) => {
+      const category = item.category || 'Other';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, GroceryItem[]>);
+  }, [groceryList]);
+  
+  const todayDateString = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+  const isChallengeDayLoggedToday = useMemo(() => {
+    return !!userActiveChallenge?.completedDates.includes(todayDateString);
+  }, [userActiveChallenge, todayDateString]);
+
+
+  // Component Logic & Event Handlers
   const handleToggleCamera = async () => {
     setIsVideoReadyForCapture(false); 
 
@@ -453,18 +483,6 @@ export default function DashboardPage() {
     await generateGroceryListFromContext(wellnessPlan);
   };
 
-  const groupedGroceryItems = React.useMemo(() => {
-    if (!groceryList) return {};
-    return groceryList.items.reduce((acc, item) => {
-      const category = item.category || 'Other';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(item);
-      return acc;
-    }, {} as Record<string, GroceryItem[]>);
-  }, [groceryList]);
-
   const handleLogout = async () => {
     await logoutUser();
   };
@@ -476,11 +494,6 @@ export default function DashboardPage() {
     }
   };
   
-  const todayDateString = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
-  const isChallengeDayLoggedToday = useMemo(() => {
-    return !!userActiveChallenge?.completedDates.includes(todayDateString);
-  }, [userActiveChallenge, todayDateString]);
-
   const handleChallengeShare = async () => {
     if (!userActiveChallenge || !currentUserProfile) return;
     setIsSharingChallenge(true);
@@ -562,7 +575,8 @@ export default function DashboardPage() {
   };
 
 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser && !['/login', '/signup', '/'].includes(router.pathname))) {
+  // Conditional Returns (AFTER ALL HOOKS)
+  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Logo size="text-2xl sm:text-3xl" />
@@ -572,39 +586,33 @@ export default function DashboardPage() {
     );
   }
   
-  useEffect(() => {
-    if (currentUser && !isAdminUser && !isPlanAvailable && !isOnboardedState && !isLoadingPlan) {
-        router.replace('/onboarding');
-    }
-  }, [currentUser, isAdminUser, isPlanAvailable, isOnboardedState, isLoadingPlan, router]);
-  
-  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable) { 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl" />
-        <p className="mt-3 text-sm sm:text-base">Generating your personalized plan...</p>
-        <RotateCcw className="mt-3 h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-2xl sm:text-3xl" />
+        <Logo size="text-xl sm:text-2xl" />
         <p className="mt-3 text-sm sm:text-base">No wellness plan found or an error occurred.</p>
         <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm" aria-label="New Plan or Edit Preferences">
+        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9" aria-label="New Plan or Edit Preferences">
           Create a New Plan
         </Button>
-         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs" aria-label="Logout">
+         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8" aria-label="Logout">
             <LogOut className="mr-1 h-3 w-3" /> Logout
         </Button>
       </div>
     );
   }
 
+  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable ) { 
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <Logo size="text-xl sm:text-2xl" />
+        <p className="mt-3 text-sm sm:text-base">Generating your personalized plan...</p>
+        <RotateCcw className="mt-3 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
+  // Main Component JSX
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
       <header className="flex flex-col xs:flex-row justify-between items-center mb-4 sm:mb-5">
@@ -614,18 +622,18 @@ export default function DashboardPage() {
                 <Button 
                     variant="outline" 
                     onClick={() => router.push('/admin')} 
-                    className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5"
+                    className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
                     aria-label="Admin Panel"
                 >
                     <ShieldCheck className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Admin
                 </Button>
             )}
             {!isAdminUser && ( 
-                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5" aria-label="New Plan / Edit Preferences">
+                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="New Plan / Edit Preferences">
                  New Plan/Edit
                 </Button>
             )}
-            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5" aria-label="Logout">
+            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
                 <LogOut className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
             </Button>
         </div>
@@ -633,13 +641,13 @@ export default function DashboardPage() {
 
       {isLoadingPlan && wellnessPlan && ( 
         <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-          <RotateCcw className="h-6 w-6 animate-spin text-primary" />
+          <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
           <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
         </div>
       )}
       
       <div className="mb-4 sm:mb-5 p-3 sm:p-4 neumorphic rounded-lg">
-        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
+        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
         <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
       </div>
 
@@ -651,7 +659,7 @@ export default function DashboardPage() {
                 {wellnessPlan.meals.map((meal, index) => (
                   <ItemCard key={`meal-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {meal.day}
                     </h4>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
@@ -669,7 +677,7 @@ export default function DashboardPage() {
                 {wellnessPlan.exercise.map((ex, index) => (
                   <ItemCard key={`ex-${index}`} className="bg-card">
                      <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {ex.day}
                     </h4>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
@@ -686,7 +694,7 @@ export default function DashboardPage() {
                 {wellnessPlan.mindfulness.map((mind, index) => (
                   <ItemCard key={`mind-${index}`} className="bg-card">
                     <h4 className="font-semibold text-2xs sm:text-xs mb-1 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
+                        <CalendarDays className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {mind.day}
                     </h4>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
                     <p className="text-3xs xs:text-2xs sm:text-xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
@@ -865,7 +873,7 @@ export default function DashboardPage() {
                   {/* Responsive Video Container */}
                   <div className={cn(
                       "mt-1.5 rounded-md overflow-hidden border border-border neumorphic-inset-sm bg-muted/20 flex items-center justify-center text-center p-1",
-                      "aspect-[3/4] sm:aspect-square md:aspect-video" // Default portrait, square for sm, landscape for md+
+                      "aspect-[3/4] sm:aspect-square md:aspect-video" 
                     )}>
                     {isCameraActive && selfieStream && hasCameraPermission === true ? (
                       <video
@@ -1085,22 +1093,22 @@ export default function DashboardPage() {
                       <h4 className="font-semibold text-sm sm:text-base flex items-center gap-0.5 sm:gap-1">
                         <span className="text-base sm:text-lg">{log.mood}</span>
                         {moodEmojiStrings.find(m => m.emoji === log.mood) && 
-                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-400" aria-hidden="true"/> : '')
+                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3.5 w-3.5 text-green-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3.5 w-3.5 text-blue-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3.5 w-3.5 text-yellow-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3.5 w-3.5 text-orange-400" aria-hidden="true"/> :
+                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3.5 w-3.5 text-red-400" aria-hidden="true"/> : '')
                         }
                       </h4>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => setLogToDelete(log.id)} 
-                                className="h-4 w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
-                                aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
-                            >
-                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                            </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setLogToDelete(log.id)} 
+                            className="h-4 w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
+                            aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
+                        >
+                            <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                        </Button>
                     </div>
                      <p className="text-3xs sm:text-2xs text-muted-foreground">
                       {log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : "Date not available"}
@@ -1109,7 +1117,7 @@ export default function DashboardPage() {
                      {log.aiFeedback && (
                       <div className="mt-0.5 pt-0.5 border-t border-border/50">
                           <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-2.5 w-2.5 mr-1 text-accent" /> <em>GroZen Insight:</em>
+                              <Sparkles className="h-3.5 w-3.5 mr-1 text-accent" /> <em>GroZen Insight:</em>
                           </p>
                           <p className="text-3xs sm:text-2xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
                       </div>
