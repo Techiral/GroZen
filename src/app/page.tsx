@@ -20,6 +20,7 @@ import { db } from '@/lib/firebase';
 import { validateHumanFace, type ValidateHumanFaceOutput } from '@/ai/flows/validate-human-face';
 
 
+<<<<<<< HEAD
 // --- Helper Components ---
 const MinimalExitIntentPopup: React.FC<{
   isOpen: boolean;
@@ -41,10 +42,472 @@ const MinimalExitIntentPopup: React.FC<{
         translateY: 0,
         duration: 300,
         easing: 'easeOutQuad',
+=======
+// --- Section Components (Lazy Loaded) ---
+
+const HeroSection = () => {
+  const router = useRouter();
+  const { currentUser, isLoadingAuth } = usePlan();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  useEffect(() => {
+    if (isClient && !isLoadingAuth && currentUser) {
+      router.replace('/dashboard'); // Or onboarding if not completed
+    }
+  }, [isClient, currentUser, isLoadingAuth, router]);
+
+
+  if (isLoadingAuth && !isClient) { // Show loader only if auth is loading and client hasn't mounted yet
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-6 h-8 w-8 animate-spin text-light-gray" />
+      </div>
+    );
+  }
+  
+  // Simulated live user count
+  const [liveUsers, setLiveUsers] = useState(1337);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveUsers(prev => prev + Math.floor(Math.random() * 3) + 1);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const parallaxOffsetFast = useParallax(0.1);
+  const parallaxOffsetSlow = useParallax(0.03);
+
+
+  return (
+    <section id="hero" className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-black p-4 sm:p-6 text-center edge-to-edge">
+      {/* Parallax Background Layers */}
+      <div
+        className="absolute inset-0 z-0 opacity-20"
+        style={{ transform: `translateY(${parallaxOffsetFast}px)` }}
+        aria-hidden="true"
+      >
+        <Image
+          src="https://placehold.co/1920x1080/000000/111111.png?text=." // Very subtle texture
+          alt="Abstract background texture"
+          fill
+          quality={50}
+          priority
+          className="object-cover"
+          data-ai-hint="dark texture subtle"
+        />
+      </div>
+       <div
+        className="absolute inset-0 z-0 opacity-10"
+        style={{ transform: `translateY(${parallaxOffsetSlow}px) rotate(15deg) scale(1.5)` }}
+        aria-hidden="true"
+      >
+        <Image
+          src="https://placehold.co/1920x1080/0D0D0D/1A1A1A.png?text=." // Another subtle texture
+          alt="Abstract background pattern"
+          fill
+          quality={50}
+          priority
+          className="object-cover"
+          data-ai-hint="abstract pattern dark"
+        />
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center">
+        <AnimatedCard className="p-6 sm:p-8 md:p-10 bg-card/80 backdrop-blur-md rounded-xl shadow-2xl max-w-md sm:max-w-lg md:max-w-xl neumorphic-accent-border">
+          <div className="mb-4 sm:mb-6">
+            <Logo size="text-3xl sm:text-4xl" />
+          </div>
+
+          <AnimatedText tag="h1" className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 text-transparent bg-clip-text bg-gradient-to-r from-accent via-foreground to-accent" stagger={50}>
+            Unlock Your GroZen Mode.
+          </AnimatedText>
+
+          <AnimatedText tag="p" className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8" stagger={30}>
+            AI-powered plans. Epic challenges. Real results. Level up your vibe, no cap.
+          </AnimatedText>
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 text-sm sm:text-base">
+            <div className="flex items-center space-x-2 text-foreground"><Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-accent"/><span>Custom AI Plans</span></div>
+            <div className="flex items-center space-x-2 text-foreground"><Crown className="h-4 w-4 sm:h-5 sm:w-5 text-accent"/><span>Dopamine Challenges</span></div>
+            <div className="flex items-center space-x-2 text-foreground"><UserPlus className="h-4 w-4 sm:h-5 sm:w-5 text-accent"/><span>Instant Friend Connect</span></div>
+            <div className="flex items-center space-x-2 text-foreground"><Gift className="h-4 w-4 sm:h-5 sm:w-5 text-accent"/><span>Daily Streaks & Rewards</span></div>
+          </div>
+
+          <div className="flex flex-col space-y-3 sm:space-y-4">
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full text-base sm:text-lg"
+              onClick={() => router.push('/signup')}
+            >
+              <Zap className="mr-2 h-5 w-5" /> Get Started - It&apos;s Free!
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full text-base sm:text-lg"
+              onClick={() => router.push('/login')}
+            >
+              I Already Have an Account
+            </Button>
+          </div>
+          <div className="mt-6 text-xs text-muted-foreground">
+            <Users className="inline h-3 w-3 mr-1" />
+            Join <span className="font-bold text-foreground">{liveUsers.toLocaleString()}</span> GroZen Masters!
+          </div>
+        </AnimatedCard>
+      </div>
+    </section>
+  );
+};
+
+const FeatureHighlightSection = () => {
+  const features = [
+    { icon: Zap, title: "AI That Gets YOU", description: "Personalized plans adapt as you grow. No more boring routines.", hint:"ai brain" },
+    { icon: Crown, title: "Crush Challenges, Earn Loot", description: "Gamified goals that are actually fun. Unlock badges & bragging rights.", hint:"trophy gold" },
+    { icon: Star, title: "Streak It Up!", description: "Daily check-ins keep you hooked. Build habits, get rewards.", hint:"flame streak" },
+    { icon: Users, title: "Squad Up!", description: "Connect with friends, climb leaderboards. Who's the GroZen GOAT?", hint:"team friends" }
+  ];
+
+  return (
+    <section id="features" className="relative w-full bg-black py-16 sm:py-24 px-4 edge-to-edge overflow-hidden">
+      {/* Angled background element */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-5 transform -skew-y-3 bg-gradient-to-br from-card to-black" aria-hidden="true"></div>
+      
+      <div className="relative container mx-auto max-w-5xl text-center">
+        <AnimatedText tag="h2" className="text-3xl sm:text-4xl font-bold mb-2 text-foreground" stagger={40}>
+          GroZen Isn&apos;t Just an App.
+        </AnimatedText>
+        <AnimatedText tag="p" className="text-xl sm:text-2xl text-accent mb-12 sm:mb-16" stagger={30}>
+          It&apos;s Your New Secret Weapon.
+        </AnimatedText>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10">
+          {features.map((feature, index) => (
+            <AnimatedCard key={feature.title} delay={`${index * 0.15}s`} className="bg-card p-6 rounded-lg shadow-xl neumorphic-accent-border hover:transform hover:scale-105 transition-transform duration-300">
+              <div className="flex justify-center mb-4">
+                <feature.icon className="h-10 w-10 sm:h-12 sm:w-12 text-accent" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">{feature.title}</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">{feature.description}</p>
+            </AnimatedCard>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const GamifiedSignupSection = () => {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameLoading, setUsernameLoading] = useState(false);
+
+  const passwordStrength = () => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength; // Max 5
+  };
+
+  const avatars = [
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=🚀",
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=🔥",
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=✨",
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=🎮",
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=💡",
+    "https://placehold.co/100x100/D3D3D3/000000.png?text=🤖",
+  ];
+  const avatarHints = ["rocket", "fire", "sparkles", "controller", "idea", "robot"];
+
+
+  const handleNextStep = async () => {
+    setIsLoading(true);
+    // Simulate API calls / validation
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (step === 1 && !email.includes('@')) {
+      toast({ title: "Hold Up!", description: "Enter a valid email, fam.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    if (step === 2) {
+      if (!username || username.length < 3) {
+        toast({ title: "Username Glitch!", description: "Needs to be at least 3 chars.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+      // Simulate username check
+      setUsernameLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 700));
+      const isTaken = Math.random() > 0.5; // Simulate taken/available
+      setUsernameAvailable(!isTaken);
+      setUsernameLoading(false);
+      if (isTaken) {
+         toast({ title: "Oof, Name Taken!", description: `"${username}" is already snagged. Try another?`, variant: "destructive" });
+         setIsLoading(false);
+         return;
+      }
+       toast({ title: "Sweet Name!", description: `"${username}" is yours!`, variant: "default" });
+    }
+    if (step === 3 && passwordStrength() < 3) {
+      toast({ title: "Weak Sauce Password!", description: "Make it stronger to protect your loot!", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(false);
+    if (step < 4) {
+      setStep(prev => prev + 1);
+      if(step + 1 === 2) { // Just got email
+        toast({ title: "🎁 Reward Unlocked!", description: "Early Access Badge added to your profile!", variant: "default" });
+      }
+    } else {
+      // Final step - redirect to actual signup
+      toast({ title: "Let's Gooo!", description: "Redirecting to full signup...", variant: "default" });
+      router.push(`/signup?email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`);
+    }
+  };
+  
+  const PasswordStrengthIndicator = ({ strength }: { strength: number }) => (
+    <div className="flex space-x-1 mt-1">
+      {Array(5).fill(0).map((_, i) => (
+        <div key={i} className={cn("h-1.5 rounded-full flex-1", i < strength ? (strength <=2 ? 'bg-red-500' : strength <=4 ? 'bg-yellow-400' : 'bg-green-400') : 'bg-muted/30')} />
+      ))}
+    </div>
+  );
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 1: // Email
+        return (
+          <>
+            <Label htmlFor="email-signup" className="text-accent text-sm">Your Email (Unlock First Reward!)</Label>
+            <Input
+              id="email-signup"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your.email@domain.com"
+              className="bg-card/50 border-accent/30 text-foreground placeholder-muted-foreground focus:border-accent"
+              required
+            />
+            <p className="text-xs text-muted-foreground mt-1">Enter your email to claim an "Early Bird" badge!</p>
+          </>
+        );
+      case 2: // Username
+        return (
+          <>
+            <Label htmlFor="username-signup" className="text-accent text-sm">Create Your Legend Name</Label>
+            <div className="relative">
+              <Input
+                id="username-signup"
+                type="text"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setUsernameAvailable(null); }}
+                placeholder="e.g., GroZenNinja_77"
+                className="bg-card/50 border-accent/30 text-foreground placeholder-muted-foreground focus:border-accent"
+                required
+              />
+              {usernameLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-accent"/>}
+              {!usernameLoading && usernameAvailable === true && <CheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-green-400"/>}
+              {!usernameLoading && usernameAvailable === false && username.length > 0 && <XCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400"/>}
+            </div>
+             {usernameAvailable === false && <p className="text-xs text-red-400 mt-1">Bummer, that's taken. Try another!</p>}
+             {usernameAvailable === true && <p className="text-xs text-green-400 mt-1">Nice! It's available.</p>}
+          </>
+        );
+      case 3: // Password
+        return (
+          <>
+            <Label htmlFor="password-signup" className="text-accent text-sm">Secure Your Account (Fort Knox Style!)</Label>
+            <div className="relative">
+              <Input
+                id="password-signup"
+                type={passwordVisible ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Make it super strong!"
+                className="bg-card/50 border-accent/30 text-foreground placeholder-muted-foreground focus:border-accent pr-10"
+                required
+              />
+              <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-accent" onClick={() => setPasswordVisible(!passwordVisible)}>
+                {passwordVisible ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+              </Button>
+            </div>
+            <PasswordStrengthIndicator strength={passwordStrength()} />
+            {passwordStrength() > 0 && passwordStrength() <=2 && <p className="text-xs text-red-400 mt-1">Hmm, needs more power!</p>}
+            {passwordStrength() > 2 && passwordStrength() <=4 && <p className="text-xs text-yellow-400 mt-1">Getting there! Stronger is better.</p>}
+            {passwordStrength() === 5 && <p className="text-xs text-green-400 mt-1">Awesome! That's a vault-level password!</p>}
+          </>
+        );
+      case 4: // Avatar
+        return (
+          <>
+            <p className="text-accent text-sm mb-2 text-center">Choose Your Vibe!</p>
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {avatars.map((src, index) => (
+                <button
+                  key={src}
+                  type="button"
+                  className={cn(
+                    "relative aspect-square rounded-full overflow-hidden border-2 transition-all duration-200 hover:scale-110",
+                    avatar === src ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-card" : "border-muted-foreground/50"
+                  )}
+                  onClick={() => setAvatar(src)}
+                >
+                  <Image src={src} alt={`Avatar option ${index + 1}`} fill className="object-cover" data-ai-hint={avatarHints[index]} quality={75} />
+                </button>
+              ))}
+            </div>
+             {avatar && <p className="text-xs text-green-400 mt-2 text-center">Cool choice!</p>}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <section id="gamified-signup" className="relative w-full bg-gradient-to-b from-black via-card to-black py-16 sm:py-24 px-4 edge-to-edge overflow-hidden">
+       <Sparkles className="absolute top-1/4 left-1/4 h-8 w-8 text-accent/20 animate-pulse transform-gpu -translate-x-1/2 -translate-y-1/2" style={{ animationDuration: '4s'}} />
+       <Zap className="absolute bottom-1/4 right-1/4 h-10 w-10 text-accent/10 animate-ping transform-gpu" style={{ animationDuration: '5s'}} />
+       <Crown className="absolute top-1/3 right-1/5 h-6 w-6 text-accent/15 animate-bounce transform-gpu" style={{ animationDuration: '6s'}}/>
+
+      <div className="relative container mx-auto max-w-md text-center">
+        <AnimatedText tag="h2" className="text-3xl sm:text-4xl font-bold mb-4 text-foreground" stagger={40}>
+          Ready to Join the Elite?
+        </AnimatedText>
+        <AnimatedText tag="p" className="text-lg text-accent mb-8 sm:mb-10" stagger={30}>
+          Quick signup. Instant perks. Zero hassle.
+        </AnimatedText>
+
+        <AnimatedCard className="bg-card/90 backdrop-blur-sm p-6 sm:p-8 rounded-xl shadow-2xl neumorphic-accent-border">
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground">Step {step} of 4:
+              <span className="text-foreground font-semibold ml-1">
+                {step === 1 && "Secure Your Email"}
+                {step === 2 && "Claim Your Username"}
+                {step === 3 && "Fortify Your Password"}
+                {step === 4 && "Pick Your Avatar"}
+              </span>
+            </p>
+            <div className="w-full bg-muted-foreground/30 rounded-full h-1.5 sm:h-2 mt-1.5">
+              <div
+                className="bg-accent h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${(step / 4) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 text-left">
+            {renderStepContent()}
+          </div>
+
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full mt-6 sm:mt-8 text-base"
+            onClick={handleNextStep}
+            disabled={isLoading || (step ===2 && usernameLoading)}
+          >
+            {isLoading || usernameLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ArrowRight className="mr-2 h-5 w-5" />}
+            {step < 4 ? (isLoading ? "Verifying..." : "Next Step") : (isLoading ? "Finalizing..." : "Complete Signup & Enter!")}
+          </Button>
+        </AnimatedCard>
+      </div>
+    </section>
+  );
+};
+
+const SocialProofSection = () => {
+  const testimonials = [
+    { quote: "GroZen literally changed my life. My energy is through the roof!", name: "Kai T.", imageHint: "teenager gaming", avatarText: "🎮" },
+    { quote: "Finally, a wellness app that doesn't suck. The challenges are fire!", name: "Mia S.", imageHint: "teenager music", avatarText: "🔥"  },
+    { quote: "I actually look forward to my workouts now. Plus, the AI meal plans? Chef's kiss.", name: "Leo R.", imageHint: "teenager sports", avatarText: "💪"  }
+  ];
+  
+  const [challengesCompleted, setChallengesCompleted] = useState(10283);
+  const [activeStreaks, setActiveStreaks] = useState(5672);
+
+  useEffect(() => {
+    const interval1 = setInterval(() => setChallengesCompleted(p => p + Math.floor(Math.random() * 10) + 5), 3000);
+    const interval2 = setInterval(() => setActiveStreaks(p => p + Math.floor(Math.random() * 5) + 2), 4500);
+    return () => { clearInterval(interval1); clearInterval(interval2); };
+  }, []);
+
+  return (
+    <section id="social-proof" className="relative w-full bg-black py-16 sm:py-24 px-4 edge-to-edge overflow-hidden">
+      <div className="absolute -top-16 left-0 w-full h-32 bg-card transform skew-y-[-2deg] z-0" aria-hidden="true"></div>
+      
+      <div className="relative container mx-auto max-w-5xl text-center z-10">
+        <AnimatedText tag="h2" className="text-3xl sm:text-4xl font-bold mb-10 text-foreground" stagger={40}>
+          Don&apos;t Just Take Our Word For It.
+        </AnimatedText>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {testimonials.map((testimonial, index) => (
+            <AnimatedCard key={index} delay={`${index * 0.2}s`} className="bg-card p-6 rounded-lg shadow-xl neumorphic-accent-border">
+              <div className="flex items-center mb-3">
+                <div className="relative w-12 h-12 rounded-full overflow-hidden mr-3 border-2 border-accent">
+                  <Image src={`https://placehold.co/80x80/D3D3D3/000000.png?text=${testimonial.avatarText}`} alt={testimonial.name} fill data-ai-hint={testimonial.imageHint} className="object-cover" />
+                </div>
+                <span className="font-semibold text-foreground">{testimonial.name}</span>
+              </div>
+              <p className="text-muted-foreground italic text-sm">&quot;{testimonial.quote}&quot;</p>
+            </AnimatedCard>
+          ))}
+        </div>
+
+        <AnimatedCard delay="0.5s" className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <div className="bg-card/50 p-4 rounded-lg neumorphic-accent-border-sm">
+                <p className="text-3xl font-bold text-accent">{challengesCompleted.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Challenges Conquered</p>
+            </div>
+            <div className="bg-card/50 p-4 rounded-lg neumorphic-accent-border-sm">
+                <p className="text-3xl font-bold text-accent">{activeStreaks.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Active Daily Streaks</p>
+            </div>
+        </AnimatedCard>
+         <AnimatedText tag="p" className="text-muted-foreground mt-8 text-sm" stagger={20}>
+            As seen on <span className="text-accent font-semibold">NerdOutLoud</span> &amp; <span className="text-accent font-semibold">ViralVibeZ</span> (Teen Influencer Endorsements - Placeholder)
+        </AnimatedText>
+      </div>
+    </section>
+  );
+};
+
+const FinalCTASection = () => {
+  const router = useRouter();
+  const [timeLeft, setTimeLeft] = useState({ minutes: 29, seconds: 59 });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { minutes: prev.minutes - 1, seconds: 59 };
+        return { minutes: 0, seconds: 0 }; 
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
       });
     }
   }, [isOpen]);
 
+<<<<<<< HEAD
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -143,6 +606,81 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
         )}
       </div>
       <ShadProgress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary transition-all duration-300" />
+=======
+  return (
+    <section id="final-cta" className="relative w-full bg-gradient-to-t from-black via-card to-black py-20 sm:py-32 px-4 edge-to-edge text-center">
+      <div className="absolute inset-0 z-0 opacity-5">
+         <Image 
+          src="https://placehold.co/1920x1080/0A0A0A/1A1A1A.png?text=." 
+          alt="Abstract dark texture"
+          data-ai-hint="dark texture abstract" 
+          fill={true}
+          className="object-cover"
+        />
+      </div>
+      <div className="relative z-10 container mx-auto max-w-2xl">
+        <AnimatedText tag="h2" className="text-4xl sm:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-accent via-foreground to-accent" stagger={50}>
+          Your Level-Up Awaits.
+        </AnimatedText>
+        <AnimatedText tag="p" className="text-lg sm:text-xl text-muted-foreground mb-8" stagger={30}>
+          Stop scrolling, start evolving. The ultimate AI wellness sidekick is one click away.
+        </AnimatedText>
+
+        <AnimatedCard delay="0.3s" className="mb-8">
+          <div className="bg-accent/10 border border-accent/30 p-3 rounded-lg inline-block">
+             <p className="text-sm text-accent">🔥 Limited Time: <span className="font-bold text-foreground">Founders Pack</span> Unlocks Bonus Gear!</p>
+             <p className="text-2xl font-bold text-foreground my-1">{formatTime(timeLeft.minutes)}:{formatTime(timeLeft.seconds)}</p>
+             <p className="text-xs text-muted-foreground">Left to Claim</p>
+          </div>
+        </AnimatedCard>
+
+        <AnimatedCard delay="0.5s" className="flex flex-col sm:flex-row justify-center items-center gap-4">
+          <Button
+            variant="primary"
+            size="xl"
+            className="w-full sm:w-auto text-lg sm:text-xl px-8 py-4"
+            onClick={() => router.push('/signup')}
+          >
+            <Zap className="mr-2 h-6 w-6" /> Claim Your Spot NOW
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full sm:w-auto text-md"
+            onClick={() => { alert("Demo/Learn More clicked!"); }}
+          >
+            <PlayCircle className="mr-2 h-5 w-5" /> See How It Works
+          </Button>
+        </AnimatedCard>
+        
+        <AnimatedCard delay="0.7s" className="mt-10 flex justify-center items-center space-x-4">
+            <ShieldCheck className="h-5 w-5 text-green-400"/>
+            <p className="text-sm text-muted-foreground">SSL Secured | 30-Day Risk-Free Trial | Privacy First</p>
+        </AnimatedCard>
+      </div>
+    </section>
+  );
+};
+
+const ExitIntentPopup = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-out opacity-100">
+      <AnimatedCard className="bg-card p-6 sm:p-8 rounded-xl shadow-2xl max-w-md w-full neumorphic-accent-border text-center">
+        <button onClick={onClose} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors">
+          <XCircle className="h-6 w-6"/>
+        </button>
+        <Sparkles className="h-12 w-12 text-accent mx-auto mb-4"/>
+        <h3 className="text-2xl font-bold text-foreground mb-3">Wait! Don&apos;t Go Empty-Handed!</h3>
+        <p className="text-muted-foreground mb-5">Grab an <span className="text-accent font-semibold">Exclusive Starter Pack</span> (extra AI credits + rare avatar) just for considering GroZen!</p>
+        <Input type="email" placeholder="Your Email for the Goodies..." className="mb-3 bg-black/30 border-accent/30 text-foreground placeholder-muted-foreground focus:border-accent"/>
+        <Button variant="primary" size="lg" className="w-full" onClick={() => { alert('Bonus claimed (simulated)!'); onClose(); }}>
+          <Gift className="mr-2"/> Gimme The Bonus!
+        </Button>
+        <p className="text-xs text-muted-foreground mt-3">No spam, just pure awesome. Promise.</p>
+      </AnimatedCard>
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
     </div>
   );
 };
@@ -155,6 +693,7 @@ const MinimalSignupModal: React.FC<{
 }> = ({ isOpen, onClose, initialEmail = '' }) => {
   const { signupWithDetails, currentUser } = usePlan();
   const router = useRouter();
+<<<<<<< HEAD
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -263,6 +802,42 @@ const MinimalSignupModal: React.FC<{
     setUsernameError('');
     if (usernameDebounceTimeout.current) {
       clearTimeout(usernameDebounceTimeout.current);
+=======
+  const [isClient, setIsClient] = useState(false);
+  const [showExitIntent, setShowExitIntent] = useState(false);
+  const exitIntentTriggered = useRef(false);
+  const [scrolledAchievements, setScrolledAchievements] = useState<string[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setIsClient(true);
+    if (typeof document !== "undefined") {
+        document.title = "GroZen: Level Up Your Life ⚡";
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+            metaDesc.setAttribute("content", "Stop scrolling, start Evolving! GroZen's AI crafts hyper-personalized wellness plans & addictive challenges. Unlock your peak. FOMO is real.");
+        } else {
+            const newMetaDesc = document.createElement('meta');
+            newMetaDesc.name = "description";
+            newMetaDesc.content = "Stop scrolling, start Evolving! GroZen's AI crafts hyper-personalized wellness plans & addictive challenges. Unlock your peak. FOMO is real.";
+            document.head.appendChild(newMetaDesc);
+        }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isClient && !isLoadingAuth) {
+      if (currentUser) {
+        if (isOnboardedState && isPlanAvailable) {
+          router.replace('/dashboard');
+        } else if(isOnboardedState && !isPlanAvailable && !isLoadingAuth){ 
+            router.replace('/onboarding'); 
+        }
+         else {
+          router.replace('/onboarding');
+        }
+      }
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
     }
     if (newUsername.trim().length >= 3) {
       usernameDebounceTimeout.current = setTimeout(() => {
@@ -667,7 +1242,11 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
+<<<<<<< HEAD
       if (!isSignupModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
+=======
+      if (e.clientY <= 0 && !exitIntentTriggered.current && !currentUser) { 
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
       }
@@ -840,17 +1419,65 @@ const LandingPage: React.FC = () => {
   }, [currentDiscoveryStep, showDiscovery, isClient]);
 
 
+<<<<<<< HEAD
   if (!isClient || (isLoadingAuth && !currentUser) ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
         <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
         <p className="mt-3 text-sm text-muted-foreground">Loading GroZen...</p>
+=======
+  const handleScrollAchievements = () => {
+    if (typeof window !== "undefined") {
+        const scrollPercentage = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+        
+        if (scrollPercentage > 25 && !scrolledAchievements.includes("Explorer")) {
+            setScrolledAchievements(prev => [...prev, "Explorer"]);
+            toast({ title: "🏆 Badge Unlocked: Explorer!", description: "You've ventured forth!", variant: "default" });
+        }
+        if (scrollPercentage > 60 && !scrolledAchievements.includes("Deep Diver")) {
+            setScrolledAchievements(prev => [...prev, "Deep Diver"]);
+            toast({ title: "💎 Badge Unlocked: Deep Diver!", description: "You're digging the details!", variant: "default" });
+        }
+         if (scrollPercentage > 95 && !scrolledAchievements.includes("Completionist")) {
+            setScrolledAchievements(prev => [...prev, "Completionist"]);
+            toast({ title: "🌟 Badge Unlocked: Page Conqueror!", description: "You've seen it all!", variant: "default" });
+        }
+    }
+  };
+  
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+        window.addEventListener('scroll', handleScrollAchievements, { passive: true });
+        return () => window.removeEventListener('scroll', handleScrollAchievements);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrolledAchievements]); 
+
+
+  if (!isClient || (isLoadingAuth && !currentUser) ) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-6 h-8 w-8 animate-spin text-accent" />
+        <p className="mt-3 text-muted-foreground">Loading The Future of You...</p>
+      </div>
+    );
+  }
+  
+  if (isClient && !isLoadingAuth && currentUser) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4">
+        <Logo size="text-3xl sm:text-4xl" />
+        <Loader2 className="mt-6 h-8 w-8 animate-spin text-accent" />
+        <p className="mt-3 text-muted-foreground">Warping to your dashboard...</p>
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
       </div>
     );
   }
 
   return (
+<<<<<<< HEAD
     <>
       <main className="min-h-screen bg-background text-foreground overflow-x-hidden">
         {!showDiscovery && (
@@ -944,3 +1571,48 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+=======
+    <div className="bg-black text-foreground min-h-screen w-full selection:bg-accent selection:text-accent-foreground">
+      <style jsx global>{`
+        .edge-to-edge {
+          width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+        }
+        .neumorphic-accent-border {
+          border: 1px solid hsl(var(--accent) / 0.2);
+          box-shadow: 
+            5px 5px 10px hsl(var(--background) / 0.7), 
+            -5px -5px 10px hsl(var(--card) / 0.3),
+            inset 1px 1px 2px hsl(var(--accent) / 0.1),
+            inset -1px -1px 2px hsl(var(--background) / 0.5);
+        }
+         .neumorphic-accent-border-sm {
+          border: 1px solid hsl(var(--accent) / 0.15);
+          box-shadow: 
+            3px 3px 6px hsl(var(--background) / 0.6), 
+            -3px -3px 6px hsl(var(--card) / 0.25),
+            inset 1px 1px 1px hsl(var(--accent) / 0.05),
+            inset -1px -1px 1px hsl(var(--background) / 0.4);
+        }
+      `}</style>
+      
+      <HeroSection />
+      <FeatureHighlightSection />
+      <GamifiedSignupSection />
+      <SocialProofSection />
+      <FinalCTASection />
+      
+      <ExitIntentPopup isOpen={showExitIntent} onClose={() => setShowExitIntent(false)} />
+
+      {isClient && typeof window !== "undefined" && window.scrollY > 500 && !currentUser && (
+         <AnimatedCard className="fixed bottom-4 right-4 z-40">
+             <Button variant="primary" size="sm" onClick={() => router.push('/signup')}>
+                <Zap className="mr-1.5 h-4 w-4"/> Quick Sign Up
+             </Button>
+         </AnimatedCard>
+      )}
+    </div>
+  );
+}
+>>>>>>> fd980d6 (I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).)
