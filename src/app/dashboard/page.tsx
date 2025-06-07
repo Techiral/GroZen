@@ -1,1262 +1,830 @@
-
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
-import dynamic from 'next/dynamic'; 
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { Meal, Exercise, Mindfulness, MoodLog, GroceryItem, ChartMoodLog, UserProfile } from '@/types/wellness';
-import { Utensils, Dumbbell, Brain, CalendarDays, RotateCcw, Smile, Annoyed, Frown, Meh, Laugh, Camera, Sparkles, Trash2, VideoOff, ShoppingCart, Loader2, Gift, LogOut, ShieldCheck, LineChart as LineChartIcon, CheckSquare, Square, Share2 as ShareIcon, Trophy, ListOrdered, User as UserIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { format, differenceInDays, parseISO } from 'date-fns';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
-import {
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import SocialShareCard from '@/components/social-share-card';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X } from 'lucide-react';
+import type { MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
+import { format, parseISO, isToday, subDays, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
-import { generateShareImage as aiGenerateShareImage, type GenerateShareImageInput } from '@/ai/flows/generate-share-image';
 
-const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
-  ssr: false,
-  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-5 w-5 animate-spin" /></div>,
-});
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), {
-  ssr: false,
-  loading: () => <div className="flex justify-center items-center h-[180px] sm:h-[200px] md:h-[220px]"><Loader2 className="h-5 w-5 animate-spin" /></div>,
-});
-const RechartsLine = dynamic(() => import('recharts').then(mod => mod.Line), { 
-  ssr: false,
-});
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { 
-  ssr: false,
-});
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { 
-  ssr: false,
-});
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { 
-  ssr: false,
-});
+// Mood emoji to numeric value mapping for chart
+const moodToValue: { [key: string]: number } = {
+  "😞": 1, // Very sad
+  "😕": 2, // Worried/upset
+  "😐": 3, // Neutral
+  "🙂": 4, // Okay/content
+  "😊": 5, // Happy
+};
 
-
-const SocialShareCard = dynamic(() => import('@/components/social-share-card'), {
-  ssr: false,
-  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-5 w-5 animate-spin" /> <span className="ml-2 text-2xs text-muted-foreground">Loading share card...</span></div>,
-});
-
-
-const SectionCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; itemsCount?: number; action?: React.ReactNode }> = ({ title, icon, children, itemsCount, action }) => (
-  <Card className="neumorphic w-full mb-3 sm:mb-4">
-    <CardHeader className="flex flex-col space-y-1 xs:flex-row xs:items-center xs:justify-between xs:space-y-0 pb-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
-      <div className="flex flex-row items-center">
-        <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1 sm:gap-1.5">
-          {icon} {title}
-        </CardTitle>
-        {itemsCount !== undefined && <span className="ml-1.5 sm:ml-2 text-3xs sm:text-2xs text-muted-foreground">({itemsCount} items)</span>}
-      </div>
-      {action && <div className="w-full xs:w-auto pt-1 xs:pt-0">{action}</div>}
-    </CardHeader>
-    <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
-      {children}
-    </CardContent>
-  </Card>
-);
-
-const ItemCardInternal: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[160px] xs:min-w-[170px] sm:min-w-[190px] snap-start", className)}>
+const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={cn("neumorphic-sm p-2 sm:p-2.5 rounded-md min-w-[160px] xs:min-w-[180px] sm:min-w-[200px] md:min-w-[220px] snap-start", className)}>
     {children}
   </div>
 );
-const ItemCard = React.memo(ItemCardInternal);
 
-
-const moodEmojiStrings = [
-    { emoji: "😊", label: "Happy" }, 
-    { emoji: "🙂", label: "Okay" }, 
-    { emoji: "😐", label: "Neutral" }, 
-    { emoji: "😕", label: "Worried" }, 
-    { emoji: "😞", label: "Sad" }
-];
-
-const moodToValueMapping: { [key: string]: number } = {
-  "😊": 5, 
-  "🙂": 4, 
-  "😐": 3, 
-  "😕": 2, 
-  "😞": 1, 
-};
-
-const moodValueToLabel: { [key: number]: string } = {
-  5: "Happy",
-  4: "Okay",
-  3: "Neutral",
-  2: "Worried",
-  1: "Sad",
-};
-
-const chartConfig = {
-  mood: {
-    label: "Mood",
-    color: "hsl(var(--primary))", 
-  },
-} satisfies ChartConfig;
-
-
-export default function DashboardPage() {
-  // 1. Context Hooks
+// Component to handle client-side rendering safely
+const DashboardContent: React.FC = () => {
   const router = useRouter();
-  const { toast } = useToast();
-  const {
-    currentUser,
-    isAdminUser,
-    isLoadingAuth,
-    logoutUser,
-    wellnessPlan,
-    isOnboardedState,
-    clearPlanAndData,
-    isLoadingPlan,
-    addMoodLog,
+  const searchParams = useSearchParams();
+  const { 
+    currentUser, 
+    isLoadingAuth, 
+    isPlanAvailable, 
+    isOnboardedState, 
+    wellnessPlan, 
+    moodLogs, 
+    addMoodLog, 
     deleteMoodLog,
-    moodLogs,
     groceryList,
     isLoadingGroceryList,
-    errorGroceryList,
-    generateGroceryList: generateGroceryListFromContext,
+    generateGroceryList,
     deleteGroceryItem,
-    isPlanAvailable,
+    logoutUser,
     userActiveChallenge,
     isLoadingUserChallenge,
     joinCurrentChallenge,
     logChallengeDay,
     currentUserProfile,
-    updateUserDisplayName,
+    updateUserDisplayName
   } = usePlan();
-  
 
-  // 2. useState Hooks
+  const [selectedMood, setSelectedMood] = useState('');
+  const [moodNotes, setMoodNotes] = useState('');
+  const [selfieDataUri, setSelfieDataUri] = useState<string | undefined>(undefined);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isSubmittingMood, setIsSubmittingMood] = useState(false);
   const [isMoodDialogOpen, setIsMoodDialogOpen] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [moodNotes, setMoodNotes] = useState("");
-  const [isSavingMood, setIsSavingMood] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState("");
-  const [isUpdatingDisplayName, setIsUpdatingDisplayName] = useState(false);
-  const [isSharingChallenge, setIsSharingChallenge] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
-  const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isVideoReadyForCapture, setIsVideoReadyForCapture] = useState(false);
-  const [beforeShareLog, setBeforeShareLog] = useState<MoodLog | null>(null);
-  const [afterShareLog, setAfterShareLog] = useState<MoodLog | null>(null);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
 
-  // 3. useRef Hooks
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // 4. useEffect Hooks
- useEffect(() => {
-    if (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname)) {
-      router.replace('/login');
-    } else if (currentUser && !isAdminUser && !isOnboardedState && !isLoadingPlan && router.isReady && router.pathname !== '/onboarding') {
-      router.replace('/onboarding');
+  // Handle client-side mounting
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!currentUser) {
+        router.replace('/login');
+      } else if (!isOnboardedState) {
+        router.replace('/onboarding');
+      }
     }
-  }, [currentUser, isAdminUser, isLoadingAuth, isOnboardedState, isLoadingPlan, router, isPlanAvailable]);
-
+  }, [currentUser, isLoadingAuth, isOnboardedState, router]);
 
   useEffect(() => {
     if (currentUserProfile?.displayName) {
       setNewDisplayName(currentUserProfile.displayName);
-    } else if (currentUser && !currentUserProfile?.displayName) {
-        setNewDisplayName(currentUser.email?.split('@')[0] || "GroZen User");
     }
-  }, [currentUserProfile, currentUser]);
+  }, [currentUserProfile]);
 
-
-  useEffect(() => {
-    const logsWithSelfies = [...moodLogs]
-      .filter(log => !!log.selfieDataUri && log.date)
-      .sort((a, b) => (a.date && b.date ? parseISO(a.date).getTime() - parseISO(b.date).getTime() : 0));
-
-    if (logsWithSelfies.length >= 2) {
-      const firstSelfieLog = logsWithSelfies[0];
-      let suitableAfterLog = null;
-
-      for (let i = logsWithSelfies.length - 1; i > 0; i--) {
-          const potentialAfterLog = logsWithSelfies[i];
-          if (isAdminUser || (potentialAfterLog.date && firstSelfieLog.date && differenceInDays(parseISO(potentialAfterLog.date), parseISO(firstSelfieLog.date)) >= 14)) {
-              suitableAfterLog = potentialAfterLog;
-              break; 
-          }
-      }
-      if (suitableAfterLog) {
-        setBeforeShareLog(firstSelfieLog);
-        setAfterShareLog(suitableAfterLog);
-      } else {
-        setBeforeShareLog(null);
-        setAfterShareLog(null);
-      }
-    } else {
-       setBeforeShareLog(null);
-       setAfterShareLog(null);
-    }
-  }, [moodLogs, isAdminUser]);
-
- useEffect(() => {
-    const video = videoRef.current;
-    if (isCameraActive && selfieStream && hasCameraPermission === true && video) {
-        if (video.srcObject !== selfieStream) { 
-            video.srcObject = selfieStream;
-        }
-
-        const handleLoadedMetadata = () => {
-            video.play().catch(err => {
-                console.error("Error playing video stream:", err);
-                toast({
-                    variant: "destructive",
-                    title: "Camera Error",
-                    description: "Could not start video playback. Ensure camera is not in use or try reopening the camera."
-                });
-                setIsVideoReadyForCapture(false);
-            });
-        };
-
-        const handlePlaying = () => {
-            setTimeout(() => {
-                if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-                    setIsVideoReadyForCapture(true);
-                } else if (video) { 
-                    console.warn("Video 'playing' event fired, but video dimensions are 0. Retrying check shortly.");
-                    setTimeout(() => {
-                        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-                            setIsVideoReadyForCapture(true);
-                        } else {
-                            console.error("Video dimensions still 0 after delay on 'playing' event.");
-                            toast({
-                                variant: "destructive",
-                                title: "Camera Feed Issue",
-                                description: "Video feed started but dimensions are not available. Try reopening camera."
-                            });
-                            setIsVideoReadyForCapture(false);
-                        }
-                    }, 200); 
-                }
-            }, 100); 
-        };
-        
-        const handleCanPlay = () => {
-             if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-                setIsVideoReadyForCapture(true);
-            }
-        };
-        
-        const handleWaiting = () => setIsVideoReadyForCapture(false);
-        const handleStalled = () => setIsVideoReadyForCapture(false);
-
-        video.addEventListener('loadedmetadata', handleLoadedMetadata);
-        video.addEventListener('playing', handlePlaying);
-        video.addEventListener('canplay', handleCanPlay);
-        video.addEventListener('waiting', handleWaiting);
-        video.addEventListener('stalled', handleStalled);
-        
-        if (video.readyState >= HTMLMediaElement.HAVE_METADATA && !video.paused) {
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
-                setIsVideoReadyForCapture(true);
-            }
-        } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.paused) {
-            video.play().catch(err => {
-                 console.error("Error attempting to play already loaded video", err);
-                 toast({ variant: "destructive", title: "Camera Error", description: "Failed to resume video." });
-            });
-        }
-
-        return () => {
-            if (video) {
-                video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-                video.removeEventListener('playing', handlePlaying);
-                video.removeEventListener('canplay', handleCanPlay);
-                video.removeEventListener('waiting', handleWaiting);
-                video.removeEventListener('stalled', handleStalled);
-            }
-            setIsVideoReadyForCapture(false); 
-        };
-    } else {
-        setIsVideoReadyForCapture(false);
-        if (video && video.srcObject && !isCameraActive) {
-            (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-            video.srcObject = null;
-        }
-    }
-}, [selfieStream, isCameraActive, hasCameraPermission, toast]);
-
-
-  useEffect(() => {
-    const currentStream = selfieStream;
-    return () => {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [selfieStream]);
-
-  // 5. useMemo Hooks
-  const sortedMoodLogs = useMemo(() => {
-    return [...moodLogs].sort((a, b) => {
-      const dateA = a.date ? parseISO(a.date).getTime() : (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
-      const dateB = b.date ? parseISO(b.date).getTime() : (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
-      return dateB - dateA; 
-    });
-  }, [moodLogs]);
-
-  const moodChartData: ChartMoodLog[] = useMemo(() => {
-    if (!RechartsLine || !CartesianGrid || !XAxis || !YAxis) return []; // Guard against SSR issues with dynamic imports
-    return [...moodLogs] 
-      .map(log => ({
-        date: log.date ? format(parseISO(log.date), "MMM d") : "Unknown Date",
-        moodValue: moodToValueMapping[log.mood] || 0, 
-        moodEmoji: log.mood,
-        fullDate: log.date || new Date(0).toISOString(), 
-      }))
-      .filter(log => log.moodValue > 0) 
-      .sort((a,b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()); 
-  }, [moodLogs]);
-  
-  const groupedGroceryItems = React.useMemo(() => {
-    if (!groceryList) return {};
-    return groceryList.items.reduce((acc, item) => {
-      const category = item.category || 'Other';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(item);
-      return acc;
-    }, {} as Record<string, GroceryItem[]>);
-  }, [groceryList]);
-  
-  const todayDateString = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
-  const isChallengeDayLoggedToday = useMemo(() => {
-    return !!userActiveChallenge?.completedDates.includes(todayDateString);
-  }, [userActiveChallenge, todayDateString]);
-
-
-  // Component Logic & Event Handlers
-  const handleToggleCamera = async () => {
-    setIsVideoReadyForCapture(false); 
-
-    if (isCameraActive && selfieStream) { 
-      selfieStream.getTracks().forEach(track => track.stop());
-      setSelfieStream(null); 
-      setIsCameraActive(false);
-      if (videoRef.current) videoRef.current.srcObject = null; 
-    } else { 
-      setCapturedSelfie(null); 
-      setHasCameraPermission(null); 
-      setIsCameraActive(true); 
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-        setHasCameraPermission(true);
-        setSelfieStream(stream); 
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        setIsCameraActive(false); 
-        setSelfieStream(null);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings.',
-        });
-      }
-    }
-  };
-
-  const handleCaptureSelfie = () => {
-    const video = videoRef.current;
-    if (isVideoReadyForCapture && video && selfieStream) { 
-       if (video.videoWidth === 0 || video.videoHeight === 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Capture Failed',
-                description: 'Video dimensions not available. Ensure camera feed is active and try again.',
-            });
-            setIsVideoReadyForCapture(false); 
-            return;
-        }
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      if (context) {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedSelfie(dataUri);
-        
-        if (selfieStream) {
-            selfieStream.getTracks().forEach(track => track.stop());
-        }
-        setSelfieStream(null);
-        setIsCameraActive(false);
-        setIsVideoReadyForCapture(false); 
-      } else {
-         toast({
-            variant: 'destructive',
-            title: 'Capture Failed',
-            description: 'Could not get canvas context. Please try again.',
-        });
-      }
-    } else {
-        let description = 'Video stream not ready or camera not active.';
-        if (!isVideoReadyForCapture && selfieStream) description = 'Video is not ready for capture. Please wait for the feed to stabilize.';
-        else if (!selfieStream) description = 'Camera stream is not available.';
-        else if (!video) description = 'Video element not found.';
-
-        toast({
-            variant: 'destructive',
-            title: 'Capture Failed',
-            description: `${description} Ensure the video feed is visible and try again.`,
-        });
-    }
-  };
-
-  const clearCapturedSelfie = () => {
-    setCapturedSelfie(null);
-  };
-
-  const handleMoodButtonClick = (mood: string) => {
-    setSelectedMood(mood);
-    setMoodNotes("");
-    setCapturedSelfie(null); 
-    setIsVideoReadyForCapture(false);
-    if (selfieStream) {
-        selfieStream.getTracks().forEach(track => track.stop());
-        setSelfieStream(null);
-    }
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setIsCameraActive(false); 
-    setHasCameraPermission(null); 
-    
-    setIsMoodDialogOpen(true);
-  };
-
-  const handleSaveMoodLog = async () => {
-    if (selectedMood) {
-      setIsSavingMood(true);
-      try {
-        await addMoodLog(selectedMood, moodNotes, capturedSelfie || undefined);
-        setIsMoodDialogOpen(false); 
-      } catch (error) {
-        console.error("Error saving mood log:", error);
-         toast({ variant: "destructive", title: "Save Error", description: "Could not save mood log." });
-      } finally {
-        setIsSavingMood(false);
-      }
-    }
-  };
-
-  const handleDialogClose = (open: boolean) => {
-    setIsMoodDialogOpen(open);
-    if (!open) { 
-        if (selfieStream) {
-          selfieStream.getTracks().forEach(track => track.stop());
-          setSelfieStream(null);
-        }
-        if (videoRef.current) videoRef.current.srcObject = null;
-
-        setIsCameraActive(false);
-        setCapturedSelfie(null);
-        setSelectedMood(null);
-        setMoodNotes("");
-        setHasCameraPermission(null); 
-        setIsVideoReadyForCapture(false);
-        setIsSavingMood(false); 
-    }
-  }
-
-  const handleGenerateGroceryListClick = async () => {
-    if (!wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0) {
-      toast({ variant: "destructive", title: "Error", description: "No wellness plan with meals available to generate groceries from." });
-      return;
-    }
-    await generateGroceryListFromContext(wellnessPlan);
-  };
-
-  const handleLogout = async () => {
-    await logoutUser();
-  };
-
-  const confirmDeleteMoodLog = async (logId: string) => { 
-    if (logId) {
-      await deleteMoodLog(logId);
-    }
-  };
-  
-  const handleChallengeShare = async () => {
-    if (!userActiveChallenge || !currentUserProfile) return;
-    setIsSharingChallenge(true);
-    const appUrl = typeof window !== "undefined" ? window.location.origin : "GroZenApp.com";
-    const shareText = `I'm crushing Day ${userActiveChallenge.daysCompleted} of the ${CURRENT_CHALLENGE.title} on GroZen! Join the challenge! ${appUrl} #GroZenChallenge #${CURRENT_CHALLENGE.id.replace(/-/g, '')}`;
-    let imageFile: File | null = null;
-
+  const startCamera = useCallback(async () => {
     try {
-      toast({ title: "Generating your awesome share image..." });
-      const imageInput: GenerateShareImageInput = {
-        challengeTitle: CURRENT_CHALLENGE.title,
-        daysCompleted: userActiveChallenge.daysCompleted,
-        userName: currentUserProfile.displayName || "A GroZen User",
-      };
-      const imageResult = await aiGenerateShareImage(imageInput);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' },
+        audio: false 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+      setIsCameraOpen(true);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+    setSelfieDataUri(undefined);
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext('2d');
       
-      if (imageResult.imageDataUri) {
-        const fetchRes = await fetch(imageResult.imageDataUri);
-        const blob = await fetchRes.blob();
-        imageFile = new File([blob], 'grozen-challenge-share.png', { type: blob.type });
-        toast({ title: "Image generated!", description: "Ready to share."});
-      } else {
-         if (imageResult.altText && imageResult.altText.includes("AI did not return an image")) {
-          toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
-        } else {
-          toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image. Sharing your progress with text!" });
-        }
-      }
-    } catch (error: any) {
-      console.error("Error generating share image:", error);
-      if (error.message && error.message.includes("AI did not return an image")) {
-        toast({ variant: "default", title: "Sharing Text Only", description: "Couldn't generate a custom image this time. Sharing your progress with text!" });
-      } else {
-        toast({ variant: "destructive", title: "Image Generation Error", description: "Proceeding with text-only share." });
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        const dataUri = canvas.toDataURL('image/jpeg', 0.8);
+        setSelfieDataUri(dataUri);
+        stopCamera();
       }
     }
+  }, [stopCamera]);
 
-    const shareData: ShareData = {
-      title: "My GroZen Challenge Progress!",
-      text: shareText,
-      url: appUrl,
-    };
-    if (imageFile && navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-      shareData.files = [imageFile];
+  const handleMoodSubmit = async () => {
+    if (!selectedMood) return;
+    
+    setIsSubmittingMood(true);
+    try {
+      await addMoodLog(selectedMood, moodNotes || undefined, selfieDataUri);
+      setSelectedMood('');
+      setMoodNotes('');
+      setSelfieDataUri(undefined);
+      setIsMoodDialogOpen(false);
+    } catch (error) {
+      console.error('Error submitting mood:', error);
+    } finally {
+      setIsSubmittingMood(false);
     }
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        toast({ title: "Shared successfully!" });
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          toast({ title: "Share Canceled", variant: "default" });
-        } else if (error.name === 'NotAllowedError') {
-          toast({ title: "Share Permission Denied", description: "Trying to copy to clipboard instead.", variant: "default" });
-          navigator.clipboard.writeText(shareText)
-            .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
-            .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
-        } else {
-          console.error('Error sharing challenge progress:', error);
-          toast({ variant: "destructive", title: "Share Error", description: "Could not share progress. Trying to copy to clipboard." });
-           navigator.clipboard.writeText(shareText)
-            .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress copied." }))
-            .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
-        }
-      }
-    } else { 
-      navigator.clipboard.writeText(shareText)
-        .then(() => toast({ title: "Copied to clipboard!", description: "Challenge progress (text) copied." }))
-        .catch(() => toast({ variant: "destructive", title: "Copy Error", description: "Could not copy to clipboard." }));
-    }
-    setIsSharingChallenge(false);
   };
 
-  const handleSaveDisplayName = async () => {
-    if (!newDisplayName.trim()) {
-      toast({ variant: "destructive", title: "Invalid Name", description: "Display name cannot be empty." });
-      return;
-    }
-    setIsUpdatingDisplayName(true);
-    await updateUserDisplayName(newDisplayName.trim());
-    setIsUpdatingDisplayName(false);
+  const handleDeleteMoodLog = async (logId: string) => {
+    await deleteMoodLog(logId);
   };
 
+  const handleGenerateGroceryList = async () => {
+    if (wellnessPlan) {
+      await generateGroceryList(wellnessPlan);
+    }
+  };
 
-  // Conditional Returns 
-  if (isLoadingAuth || (!isLoadingAuth && !currentUser && router.isReady && !['/login', '/signup', '/'].includes(router.pathname))) {
+  const handleDeleteGroceryItem = async (itemId: string) => {
+    await deleteGroceryItem(itemId);
+  };
+
+  const handleUpdateDisplayName = async () => {
+    if (!newDisplayName.trim()) return;
+    
+    setIsUpdatingName(true);
+    try {
+      await updateUserDisplayName(newDisplayName.trim());
+      setIsSettingsDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating display name:', error);
+    } finally {
+      setIsUpdatingName(false);
+    }
+  };
+
+  // Prepare chart data from mood logs
+  const chartData: ChartMoodLog[] = moodLogs
+    .filter(log => moodToValue[log.mood] !== undefined)
+    .slice(0, 30) // Last 30 entries
+    .map(log => ({
+      date: format(parseISO(log.date), 'MMM d'),
+      moodValue: moodToValue[log.mood],
+      moodEmoji: log.mood,
+      fullDate: log.date,
+    }))
+    .reverse(); // Reverse to show chronological order
+
+  // Get mood logs for social share (first and most recent with selfies)
+  const moodLogsWithSelfies = moodLogs.filter(log => log.selfieDataUri);
+  const beforeLog = moodLogsWithSelfies.length > 1 ? moodLogsWithSelfies[moodLogsWithSelfies.length - 1] : null;
+  const afterLog = moodLogsWithSelfies.length > 0 ? moodLogsWithSelfies[0] : null;
+
+  // Group grocery items by category
+  const groupedGroceryItems = groceryList?.items.reduce((acc, item) => {
+    const category = item.category || 'Other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(item);
+    return acc;
+  }, {} as Record<string, GroceryItem[]>) || {};
+
+  // Calculate challenge progress
+  const challengeProgress = userActiveChallenge 
+    ? Math.round((userActiveChallenge.daysCompleted / CURRENT_CHALLENGE.durationDays) * 100)
+    : 0;
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const hasLoggedToday = userActiveChallenge?.completedDates.includes(todayStr) || false;
+
+  // Don't render until mounted to avoid hydration issues
+  if (!isMounted || isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isOnboardedState && !isLoadingAuth)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Logo size="text-xl sm:text-2xl md:text-3xl" />
+        <Logo size="text-xl sm:text-2xl" />
         <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
-        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading user data...</p>
-      </div>
-    );
-  }
-  
-  if (currentUser && !isAdminUser && isOnboardedState && !isPlanAvailable && !isLoadingPlan) { 
-     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-lg sm:text-xl" />
-        <p className="mt-3 text-sm sm:text-base">No wellness plan found or an error occurred.</p>
-        <p className="text-2xs sm:text-xs text-muted-foreground">Please try creating a new plan.</p>
-        <Button variant="neumorphic-primary" onClick={() => {clearPlanAndData(false, true); router.push('/onboarding');}} className="mt-3 text-2xs sm:text-xs px-2.5 py-1 h-8 sm:px-3 sm:py-1.5 sm:h-9" aria-label="Create a New Plan">
-          Create a New Plan
-        </Button>
-         <Button variant="outline" onClick={handleLogout} className="mt-3 neumorphic-button text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8" aria-label="Logout">
-            <LogOut className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
-        </Button>
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading your dashboard...</p>
       </div>
     );
   }
 
-  if (currentUser && isOnboardedState && isLoadingPlan && !isPlanAvailable ) { 
+  if (!isPlanAvailable) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <Logo size="text-lg sm:text-xl" />
-        <p className="mt-3 text-sm sm:text-base">Generating your personalized plan...</p>
-        <RotateCcw className="mt-3 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+        <Logo size="text-xl sm:text-2xl" />
+        <p className="mt-3 text-sm sm:text-base">No wellness plan found. Please complete your onboarding first.</p>
+        <Button onClick={() => router.push('/onboarding')} className="mt-3 neumorphic-button text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9">
+          Complete Onboarding
+        </Button>
       </div>
     );
   }
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
-      <header className="flex flex-col xs:flex-row justify-between items-center mb-3 sm:mb-4">
-        <Logo size="text-base sm:text-lg md:text-xl" />
-        <div className="flex items-center gap-1.5 sm:gap-2 mt-2 xs:mt-0">
-            {isAdminUser && (
-                <Button 
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Logo size="text-xl sm:text-2xl" />
+          <span className="text-sm sm:text-md font-semibold text-primary">Dashboard</span>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-1.5 mt-2 sm:mt-0">
+          <Button 
+            variant="outline" 
+            onClick={() => router.push('/leaderboard')} 
+            className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
+            aria-label="View Leaderboard"
+          >
+            <Trophy className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
+          </Button>
+          
+          <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Settings">
+                <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-sm sm:text-base">Settings</DialogTitle>
+                <DialogDescription className="text-2xs sm:text-xs">
+                  Update your profile information.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <Label htmlFor="displayName" className="text-2xs sm:text-xs">Display Name</Label>
+                  <Input
+                    id="displayName"
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    placeholder="Enter your display name"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5">
+                  <Button 
+                    onClick={handleUpdateDisplayName} 
+                    disabled={isUpdatingName || !newDisplayName.trim() || newDisplayName.trim() === currentUserProfile?.displayName}
+                    className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 flex-1"
+                  >
+                    {isUpdatingName ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : null}
+                    Update
+                  </Button>
+                  <Button 
                     variant="outline" 
-                    onClick={() => router.push('/admin')} 
-                    className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
-                    aria-label="Admin Panel"
-                >
-                    <ShieldCheck className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Admin
-                </Button>
-            )}
-            {!isAdminUser && ( 
-                <Button variant="outline" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="New Plan / Edit Preferences">
-                 New Plan/Edit
-                </Button>
-            )}
-            <Button variant="outline" onClick={handleLogout} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
-                <LogOut className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
-            </Button>
+                    onClick={() => setIsSettingsDialogOpen(false)}
+                    className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
+            <LogOut className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
+          </Button>
         </div>
       </header>
 
-      {isLoadingPlan && wellnessPlan && ( 
-        <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-          <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
-          <p className="mt-2 text-xs sm:text-sm">Updating your plan...</p>
-        </div>
-      )}
-      
-      <div className="mb-3 sm:mb-4 p-3 sm:p-4 neumorphic rounded-lg">
-        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">Your GroZen Wellness Plan</h2>
-        <p className="text-2xs sm:text-xs text-muted-foreground">Here&apos;s your personalized guide. Stay consistent!</p>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Left Column - Main Content */}
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          {/* Welcome Card */}
+          <Card className="neumorphic">
+            <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
+              <CardTitle className="text-sm sm:text-base">
+                Welcome back, {currentUserProfile?.displayName || 'GroZen User'}! 👋
+              </CardTitle>
+              <CardDescription className="text-2xs sm:text-xs">
+                Ready to continue your wellness journey today?
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-      {(isPlanAvailable || (isAdminUser && wellnessPlan)) && wellnessPlan && ( 
-        <>
-          <SectionCard title="Meals" icon={<Utensils className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.meals.length}>
-            <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
-                {wellnessPlan.meals.map((meal, index) => (
-                  <ItemCard key={`meal-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {meal.day}
-                    </h4>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
-                  </ItemCard>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </SectionCard>
-
-          <SectionCard title="Exercise Routine" icon={<Dumbbell className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.exercise.length}>
-            <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
-                {wellnessPlan.exercise.map((ex, index) => (
-                  <ItemCard key={`ex-${index}`} className="bg-card">
-                     <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {ex.day}
-                    </h4>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
-                  </ItemCard>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </SectionCard>
-
-          <SectionCard title="Mindfulness Practices" icon={<Brain className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={wellnessPlan.mindfulness.length}>
-            <ScrollArea className="w-full whitespace-nowrap rounded-md">
-              <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
-                {wellnessPlan.mindfulness.map((mind, index) => (
-                  <ItemCard key={`mind-${index}`} className="bg-card">
-                    <h4 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" /> {mind.day}
-                    </h4>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
-                    <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
-                  </ItemCard>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </SectionCard>
-        </>
-      )}
-      
-      {isAdminUser && !isPlanAvailable && !isLoadingPlan && ( 
-        <Alert className="mb-3 sm:mb-4 neumorphic">
-          <AlertTitle className="text-sm sm:text-base">Admin View</AlertTitle>
-          <AlertDescription className="text-2xs sm:text-xs">
-            You are logged in as an admin. You can view your personal plan here if you create one, or proceed to the Admin Panel.
-            <Button variant="link" onClick={() => { clearPlanAndData(false, true); router.push('/onboarding'); }} className="p-0 h-auto ml-1 text-accent text-2xs sm:text-xs">Create Personal Plan?</Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <SectionCard title="Your Profile" icon={<UserIcon className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
-        <div className="space-y-1.5 sm:space-y-2">
-          <div>
-            <Label htmlFor="displayName" className="text-2xs sm:text-xs">Display Name (for Leaderboard)</Label>
-            <Input
-              id="displayName"
-              type="text"
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-              placeholder="Your public name"
-              className="mt-1 text-xs sm:text-sm h-8 sm:h-9"
-              disabled={isUpdatingDisplayName}
-            />
-          </div>
-          <Button 
-            onClick={handleSaveDisplayName} 
-            disabled={isUpdatingDisplayName || newDisplayName === (currentUserProfile?.displayName || "")}
-            variant="neumorphic-primary"
-            className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
-          >
-            {isUpdatingDisplayName ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : null}
-            Save Display Name
-          </Button>
-        </div>
-      </SectionCard>
-
-      <SectionCard 
-        title="Current Wellness Challenge" 
-        icon={<Trophy className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}
-        action={
-            userActiveChallenge && (
-            <Link href="/leaderboard" passHref>
-                <Button
-                    variant="outline"
-                    className="neumorphic-button text-3xs px-1.5 py-0.5 sm:text-2xs sm:px-2 sm:py-1 h-6 sm:h-7"
-                    aria-label="View Challenge Leaderboard"
-                >
-                    <ListOrdered className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
-                </Button>
-            </Link>
-            )
-        }
-      >
-        <CardTitle className="text-sm sm:text-base mb-0.5">{CURRENT_CHALLENGE.title}</CardTitle>
-        <CardDescription className="text-2xs sm:text-xs mb-1.5 sm:mb-2">{CURRENT_CHALLENGE.description}</CardDescription>
-        {isLoadingUserChallenge ? (
-          <div className="flex items-center justify-center py-1">
-            <Loader2 className="h-4 w-4 sm:h-4 sm:w-4 animate-spin text-primary" />
-            <p className="ml-1.5 text-2xs sm:text-xs text-muted-foreground">Loading challenge...</p>
-          </div>
-        ) : !userActiveChallenge ? (
-          <Button
-            variant="neumorphic-primary"
-            onClick={joinCurrentChallenge}
-            className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
-            aria-label={`Join ${CURRENT_CHALLENGE.title} challenge`}
-          >
-            Join Challenge
-          </Button>
-        ) : (
-          <div className="space-y-1.5 sm:space-y-2">
-            <p className="text-2xs sm:text-xs">
-              Your Progress: <span className="font-semibold">{userActiveChallenge.daysCompleted}</span> / {CURRENT_CHALLENGE.durationDays} days
-            </p>
-            {userActiveChallenge.daysCompleted >= CURRENT_CHALLENGE.durationDays ? (
-                 <Alert variant="default" className="neumorphic-sm p-1.5 sm:p-2">
-                    <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-400" />
-                    <AlertTitle className="text-2xs sm:text-xs text-yellow-300">Challenge Complete!</AlertTitle>
-                    <AlertDescription className="text-3xs sm:text-2xs">
-                        Congratulations on completing the {CURRENT_CHALLENGE.title}!
-                    </AlertDescription>
-                </Alert>
-            ) : isChallengeDayLoggedToday ? (
-              <div className="flex items-center gap-1 p-1.5 sm:p-2 neumorphic-inset-sm rounded-md">
-                <CheckSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-400" />
-                <p className="text-3xs sm:text-2xs text-green-300">Today&apos;s challenge logged! Keep it up!</p>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={logChallengeDay}
-                className="neumorphic-button w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
-                aria-label="Log today's challenge completion"
-              >
-                <CheckSquare className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3"/> Log Today
-              </Button>
-            )}
-            <Button
-                variant="outline"
-                onClick={handleChallengeShare}
-                disabled={isSharingChallenge}
-                className="neumorphic-button w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
-                aria-label="Share challenge progress"
-            >
-                {isSharingChallenge ? <Loader2 className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" /> : <ShareIcon className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3"/>}
-                {isSharingChallenge ? 'Sharing...' : 'Share Progress'}
-            </Button>
-          </div>
-        )}
-      </SectionCard>
-
-
-      <Dialog open={isMoodDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="neumorphic w-[90vw] max-w-md p-3 sm:p-4">
-          <DialogHeader className="pb-2 sm:pb-2.5">
-            <DialogTitle className="flex items-center text-sm sm:text-base">
-              Log Your Mood: <span className="ml-1 sm:ml-1.5 text-base sm:text-lg">{selectedMood}</span>
-            </DialogTitle>
-            <DialogDescription className="text-2xs sm:text-xs">
-              How are you feeling? Add notes or a selfie.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-180px)] sm:max-h-[calc(70vh-180px)] -mx-0.5 px-0.5">
-            <div className="grid gap-2 sm:gap-2.5 py-2 sm:py-2.5">
-              <div className="space-y-0.5">
-                <Label htmlFor="mood-notes" className="text-2xs sm:text-xs">Notes (Optional)</Label>
-                <Textarea
-                  id="mood-notes"
-                  value={moodNotes}
-                  onChange={(e) => setMoodNotes(e.target.value)}
-                  placeholder="Any thoughts or details..."
-                  className="h-12 sm:h-14 neumorphic-inset-sm text-2xs sm:text-xs"
-                  disabled={isSavingMood}
-                  aria-label="Mood notes"
-                />
-              </div>
-              <div className="space-y-0.5">
-                  <Label className="text-2xs sm:text-xs">Selfie (Optional)</Label>
-                  <div className="flex flex-col xs:flex-row items-start xs:items-center gap-1 sm:gap-1.5">
-                      <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleToggleCamera}
-                          className="neumorphic-button w-full xs:w-auto text-3xs px-1.5 py-0.5 h-7 sm:text-2xs sm:px-2 sm:py-1 sm:h-8"
-                          disabled={!!capturedSelfie || isSavingMood || (isCameraActive && !selfieStream && hasCameraPermission === null) } 
-                          aria-label={isCameraActive ? 'Close Camera' : 'Open Camera'}
-                      >
-                          {isCameraActive && !selfieStream && hasCameraPermission === null ? <Loader2 className="mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" /> : (isCameraActive ? <VideoOff className="mr-0.5 h-2.5 w-2.5" /> : <Camera className="mr-0.5 h-2.5 w-2.5" />)}
-                          {isCameraActive && !selfieStream && hasCameraPermission === null ? 'Starting...' : (isCameraActive ? 'Close Cam' : 'Open Cam')}
-                      </Button>
-                      {isCameraActive && selfieStream && hasCameraPermission === true && (
-                           <Button
-                              type="button"
-                              variant="neumorphic-primary"
-                              onClick={handleCaptureSelfie}
-                              disabled={!selfieStream || !isVideoReadyForCapture || isSavingMood}
-                              className="w-full xs:w-auto text-3xs px-1.5 py-0.5 h-7 sm:text-2xs sm:px-2 sm:py-1 sm:h-8"
-                              aria-label="Capture Selfie"
-                          >
-                              <Camera className="mr-0.5 h-2.5 w-2.5" /> Capture
-                          </Button>
+          {/* Challenge Progress */}
+          {userActiveChallenge ? (
+            <Card className="neumorphic">
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> {CURRENT_CHALLENGE.title}
+                </CardTitle>
+                <CardDescription className="text-2xs sm:text-xs">
+                  {userActiveChallenge.daysCompleted} of {CURRENT_CHALLENGE.durationDays} days completed
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+                <div className="space-y-2 sm:space-y-2.5">
+                  <Progress value={challengeProgress} className="h-2 sm:h-2.5" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-2xs sm:text-xs text-muted-foreground">{challengeProgress}% Complete</span>
+                    <Button
+                      onClick={logChallengeDay}
+                      disabled={hasLoggedToday || isLoadingUserChallenge}
+                      variant={hasLoggedToday ? "outline" : "neumorphic-primary"}
+                      className="text-3xs px-2 py-0.5 h-6 sm:text-2xs sm:px-2.5 sm:py-1 sm:h-7"
+                    >
+                      {isLoadingUserChallenge ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      ) : hasLoggedToday ? (
+                        <>
+                          <CheckCircle className="mr-0.5 h-2.5 w-2.5" /> Logged
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-0.5 h-2.5 w-2.5" /> Log Today
+                        </>
                       )}
-                  </div>
-                  
-                  <div className={cn(
-                      "mt-1.5 rounded-md overflow-hidden border border-border neumorphic-inset-sm bg-muted/20 flex items-center justify-center text-center p-1",
-                      "aspect-[3/4] sm:aspect-square md:aspect-video" 
-                    )}>
-                    {isCameraActive && selfieStream && hasCameraPermission === true ? (
-                      <video
-                          ref={videoRef}
-                          className="w-full h-full object-cover"
-                          muted
-                          playsInline 
-                       />
-                    ) : capturedSelfie ? (
-                      <div className="p-1 sm:p-1.5 text-muted-foreground">
-                        <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-0.5 text-accent" />
-                        <p className="text-3xs sm:text-2xs">Selfie captured!</p>
-                        <p className="text-3xs">Preview below.</p>
-                      </div>
-                    ) : hasCameraPermission === false ? (
-                      <div className="p-1 sm:p-1.5">
-                        <VideoOff className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-0.5 text-destructive" />
-                        <p className="font-semibold text-destructive text-3xs sm:text-2xs">Camera Access Denied</p>
-                        <p className="text-3xs">Enable in browser.</p>
-                      </div>
-                    ) : isCameraActive && hasCameraPermission === null ? ( 
-                      <div className="p-1 sm:p-1.5">
-                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-0.5 animate-spin" />
-                        <p className="text-3xs sm:text-2xs">Requesting camera...</p>
-                      </div>
-                    ) : ( 
-                      <div className="p-1 sm:p-1.5">
-                        <Camera className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-0.5" />
-                        <p className="text-3xs sm:text-2xs">Camera is off.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {capturedSelfie && (
-                      <div className="mt-1.5 space-y-0.5">
-                          <p className="text-2xs sm:text-xs font-medium">Selfie Preview:</p>
-                          <div className="relative aspect-video w-full max-w-[100px] sm:max-w-[120px] neumorphic-sm rounded-md overflow-hidden">
-                               <Image src={capturedSelfie} alt="Captured selfie" fill={true} className="object-cover" data-ai-hint="selfie person"/>
-                          </div>
-                          <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={clearCapturedSelfie}
-                              className="neumorphic-button items-center text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7"
-                              disabled={isSavingMood}
-                              aria-label="Clear captured selfie"
-                          >
-                              <Trash2 className="mr-0.5 h-2 w-2 sm:h-2.5 sm:w-2.5 text-destructive" /> Clear
-                          </Button>
-                      </div>
-                  )}
-              </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 justify-between pt-2.5 sm:pt-3">
-             <DialogClose asChild>
-              <Button type="button" variant="outline" className="neumorphic-button w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9" disabled={isSavingMood} aria-label="Cancel mood logging">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="neumorphic-primary"
-              onClick={handleSaveMoodLog}
-              disabled={!selectedMood || isSavingMood}
-              className="w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
-              aria-label="Save current mood"
-            >
-              {isSavingMood ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : null}
-              {isSavingMood ? 'Saving...' : 'Save Mood'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <SectionCard title="Mood Check-in" icon={<Smile className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} >
-         <CardDescription className="mb-1.5 sm:mb-2 text-2xs sm:text-xs">How are you feeling today? Log your mood and optionally add a selfie.</CardDescription>
-        <div className="flex space-x-1 xs:space-x-1.5 justify-center sm:justify-start">
-          {moodEmojiStrings.map(moodObj => (
-            <Button
-              key={moodObj.emoji}
-              variant="outline"
-              size="icon"
-              onClick={() => handleMoodButtonClick(moodObj.emoji)}
-              className="text-base sm:text-lg neumorphic-button h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 hover:neumorphic-inset"
-              aria-label={`Log mood: ${moodObj.label}`}
-            >
-              {moodObj.emoji}
-            </Button>
-          ))}
-        </div>
-      </SectionCard>
-      
-      <SectionCard title="Your Mood Journey" icon={<LineChartIcon className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
-        {moodChartData.length >= 2 ? (
-          <div className="h-[160px] xs:h-[180px] sm:h-[200px] md:h-[220px]">
-           {ChartContainer && ResponsiveContainer && RechartsLine && CartesianGrid && XAxis && YAxis && ( 
-            <ChartContainer config={chartConfig} className="h-full w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsLine
-                  data={moodChartData}
-                  margin={{
-                    top: 5,
-                    right: 5,
-                    left: -30, 
-                    bottom: 0,
-                  }}
-                  accessibilityLayer
-                >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 6)} 
-                    className="text-3xs sm:text-2xs"
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    domain={[0, 5]} 
-                    ticks={[1, 2, 3, 4, 5]}
-                    tickFormatter={(value) => moodValueToLabel[value] || ''}
-                    className="text-3xs sm:text-2xs"
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={
-                      <ChartTooltipContent
-                        indicator="line"
-                        nameKey="moodValue"
-                        labelKey="date"
-                        formatter={(value, name, props) => {
-                          const { payload } = props as any; 
-                          return (
-                            <div className="flex flex-col items-center gap-0.5 p-1 text-xs">
-                              <span className="font-semibold">{payload.moodEmoji} {moodValueToLabel[payload.moodValue as number]}</span>
-                              <span className="text-2xs text-muted-foreground">{payload.date}</span>
-                            </div>
-                          );
-                        }}
-                        
-                      />
-                    }
-                  />
-                  
-                    <RechartsLine
-                      dataKey="moodValue"
-                      type="monotone"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={1.5}
-                      dot={{
-                        r: 3,
-                        fill: "hsl(var(--primary))",
-                        stroke: "hsl(var(--background))",
-                        strokeWidth: 1.5,
-                      }}
-                      activeDot={{
-                         r: 4,
-                         fill: "hsl(var(--primary))",
-                         stroke: "hsl(var(--background))",
-                         strokeWidth: 2,
-                      }}
-                    />
-                  
-                </RechartsLine>
-              </ResponsiveContainer>
-            </ChartContainer>
-           )}
-          </div>
-        ) : (
-          <CardDescription className="text-center text-2xs sm:text-xs py-2">
-            Log your mood for at least two days to see your trend here!
-          </CardDescription>
-        )}
-      </SectionCard>
-
-
-      <SectionCard title="Mood History" icon={<RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />} itemsCount={sortedMoodLogs.length}>
-        <ScrollArea className="w-full h-[180px] sm:h-[220px] md:h-[250px] whitespace-nowrap rounded-md">
-          <div className="flex flex-col space-y-1.5 sm:space-y-2 p-0.5">
-            {sortedMoodLogs.map(log => (
-              <div key={log.id} className="bg-card w-full min-w-0 p-2 sm:p-2.5 neumorphic-sm">
-                <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
-                  {log.selfieDataUri && (
-                    <div className="relative w-full sm:w-12 md:w-14 h-auto aspect-square rounded-md overflow-hidden neumorphic-inset-sm">
-                      <Image src={log.selfieDataUri} alt={`Selfie for mood ${log.mood} on ${log.date ? format(parseISO(log.date), "MMM d") : 'Unknown Date'}`} fill={true} className="object-cover" data-ai-hint="selfie person" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <h4 className="font-semibold text-sm sm:text-base flex items-center gap-0.5 sm:gap-1">
-                        <span className="text-base sm:text-lg">{log.mood}</span>
-                        {moodEmojiStrings.find(m => m.emoji === log.mood) && 
-                           (moodToValueMapping[log.mood] === 5 ? <Laugh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 4 ? <Smile className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 3 ? <Meh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 2 ? <Annoyed className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400" aria-hidden="true"/> :
-                            moodToValueMapping[log.mood] === 1 ? <Frown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-400" aria-hidden="true"/> : '')
-                        }
-                      </h4>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 p-0 text-muted-foreground hover:text-destructive"
-                                aria-label={`Delete mood log from ${log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : 'Unknown Date'}`}
-                            >
-                                <Trash2 className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-3 sm:w-3" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="neumorphic p-3 sm:p-4">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-sm sm:text-base">Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-2xs sm:text-xs">
-                              This action cannot be undone. This will permanently delete this mood log.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter className="flex-col sm:flex-row gap-1.5 sm:gap-2 pt-2.5 sm:pt-3">
-                            <AlertDialogCancel
-                              className="neumorphic-button w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
-                              aria-label="Cancel mood log deletion"
-                            >
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => confirmDeleteMoodLog(log.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-2xs px-2 py-1 sm:text-xs sm:px-2.5 sm:py-1.5 h-8 sm:h-9"
-                              aria-label="Confirm mood log deletion"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                     <p className="text-3xs sm:text-2xs text-muted-foreground">
-                      {log.date ? format(parseISO(log.date), "MMM d, yy 'at' h:mma") : "Date not available"}
-                    </p>
-                    {log.notes && <p className="text-2xs sm:text-xs mt-0.5 pt-0.5 border-t border-border/50 whitespace-pre-wrap break-words">{log.notes}</p>}
-                     {log.aiFeedback && (
-                      <div className="mt-0.5 pt-0.5 border-t border-border/50">
-                          <p className="text-2xs sm:text-xs flex items-center gap-0.5 text-primary/90">
-                              <Sparkles className="h-2.5 w-2.5 mr-0.5 text-accent" /> <em>GroZen Insight:</em>
-                          </p>
-                          <p className="text-3xs sm:text-2xs italic text-muted-foreground/90 whitespace-pre-wrap break-words">{log.aiFeedback}</p>
-                      </div>
-                    )}
+                    </Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-        {sortedMoodLogs.length === 0 && (
-            <CardDescription className="mt-2 text-center text-2xs sm:text-xs">
-                No mood logs yet. Use the Mood Check-in above to start tracking!
-            </CardDescription>
-        )}
-      </SectionCard>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="neumorphic">
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Join the Challenge!
+                </CardTitle>
+                <CardDescription className="text-2xs sm:text-xs">
+                  {CURRENT_CHALLENGE.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+                <Button
+                  onClick={joinCurrentChallenge}
+                  disabled={isLoadingUserChallenge}
+                  className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                >
+                  {isLoadingUserChallenge ? (
+                    <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="mr-1 h-2.5 w-2.5" /> Join Challenge
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-      <SectionCard title="Share Your Progress" icon={<Gift className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
-        {beforeShareLog && afterShareLog ? (
-          <SocialShareCard beforeLog={beforeShareLog} afterLog={afterShareLog} />
-        ) : (
-          <CardDescription className="text-2xs sm:text-xs">
-            Keep logging your moods with selfies! Once you have at least two selfies, with the latest being at least 14 days after the first (or if you are an admin), your &apos;Before & After&apos; share card will appear here.
-          </CardDescription>
-        )}
-      </SectionCard>
+          {/* Wellness Plan Tabs */}
+          <Card className="neumorphic">
+            <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+              <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
+                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Your Wellness Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+              <Tabs defaultValue="meals" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 h-8 sm:h-9">
+                  <TabsTrigger value="meals" className="text-3xs sm:text-2xs">
+                    <Utensils className="mr-0.5 h-2.5 w-2.5" /> Meals
+                  </TabsTrigger>
+                  <TabsTrigger value="exercise" className="text-3xs sm:text-2xs">
+                    <Dumbbell className="mr-0.5 h-2.5 w-2.5" /> Exercise
+                  </TabsTrigger>
+                  <TabsTrigger value="mindfulness" className="text-3xs sm:text-2xs">
+                    <Brain className="mr-0.5 h-2.5 w-2.5" /> Mind
+                  </TabsTrigger>
+                </TabsList>
 
-
-      <SectionCard title="Grocery Concierge" icon={<ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-4 text-accent" />}>
-        <CardDescription className="mb-1.5 sm:mb-2 text-2xs sm:text-xs">
-          Let GroZen generate a grocery list based on your current wellness plan.
-        </CardDescription>
-        <Button
-          onClick={handleGenerateGroceryListClick}
-          disabled={isLoadingGroceryList || !wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}
-          variant="neumorphic-primary"
-          className="w-full xs:w-auto text-3xs px-2 py-1 h-7 sm:text-2xs sm:px-2.5 sm:py-1.5 sm:h-8"
-          aria-label="Generate Grocery List"
-        >
-          {isLoadingGroceryList ? <Loader2 className="mr-0.5 h-2.5 w-2.5 animate-spin" /> : <ShoppingCart className="mr-0.5 h-2.5 w-2.5" />}
-          Generate Grocery List
-        </Button>
-
-        {errorGroceryList && (
-          <Alert variant="destructive" className="mt-2 sm:mt-2.5 p-2 sm:p-3">
-            <AlertTitle className="text-xs sm:text-sm">Error Generating List</AlertTitle>
-            <AlertDescription className="text-2xs sm:text-xs">{errorGroceryList}</AlertDescription>
-          </Alert>
-        )}
-
-        {!groceryList && !isLoadingGroceryList && !errorGroceryList && (
-           <CardDescription className="mt-2 sm:mt-2.5 text-2xs sm:text-xs">
-               No grocery list generated yet. Click the button above to create one based on your meal plan.
-           </CardDescription>
-        )}
-
-        {groceryList && !isLoadingGroceryList && groceryList.items.length > 0 && (
-          <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2">
-            <h3 className="text-xs sm:text-sm font-semibold">
-              Your Grocery List <span className="text-3xs sm:text-2xs text-muted-foreground"> (Generated: {groceryList.generatedDate ? format(parseISO(groceryList.generatedDate), "MMM d, yyyy") : 'Unknown'})</span>
-            </h3>
-            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedGroceryItems).length > 0 ? Object.keys(groupedGroceryItems) : undefined }>
-              {Object.entries(groupedGroceryItems).map(([category, items]) => (
-                <AccordionItem value={category} key={category} className="neumorphic-sm mb-1 sm:mb-1.5">
-                  <AccordionTrigger className="p-1.5 sm:p-2 text-2xs sm:text-xs hover:no-underline">
-                    {category} ({items.length})
-                  </AccordionTrigger>
-                  <AccordionContent className="p-1.5 sm:p-2">
-                    <ul className="list-disc pl-3 sm:pl-3.5 space-y-1 sm:space-y-1.5 text-2xs sm:text-xs">
-                      {items.map(item => (
-                        <li key={item.id} className="break-words flex justify-between items-start gap-1">
-                          <div>
-                            <strong>{item.name}</strong>
-                            {item.quantity && <span className="text-muted-foreground text-3xs sm:text-2xs"> ({item.quantity})</span>}
-                            {item.notes && <em className="text-muted-foreground text-3xs block"> - {item.notes}</em>}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteGroceryItem(item.id)}
-                            className="h-3 w-3 xs:h-3.5 xs:w-3.5 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1 sm:ml-1.5"
-                            aria-label={`Delete ${item.name} from grocery list`}
-                          >
-                            <Trash2 className="h-2 w-2 xs:h-2.5 xs:w-2.5" />
-                          </Button>
-                        </li>
+                <TabsContent value="meals" className="mt-2 sm:mt-2.5">
+                  <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                    <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                      {wellnessPlan?.meals.map((meal, index) => (
+                        <ItemCard key={`meal-${index}`} className="bg-card">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                            <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {meal.day}
+                          </h5>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
+                        </ItemCard>
                       ))}
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-            <p className="text-3xs text-muted-foreground mt-2 sm:mt-2.5">
-              Note: This is an AI-generated list. Please review for accuracy and adjust quantities as needed.
-            </p>
-          </div>
-        )}
-        {groceryList && !isLoadingGroceryList && groceryList.items.length === 0 && (
-            <CardDescription className="mt-2 sm:mt-2.5 text-2xs sm:text-xs">
-               Your grocery list is currently empty. You can generate a new one if you have a meal plan.
-            </CardDescription>
-        )}
-      </SectionCard>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </TabsContent>
 
+                <TabsContent value="exercise" className="mt-2 sm:mt-2.5">
+                  <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                    <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                      {wellnessPlan?.exercise.map((ex, index) => (
+                        <ItemCard key={`ex-${index}`} className="bg-card">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                            <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {ex.day}
+                          </h5>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
+                        </ItemCard>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="mindfulness" className="mt-2 sm:mt-2.5">
+                  <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                    <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                      {wellnessPlan?.mindfulness.map((mind, index) => (
+                        <ItemCard key={`mind-${index}`} className="bg-card">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                            <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {mind.day}
+                          </h5>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
+                          <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
+                        </ItemCard>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Mood Chart */}
+          {chartData.length > 0 && (
+            <Card className="neumorphic">
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
+                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Mood Trends
+                </CardTitle>
+                <CardDescription className="text-2xs sm:text-xs">
+                  Your mood over the last {chartData.length} entries
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+                <div className="h-[200px] sm:h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        domain={[1, 5]}
+                        ticks={[1, 2, 3, 4, 5]}
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload as ChartMoodLog;
+                            return (
+                              <div className="neumorphic-sm p-2 border border-border/50 bg-background">
+                                <p className="text-2xs sm:text-xs font-medium">{label}</p>
+                                <p className="text-2xs sm:text-xs">
+                                  Mood: <span className="text-base">{data.moodEmoji}</span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="moodValue" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
+                        activeDot={{ r: 4, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column - Sidebar */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* Mood Log */}
+          <Card className="neumorphic">
+            <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+              <CardTitle className="flex items-center justify-between text-sm sm:text-base">
+                <span className="flex items-center gap-1 sm:gap-1.5">
+                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Mood Log
+                </span>
+                <Dialog open={isMoodDialogOpen} onOpenChange={setIsMoodDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7">
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+                    <DialogHeader>
+                      <DialogTitle className="text-sm sm:text-base">Log Your Mood</DialogTitle>
+                      <DialogDescription className="text-2xs sm:text-xs">
+                        How are you feeling today?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <Label className="text-2xs sm:text-xs">Select your mood</Label>
+                        <div className="flex justify-center gap-2 sm:gap-3">
+                          {['😞', '😕', '😐', '🙂', '😊'].map((mood) => (
+                            <button
+                              key={mood}
+                              onClick={() => setSelectedMood(mood)}
+                              className={cn(
+                                "text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-md transition-all",
+                                selectedMood === mood 
+                                  ? "neumorphic-inset-sm scale-110" 
+                                  : "neumorphic-sm hover:scale-105"
+                              )}
+                            >
+                              {mood}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <Label htmlFor="moodNotes" className="text-2xs sm:text-xs">Notes (optional)</Label>
+                        <Textarea
+                          id="moodNotes"
+                          value={moodNotes}
+                          onChange={(e) => setMoodNotes(e.target.value)}
+                          placeholder="How are you feeling? What's on your mind?"
+                          className="min-h-[60px] sm:min-h-[80px] text-xs sm:text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <Label className="text-2xs sm:text-xs">Selfie (optional)</Label>
+                        {!isCameraOpen && !selfieDataUri && (
+                          <Button
+                            onClick={startCamera}
+                            variant="outline"
+                            className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                          >
+                            <Camera className="mr-1 h-2.5 w-2.5" /> Take Selfie
+                          </Button>
+                        )}
+                        
+                        {isCameraOpen && (
+                          <div className="space-y-1.5 sm:space-y-2">
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              playsInline
+                              className="w-full rounded-md neumorphic-inset-sm"
+                            />
+                            <div className="flex gap-1.5 sm:gap-2">
+                              <Button
+                                onClick={capturePhoto}
+                                className="flex-1 neumorphic-button-primary text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8"
+                              >
+                                <Camera className="mr-1 h-2.5 w-2.5" /> Capture
+                              </Button>
+                              <Button
+                                onClick={stopCamera}
+                                variant="outline"
+                                className="flex-1 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8"
+                              >
+                                <X className="mr-1 h-2.5 w-2.5" /> Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {selfieDataUri && (
+                          <div className="space-y-1.5 sm:space-y-2">
+                            <div className="relative">
+                              <Image
+                                src={selfieDataUri}
+                                alt="Captured selfie"
+                                width={200}
+                                height={200}
+                                className="w-full rounded-md neumorphic-inset-sm object-cover"
+                                data-ai-hint="selfie person"
+                              />
+                            </div>
+                            <Button
+                              onClick={() => setSelfieDataUri(undefined)}
+                              variant="outline"
+                              className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                            >
+                              <Trash2 className="mr-1 h-2.5 w-2.5" /> Remove Photo
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={handleMoodSubmit}
+                        disabled={!selectedMood || isSubmittingMood}
+                        className="w-full neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                      >
+                        {isSubmittingMood ? (
+                          <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="mr-1 h-2.5 w-2.5" />
+                        )}
+                        Log Mood
+                      </Button>
+                    </div>
+                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+              {moodLogs.length === 0 ? (
+                <p className="text-2xs sm:text-xs text-muted-foreground text-center py-3 sm:py-4">
+                  No mood logs yet. Start tracking your mood!
+                </p>
+              ) : (
+                <ScrollArea className="h-[200px] sm:h-[250px] w-full">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    {moodLogs.slice(0, 10).map((log) => (
+                      <div key={log.id} className="neumorphic-sm p-2 sm:p-2.5 rounded-md">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5">
+                              <span className="text-base sm:text-lg">{log.mood}</span>
+                              <span className="text-3xs xs:text-2xs text-muted-foreground">
+                                {isToday(parseISO(log.date)) 
+                                  ? 'Today' 
+                                  : format(parseISO(log.date), 'MMM d')
+                                }
+                              </span>
+                            </div>
+                            {log.notes && (
+                              <p className="text-3xs xs:text-2xs text-muted-foreground break-words">
+                                {log.notes}
+                              </p>
+                            )}
+                            {log.aiFeedback && (
+                              <p className="text-3xs xs:text-2xs text-primary/80 italic mt-0.5 break-words">
+                                <Sparkles className="inline h-2 w-2 mr-0.5" />
+                                {log.aiFeedback}
+                              </p>
+                            )}
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="ml-1 sm:ml-1.5 neumorphic-button text-3xs px-1 py-0.5 h-5 sm:h-6"
+                              >
+                                <Trash2 className="h-2 w-2" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-sm sm:text-base">Delete Mood Log</AlertDialogTitle>
+                                <AlertDialogDescription className="text-2xs sm:text-xs">
+                                  Are you sure you want to delete this mood entry? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                <AlertDialogCancel className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8">Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteMoodLog(log.id)}
+                                  className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Grocery List */}
+          <Card className="neumorphic">
+            <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+              <CardTitle className="flex items-center justify-between text-sm sm:text-base">
+                <span className="flex items-center gap-1 sm:gap-1.5">
+                  <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Grocery List
+                </span>
+                <Button
+                  onClick={handleGenerateGroceryList}
+                  disabled={isLoadingGroceryList}
+                  variant="outline"
+                  className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7"
+                >
+                  {isLoadingGroceryList ? (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-2.5 w-2.5" />
+                  )}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+              {!groceryList || groceryList.items.length === 0 ? (
+                <p className="text-2xs sm:text-xs text-muted-foreground text-center py-3 sm:py-4">
+                  {isLoadingGroceryList ? 'Generating grocery list...' : 'No grocery list yet. Generate one from your meal plan!'}
+                </p>
+              ) : (
+                <ScrollArea className="h-[200px] sm:h-[250px] w-full">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    {Object.entries(groupedGroceryItems).map(([category, items]) => (
+                      <div key={category}>
+                        <h5 className="font-semibold text-2xs sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">
+                          {category} ({items.length})
+                        </h5>
+                        <div className="space-y-0.5 sm:space-y-1 mb-1.5 sm:mb-2">
+                          {items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between neumorphic-sm p-1.5 sm:p-2 rounded-md">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-3xs xs:text-2xs font-medium truncate">{item.name}</p>
+                                {item.quantity && (
+                                  <p className="text-3xs text-muted-foreground">{item.quantity}</p>
+                                )}
+                                {item.notes && (
+                                  <p className="text-3xs text-muted-foreground italic">{item.notes}</p>
+                                )}
+                              </div>
+                              <Button
+                                onClick={() => handleDeleteGroceryItem(item.id)}
+                                variant="outline"
+                                className="ml-1 sm:ml-1.5 neumorphic-button text-3xs px-1 py-0.5 h-5 sm:h-6 flex-shrink-0"
+                              >
+                                <Trash2 className="h-2 w-2" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Social Share */}
+          {beforeLog && afterLog && (
+            <SocialShareCard beforeLog={beforeLog} afterLog={afterLog} />
+          )}
+        </div>
+      </div>
     </main>
   );
+};
+
+// Main Dashboard component with error boundary
+export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-xl sm:text-2xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  return <DashboardContent />;
 }
