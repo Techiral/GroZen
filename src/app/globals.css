@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,7 +39,6 @@
     --neumorphic-shadow-light: 2px 2px 5px rgba(255, 255, 255, 0.015), -2px -2px 5px rgba(0, 0, 0, 0.3);
     --neumorphic-shadow-light-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -2px -2px 5px rgba(255, 255, 255, 0.015);
 
-
      /* Sidebar variables (keeping them, might be useful later, ensuring they fit dark theme) */
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 95%;
@@ -57,7 +55,6 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
   }
-
 }
 
 @layer base {
@@ -80,7 +77,6 @@
   .text-3xs { @apply text-[0.625rem] leading-tight; } /* 10px */
   .text-2xs { @apply text-[0.7rem] leading-tight; } /* 11.2px, common for very small labels */
 
-
   h1 { @apply text-lg sm:text-xl md:text-2xl; } 
   h2 { @apply text-base sm:text-lg md:text-xl; } 
   h3 { @apply text-sm sm:text-base md:text-lg; }
@@ -91,6 +87,33 @@
   /* Input and Textarea base responsive sizing */
   input, textarea, select {
     @apply text-xs sm:text-sm;
+  }
+
+  /* Smooth scrolling for better UX */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Performance optimizations */
+  img, video {
+    @apply will-change-transform;
+  }
+
+  /* Accessibility improvements */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Focus styles for better accessibility */
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
   }
 }
 
@@ -125,5 +148,75 @@
     @apply neumorphic text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8;
   }
+
+  /* Landing page specific animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(211, 211, 211, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(211, 211, 211, 0.6); }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  /* Gradient text effect */
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent;
+  }
+
+  /* Interactive hover effects */
+  .hover-lift {
+    @apply transition-transform duration-300 hover:scale-105 hover:shadow-lg;
+  }
+
+  /* Mobile-first responsive utilities */
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-text {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  /* Performance optimized animations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
 }
 
+/* Critical CSS for above-the-fold content */
+@layer utilities {
+  .critical-above-fold {
+    @apply min-h-screen flex items-center justify-center;
+  }
+
+  .critical-text {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight;
+  }
+
+  .critical-cta {
+    @apply neumorphic-button-primary text-base py-6 group;
+  }
+}
+
+/* Preload critical fonts */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+}
