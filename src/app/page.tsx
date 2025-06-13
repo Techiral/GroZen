@@ -68,9 +68,8 @@ const MinimalExitIntentPopup: React.FC<{
     setIsSubmitting(true);
     try {
       await onEmailSubmit(email);
-      // Success toast handled by parent
       setEmail(''); 
-      onClose(); // Close popup on successful submission
+      onClose(); 
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -121,6 +120,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
   const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
   const [showTagline, setShowTagline] = useState(false);
   const [showCta, setShowCta] = useState(false);
+  const { toast } = useToast(); // Moved useToast to ensure it's called unconditionally
 
   const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,9 +129,9 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
       return;
     }
     setIsSubmittingHeroEmail(true);
-    await onEmailSubmit(heroEmail); // This now also opens the signup modal
+    await onEmailSubmit(heroEmail); 
     setIsSubmittingHeroEmail(false);
-    setHeroEmail(''); // Clear email after submission
+    setHeroEmail(''); 
   };
   
   return (
@@ -217,7 +217,7 @@ const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
     <section 
       ref={ref} 
       id="benefits-section"
-      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0" // Initial opacity-0
+      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0 bg-card" // Added bg-card
     >
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
@@ -262,7 +262,7 @@ TestimonialSection.displayName = 'TestimonialSection';
 // --- Final CTA Section ---
 const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
   return (
-    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0">
+    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0 bg-card"> {/* Added bg-card */}
       <div className="max-w-lg mx-auto text-center">
         <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
         <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
@@ -296,7 +296,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
       setIsLoadingNext(true);
       const canProceed = await onNext();
       setIsLoadingNext(false);
-      if (canProceed === false) return; // Explicitly stop if validation fails
+      if (canProceed === false) return; 
     }
   };
   
@@ -347,7 +347,7 @@ const MinimalSignupModal: React.FC<{
   onClose: () => void; 
   initialEmail?: string;
 }> = ({ isOpen, onClose, initialEmail = '' }) => {
-  const { signupWithDetails, currentUser } = usePlan(); // Use signupWithDetails
+  const { signupWithDetails, currentUser, loginWithEmail } = usePlan(); // usePlan from context
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -367,7 +367,6 @@ const MinimalSignupModal: React.FC<{
   useEffect(() => {
     if (isOpen && initialEmail) {
       setEmail(initialEmail);
-       // Reset other fields if modal reopens with an initial email
       setUsername('');
       setPassword('');
       setSelectedAvatar(AvatarOptions[0].src);
@@ -376,7 +375,6 @@ const MinimalSignupModal: React.FC<{
       setUsernameError('');
       setPasswordStrength(0);
     } else if (isOpen && !initialEmail) {
-      // If opened without an initial email, reset email field as well
       setEmail('');
       setUsername('');
       setPassword('');
@@ -389,11 +387,16 @@ const MinimalSignupModal: React.FC<{
   }, [isOpen, initialEmail]);
   
   useEffect(() => {
+    // This effect handles redirection AFTER successful signup
     if (currentUser && isOpen) { 
+      // User is now signed up and currentUser object is available
+      // We don't need to call loginWithEmail explicitly here if signupWithDetails logs them in.
+      // PlanProvider's onAuthStateChanged should handle setting onboarded state etc.
       router.push('/onboarding'); 
       onClose(); 
     }
   }, [currentUser, router, isOpen, onClose]);
+
 
   const checkUsernameAvailability = useCallback(async (name: string): Promise<boolean> => {
     if (!name.trim() || name.trim().length < 3) {
@@ -497,7 +500,10 @@ const MinimalSignupModal: React.FC<{
         return;
     }
     setIsCompleting(true);
-    const success = await signupWithDetails(email, password, username, selectedAvatar); // Call from context
+    const success = await signupWithDetails(email, password, username, selectedAvatar);
+    // signupWithDetails now handles user creation and Firestore updates.
+    // The onAuthStateChanged listener in PlanProvider will pick up the new user,
+    // and the useEffect hook above will handle redirection to /onboarding.
     setIsCompleting(false);
     if (success) {
       toast({
@@ -505,9 +511,9 @@ const MinimalSignupModal: React.FC<{
         description: "You're in! Get ready to glow up.",
         duration: 5000,
       });
-      // Redirection is handled by useEffect watching `currentUser`
+      // Redirection is handled by the useEffect watching `currentUser`
     } else {
-        // Error toast is handled within signupWithDetails in PlanProvider
+      // Error toast is handled within signupWithDetails in PlanProvider
     }
   };
 
@@ -654,9 +660,8 @@ const AddictionLandingPage: React.FC = () => {
 
 
   useEffect(() => {
-    setIsClient(true); // Component has mounted on client
+    setIsClient(true); 
     const handleMouseLeave = (e: MouseEvent) => {
-      // Show exit intent only if modal is not open and hasn't been shown before
       if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) {
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v2', 'true'); 
@@ -664,7 +669,7 @@ const AddictionLandingPage: React.FC = () => {
     };
     document.documentElement.addEventListener('mouseleave', handleMouseLeave);
     return () => document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
-  }, [isSignupModalOpen]); // Re-evaluate if signup modal state changes
+  }, [isSignupModalOpen]); 
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -683,7 +688,7 @@ const AddictionLandingPage: React.FC = () => {
         benefitsRef.current, 
         testimonialRef.current, 
         finalCtaRef.current
-    ].filter(Boolean) as HTMLElement[]; // Filter out nulls and assert as HTMLElement[]
+    ].filter(Boolean) as HTMLElement[]; 
     
     if (elementsToObserve.length === 0) return;
 
@@ -697,30 +702,29 @@ const AddictionLandingPage: React.FC = () => {
 
             const achievementId = targetElement.id;
             
-            // Temporarily comment out achievement toasts to isolate visibility
-            // setScrolledAchievements(prevAchievements => {
-            //   if (achievementId && !prevAchievements.includes(achievementId)) {
-            //     let achievementText = "";
-            //     if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
-            //     else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
-            //     else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
+            setScrolledAchievements(prevAchievements => {
+              if (achievementId && !prevAchievements.includes(achievementId)) {
+                let achievementText = "";
+                if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
+                else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
+                else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
                 
-            //     if (achievementText) {
-            //       toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
-            //     }
-            //     return [...prevAchievements, achievementId];
-            //   }
-            //   return prevAchievements;
-            // });
+                if (achievementText) {
+                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
+                }
+                return [...prevAchievements, achievementId];
+              }
+              return prevAchievements;
+            });
             observer.unobserve(targetElement);
           }
         });
       },
-      { threshold: 0.1 } // Trigger when 10% of the element is visible
+      { threshold: 0.1 } 
     );
 
     elementsToObserve.forEach(el => {
-        if (el) observer.observe(el); // Ensure el is not null before observing
+        if (el) observer.observe(el); 
     });
 
     return () => {
@@ -729,7 +733,7 @@ const AddictionLandingPage: React.FC = () => {
       });
       observer.disconnect();
     };
-  }, [isClient]); // Only depends on isClient
+  }, [isClient, toast]);
 
 
   const handleEarlyEmailSubmit = async (email: string) => {
@@ -750,8 +754,8 @@ const AddictionLandingPage: React.FC = () => {
         duration: 4000
       });
       if (showExitIntent) setShowExitIntent(false);
-      setInitialModalEmail(email.trim()); // Set for signup modal
-      setIsSignupModalOpen(true); // Open signup modal
+      setInitialModalEmail(email.trim()); 
+      setIsSignupModalOpen(true); 
     } catch (error) {
       console.error("Error saving early access email:", error);
       toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
@@ -763,7 +767,7 @@ const AddictionLandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-  if (!isClient || (isLoadingAuth && !currentUser) ) { // Simpler loading check for initial load
+  if (!isClient || (isLoadingAuth && !currentUser) ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -773,10 +777,9 @@ const AddictionLandingPage: React.FC = () => {
     );
   }
   
-  // If user is logged in but not onboarded, redirect. This is also handled by main useEffect, but good for quick render.
-  if (currentUser && !isOnboardedState) {
+  if (currentUser && !isOnboardedState && !isLoadingAuth) { // Added !isLoadingAuth to prevent premature redirect
     router.push('/onboarding');
-    return ( // Provide a loader during this potential brief moment
+    return ( 
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
             <Logo size="text-3xl" />
             <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
@@ -784,8 +787,8 @@ const AddictionLandingPage: React.FC = () => {
         </div>
     );
   }
-  // If user is fully logged in and onboarded, redirect. Also handled by main useEffect.
-  if (currentUser && isOnboardedState) {
+
+  if (currentUser && isOnboardedState && !isLoadingAuth) { // Added !isLoadingAuth
      router.push('/dashboard');
      return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
@@ -821,3 +824,4 @@ const AddictionLandingPage: React.FC = () => {
 };
 
 export default AddictionLandingPage;
+
