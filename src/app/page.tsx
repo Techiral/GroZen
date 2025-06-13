@@ -10,37 +10,45 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette, RadioTower, MessageCircle, Award } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Ensure db is imported
+import { db } from '@/lib/firebase';
 
 // --- Helper Components ---
-const AnimatedText: React.FC<{ text: string; delay?: number; className?: string; as?: keyof JSX.IntrinsicElements }> = ({ text, delay = 0, className = "", as = "span" }) => {
+const AnimatedText: React.FC<{ text: string; delay?: number; className?: string; as?: keyof JSX.IntrinsicElements; charDelay?: number; onComplete?: () => void; }> = ({ text, delay = 0, className = "", as = "span", charDelay = 30, onComplete }) => {
   const [visibleText, setVisibleText] = useState("");
   const CustomTag = as;
 
   useEffect(() => {
     let currentText = "";
     const chars = text.split("");
-    const timeout = setTimeout(() => {
-      const interval = setInterval(() => {
+    const initialTimeout = setTimeout(() => {
+      if (chars.length === 0 && onComplete) {
+        onComplete();
+        return;
+      }
+      const charInterval = setInterval(() => {
         if (chars.length > 0) {
           currentText += chars.shift();
           setVisibleText(currentText);
         } else {
-          clearInterval(interval);
+          clearInterval(charInterval);
+          if (onComplete) {
+            onComplete();
+          }
         }
-      }, 30);
-      return () => clearInterval(interval);
+      }, charDelay);
+      return () => clearInterval(charInterval);
     }, delay);
-    return () => clearTimeout(timeout);
-  }, [text, delay]);
+    return () => clearTimeout(initialTimeout);
+  }, [text, delay, charDelay, onComplete]);
 
-  return <CustomTag className={className}>{visibleText}</CustomTag>;
+  return <CustomTag className={className}>{visibleText}<span className="inline-block w-0.5 h-[1em] bg-primary animate-pulse" style={{ animationDelay: `${delay + text.length * charDelay}ms` }}></span></CustomTag>;
 };
+
 
 const MinimalExitIntentPopup: React.FC<{ 
   isOpen: boolean;
@@ -62,6 +70,7 @@ const MinimalExitIntentPopup: React.FC<{
       await onEmailSubmit(email);
       // Success toast handled by parent
       setEmail(''); 
+      onClose(); // Close popup on successful submission
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -110,18 +119,19 @@ const MinimalExitIntentPopup: React.FC<{
 const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit: (email: string) => Promise<void>}> = ({ onCtaClick, onEmailSubmit }) => {
   const [heroEmail, setHeroEmail] = useState('');
   const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
-  const [dynamicUserCount, setDynamicUserCount] = useState("10,000+"); 
+  const [showTagline, setShowTagline] = useState(false);
+  const [showCta, setShowCta] = useState(false);
 
   const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!heroEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(heroEmail)) {
-      alert("Please enter a valid email.");
+      toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look right." });
       return;
     }
     setIsSubmittingHeroEmail(true);
-    await onEmailSubmit(heroEmail);
+    await onEmailSubmit(heroEmail); // This now also opens the signup modal
     setIsSubmittingHeroEmail(false);
-    setHeroEmail('');
+    setHeroEmail(''); // Clear email after submission
   };
   
   return (
@@ -138,49 +148,54 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
         <div className="mb-4 sm:mb-6">
           <Logo size="text-3xl sm:text-4xl" />
         </div>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-3 sm:mb-4">
-          <AnimatedText text="Instant Teen" className="block" as="span" />
-          <span className="gradient-text block leading-tight tracking-tight">Glow Up ✨</span>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-1 sm:mb-2">
+          <AnimatedText text="Instant Teen" className="block" as="span" onComplete={() => setShowTagline(true)} />
+          {showTagline && <span className="gradient-text block leading-tight tracking-tight"><AnimatedText text="Glow Up ✨" delay={100} onComplete={() => setShowCta(true)} /></span>}
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-lg mb-6 sm:mb-8">
-          AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
-        </p>
+        {showCta && (
+          <>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-lg mb-6 sm:mb-8 animate-fade-in-up">
+              AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
+            </p>
 
-        <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-xs">
-          <Button 
-            onClick={() => onCtaClick(heroEmail.trim() || undefined)}
-            variant="neumorphic-primary" 
-            size="xl" 
-            className="w-full text-base sm:text-lg group py-3"
-          >
-            Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
-          </Button>
-        </div>
-        
-        <form 
-          onSubmit={handleHeroEmailSubmit}
-          className="flex flex-col sm:flex-row gap-2 w-full max-w-xs mb-4"
-        >
-          <Input
-            type="email"
-            placeholder="Or get FREE AI mini-plan!"
-            value={heroEmail}
-            onChange={(e) => setHeroEmail(e.target.value)}
-            className="h-11 text-sm sm:text-base neumorphic-inset flex-1"
-            disabled={isSubmittingHeroEmail}
-            aria-label="Enter email for free mini-plan"
-          />
-          <Button type="submit" variant="neumorphic" size="lg" className="h-11 text-sm sm:text-base px-4" disabled={isSubmittingHeroEmail}>
-            {isSubmittingHeroEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-             <span className="sm:hidden ml-2">Get Plan</span>
-          </Button>
-        </form>
+            <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-xs animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+              <Button 
+                onClick={() => onCtaClick(heroEmail.trim() || undefined)}
+                variant="neumorphic-primary" 
+                size="xl" 
+                className="w-full text-base sm:text-lg group py-3"
+              >
+                Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
+              </Button>
+            </div>
+            
+            <form 
+              onSubmit={handleHeroEmailSubmit}
+              className="flex flex-col sm:flex-row gap-2 w-full max-w-xs mb-4 animate-fade-in-up"
+              style={{animationDelay: '0.6s'}}
+            >
+              <Input
+                type="email"
+                placeholder="Or get FREE AI mini-plan!"
+                value={heroEmail}
+                onChange={(e) => setHeroEmail(e.target.value)}
+                className="h-11 text-sm sm:text-base neumorphic-inset flex-1"
+                disabled={isSubmittingHeroEmail}
+                aria-label="Enter email for free mini-plan"
+              />
+              <Button type="submit" variant="neumorphic" size="lg" className="h-11 text-sm sm:text-base px-4" disabled={isSubmittingHeroEmail}>
+                {isSubmittingHeroEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                <span className="sm:hidden ml-2">Get Plan</span>
+              </Button>
+            </form>
 
-        <div className="text-xs text-muted-foreground flex items-center">
-          <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
-          {dynamicUserCount} Teens Glowing Up With GroZen!
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">It's Completely FREE Right Now!</p>
+            <div className="text-xs text-muted-foreground flex items-center animate-fade-in-up" style={{animationDelay: '0.9s'}}>
+              <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
+              10,000+ Teens Glowing Up With GroZen!
+            </div>
+             <p className="text-xs text-muted-foreground mt-2 animate-fade-in-up" style={{animationDelay: '1s'}}>It's Completely FREE Right Now!</p>
+          </>
+        )}
       </div>
     </section>
   );
@@ -202,7 +217,7 @@ const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
     <section 
       ref={ref} 
       id="benefits-section"
-      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0"
+      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0" // Initial opacity-0
     >
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
@@ -281,7 +296,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
       setIsLoadingNext(true);
       const canProceed = await onNext();
       setIsLoadingNext(false);
-      if (canProceed === false) return;
+      if (canProceed === false) return; // Explicitly stop if validation fails
     }
   };
   
@@ -332,7 +347,7 @@ const MinimalSignupModal: React.FC<{
   onClose: () => void; 
   initialEmail?: string;
 }> = ({ isOpen, onClose, initialEmail = '' }) => {
-  const { signupWithDetails, currentUser } = usePlan();
+  const { signupWithDetails, currentUser } = usePlan(); // Use signupWithDetails
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -350,13 +365,33 @@ const MinimalSignupModal: React.FC<{
   const usernameDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (initialEmail) setEmail(initialEmail);
-  }, [initialEmail, isOpen]);
+    if (isOpen && initialEmail) {
+      setEmail(initialEmail);
+       // Reset other fields if modal reopens with an initial email
+      setUsername('');
+      setPassword('');
+      setSelectedAvatar(AvatarOptions[0].src);
+      setCurrentStep(0); 
+      setUsernameStatus('idle');
+      setUsernameError('');
+      setPasswordStrength(0);
+    } else if (isOpen && !initialEmail) {
+      // If opened without an initial email, reset email field as well
+      setEmail('');
+      setUsername('');
+      setPassword('');
+      setSelectedAvatar(AvatarOptions[0].src);
+      setCurrentStep(0);
+      setUsernameStatus('idle');
+      setUsernameError('');
+      setPasswordStrength(0);
+    }
+  }, [isOpen, initialEmail]);
   
   useEffect(() => {
-    if (currentUser && isOpen) { // If user becomes authenticated while modal is open (e.g. successful signup)
-      router.push('/onboarding'); // Redirect to onboarding
-      onClose(); // Close the modal
+    if (currentUser && isOpen) { 
+      router.push('/onboarding'); 
+      onClose(); 
     }
   }, [currentUser, router, isOpen, onClose]);
 
@@ -427,6 +462,7 @@ const MinimalSignupModal: React.FC<{
       return false;
     }
     setCurrentStep(1);
+    return true;
   };
 
   const validateStep1 = async () => { 
@@ -448,6 +484,7 @@ const MinimalSignupModal: React.FC<{
       return false;
     }
     setCurrentStep(3);
+    return true;
   };
 
   const handleCompleteSignup = async () => {
@@ -460,8 +497,7 @@ const MinimalSignupModal: React.FC<{
         return;
     }
     setIsCompleting(true);
-    // Use signupWithDetails from usePlan context
-    const success = await signupWithDetails(email, password, username, selectedAvatar);
+    const success = await signupWithDetails(email, password, username, selectedAvatar); // Call from context
     setIsCompleting(false);
     if (success) {
       toast({
@@ -470,7 +506,9 @@ const MinimalSignupModal: React.FC<{
         duration: 5000,
       });
       // Redirection is handled by useEffect watching `currentUser`
-    } 
+    } else {
+        // Error toast is handled within signupWithDetails in PlanProvider
+    }
   };
 
   const stepsConfig = [
@@ -558,9 +596,9 @@ const MinimalSignupModal: React.FC<{
     },
   ];
   
-  const resetModal = useCallback(() => {
+  const resetModalAndClose = useCallback(() => {
     setCurrentStep(0);
-    setEmail(initialEmail); // Keep initial email if provided
+    setEmail(''); 
     setUsername('');
     setPassword('');
     setSelectedAvatar(AvatarOptions[0].src);
@@ -569,26 +607,11 @@ const MinimalSignupModal: React.FC<{
     setPasswordStrength(0);
     setIsCompleting(false);
     onClose();
-  }, [initialEmail, onClose]);
+  }, [onClose]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setEmail(initialEmail);
-      if (currentStep !== 0 || username || password) {
-        setUsername('');
-        setPassword('');
-        setSelectedAvatar(AvatarOptions[0].src);
-        setUsernameStatus('idle');
-        setUsernameError('');
-        setPasswordStrength(0);
-        if (!initialEmail) setCurrentStep(0); // Reset to first step if no initial email to preserve
-        else if (initialEmail && currentStep !== 0) setCurrentStep(0); // If initial email, always start from step 0 for flow
-      }
-    }
-  }, [initialEmail, isOpen]); 
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && resetModal()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && resetModalAndClose()}>
       <DialogContent className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
         <DialogHeader className="mb-2 sm:mb-3">
           <div className="mx-auto mb-2">
@@ -615,7 +638,7 @@ const MinimalSignupModal: React.FC<{
 
 // --- Main Landing Page Component ---
 const AddictionLandingPage: React.FC = () => {
-  const { currentUser, isLoadingAuth, isOnboardedState, signupWithDetails } = usePlan();
+  const { currentUser, isLoadingAuth, isOnboardedState } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -631,16 +654,17 @@ const AddictionLandingPage: React.FC = () => {
 
 
   useEffect(() => {
-    setIsClient(true);
+    setIsClient(true); // Component has mounted on client
     const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) {
+      // Show exit intent only if modal is not open and hasn't been shown before
+      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) {
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v2', 'true'); 
       }
     };
     document.documentElement.addEventListener('mouseleave', handleMouseLeave);
     return () => document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
-  }, []);
+  }, [isSignupModalOpen]); // Re-evaluate if signup modal state changes
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -655,9 +679,11 @@ const AddictionLandingPage: React.FC = () => {
   useEffect(() => {
     if (!isClient) return;
 
-    const elementsToObserve = [benefitsRef.current, testimonialRef.current, finalCtaRef.current].filter(
-      (el): el is HTMLElement => el !== null
-    );
+    const elementsToObserve = [
+        benefitsRef.current, 
+        testimonialRef.current, 
+        finalCtaRef.current
+    ].filter(Boolean) as HTMLElement[]; // Filter out nulls and assert as HTMLElement[]
     
     if (elementsToObserve.length === 0) return;
 
@@ -671,28 +697,31 @@ const AddictionLandingPage: React.FC = () => {
 
             const achievementId = targetElement.id;
             
-            setScrolledAchievements(prevAchievements => {
-              if (achievementId && !prevAchievements.includes(achievementId)) {
-                let achievementText = "";
-                if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
-                else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
-                else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
+            // Temporarily comment out achievement toasts to isolate visibility
+            // setScrolledAchievements(prevAchievements => {
+            //   if (achievementId && !prevAchievements.includes(achievementId)) {
+            //     let achievementText = "";
+            //     if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
+            //     else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
+            //     else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
                 
-                if (achievementText) {
-                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
-                }
-                return [...prevAchievements, achievementId];
-              }
-              return prevAchievements;
-            });
+            //     if (achievementText) {
+            //       toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
+            //     }
+            //     return [...prevAchievements, achievementId];
+            //   }
+            //   return prevAchievements;
+            // });
             observer.unobserve(targetElement);
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 } // Trigger when 10% of the element is visible
     );
 
-    elementsToObserve.forEach(el => observer.observe(el));
+    elementsToObserve.forEach(el => {
+        if (el) observer.observe(el); // Ensure el is not null before observing
+    });
 
     return () => {
       elementsToObserve.forEach(el => {
@@ -700,7 +729,7 @@ const AddictionLandingPage: React.FC = () => {
       });
       observer.disconnect();
     };
-  }, [isClient, toast]);
+  }, [isClient]); // Only depends on isClient
 
 
   const handleEarlyEmailSubmit = async (email: string) => {
@@ -717,12 +746,12 @@ const AddictionLandingPage: React.FC = () => {
       });
       toast({
         title: "Awesome! ✨",
-        description: "Your free AI mini-plan is on its way!",
+        description: "Your free AI mini-plan is on its way! Now, let's create your account.",
         duration: 4000
       });
       if (showExitIntent) setShowExitIntent(false);
-      setInitialModalEmail(email.trim());
-      setIsSignupModalOpen(true);
+      setInitialModalEmail(email.trim()); // Set for signup modal
+      setIsSignupModalOpen(true); // Open signup modal
     } catch (error) {
       console.error("Error saving early access email:", error);
       toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
@@ -734,13 +763,36 @@ const AddictionLandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-  if (!isClient || isLoadingAuth) { 
+  if (!isClient || (isLoadingAuth && !currentUser) ) { // Simpler loading check for initial load
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
         <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
         <p className="mt-3 text-sm text-muted-foreground">Igniting GroZen...</p>
       </div>
+    );
+  }
+  
+  // If user is logged in but not onboarded, redirect. This is also handled by main useEffect, but good for quick render.
+  if (currentUser && !isOnboardedState) {
+    router.push('/onboarding');
+    return ( // Provide a loader during this potential brief moment
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
+            <Logo size="text-3xl" />
+            <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
+            <p className="mt-3 text-sm text-muted-foreground">Loading your space...</p>
+        </div>
+    );
+  }
+  // If user is fully logged in and onboarded, redirect. Also handled by main useEffect.
+  if (currentUser && isOnboardedState) {
+     router.push('/dashboard');
+     return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
+            <Logo size="text-3xl" />
+            <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
+            <p className="mt-3 text-sm text-muted-foreground">Taking you to your dashboard...</p>
+        </div>
     );
   }
   
