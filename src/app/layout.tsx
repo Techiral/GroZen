@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -43,8 +43,6 @@ export const metadata: Metadata = {
     description: 'Tap into AI-powered wellness designed for teens. Fast, free, and fun. Transform today! #GroZen #TeenWellness',
     images: ['https://grozen.app/twitter-image-minimal.jpg'], // Replace with your actual Twitter image URL
   },
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1', // Max scale 1 for better control on dopamine-focused UI
-  themeColor: '#000000', // Matches Deep Black background
   manifest: '/manifest.json', // Ensure you have a manifest.json for PWA capabilities
   icons: {
     icon: '/favicon.png', // Ensure favicon.png is in /public
@@ -53,6 +51,13 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://grozen.app', // Replace with your actual domain
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#000000', // Matches Deep Black background
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1, // Max scale 1 for better control on dopamine-focused UI
 };
 
 // Simplified Schema.org for the new focus

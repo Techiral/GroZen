@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette } from 'lucide-react'; // Added Brain, Palette
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase'; // Ensure db is imported
 
 // --- Helper Components ---
 const AnimatedText: React.FC<{ text: string; delay?: number; className?: string; as?: keyof JSX.IntrinsicElements }> = ({ text, delay = 0, className = "", as = "span" }) => {
@@ -42,7 +42,6 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
   return <CustomTag className={className}>{visibleText}</CustomTag>;
 };
 
-// --- Exit Intent Popup (Simplified) ---
 const MinimalExitIntentPopup: React.FC<{ 
   isOpen: boolean;
   onClose: () => void; 
@@ -62,7 +61,7 @@ const MinimalExitIntentPopup: React.FC<{
     try {
       await onEmailSubmit(email);
       // Success toast handled by parent
-      setEmail(''); // Clear email on success
+      setEmail(''); 
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -111,13 +110,12 @@ const MinimalExitIntentPopup: React.FC<{
 const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit: (email: string) => Promise<void>}> = ({ onCtaClick, onEmailSubmit }) => {
   const [heroEmail, setHeroEmail] = useState('');
   const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
-  const [dynamicUserCount, setDynamicUserCount] = useState("10,000+"); // Static for now
+  const [dynamicUserCount, setDynamicUserCount] = useState("10,000+"); 
 
   const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!heroEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(heroEmail)) {
-      // Basic validation, PlanProvider might have more robust checks via useToast
-      alert("Please enter a valid email."); // Simple alert for this context
+      alert("Please enter a valid email.");
       return;
     }
     setIsSubmittingHeroEmail(true);
@@ -150,7 +148,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
 
         <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-xs">
           <Button 
-            onClick={() => onCtaClick(heroEmail.trim() || undefined)} // Pass email if entered
+            onClick={() => onCtaClick(heroEmail.trim() || undefined)}
             variant="neumorphic-primary" 
             size="xl" 
             className="w-full text-base sm:text-lg group py-3"
@@ -182,6 +180,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
           <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
           {dynamicUserCount} Teens Glowing Up With GroZen!
         </div>
+        <p className="text-xs text-muted-foreground mt-2">It's Completely FREE Right Now!</p>
       </div>
     </section>
   );
@@ -202,7 +201,8 @@ const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
   return (
     <section 
       ref={ref} 
-      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0" // Initial opacity for animation
+      id="benefits-section"
+      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0"
     >
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
@@ -223,10 +223,10 @@ CoreBenefitsSection.displayName = 'CoreBenefitsSection';
 // --- Minimal Testimonial Section ---
 const TestimonialSection = React.forwardRef<HTMLDivElement>((props, ref) => {
   return (
-    <section ref={ref} className="py-10 sm:py-12 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
+    <section ref={ref} id="testimonial-section" className="py-10 sm:py-12 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
       <div className="max-w-xl mx-auto text-center">
         <Image
-          src="https://placehold.co/60x60/D3D3D3/000000?text=😊"
+          src="https://placehold.co/60x60.png" 
           alt="Happy GroZen User (Example)"
           width={56}
           height={56}
@@ -234,9 +234,10 @@ const TestimonialSection = React.forwardRef<HTMLDivElement>((props, ref) => {
           data-ai-hint="teenager avatar"
         />
         <blockquote className="text-sm sm:text-md italic text-muted-foreground">
-          &ldquo;GroZen is a total vibe. Felt the change in like, 2 days!&rdquo;
+          &ldquo;GroZen is a total vibe. Felt the change in like, 2 days!&rdquo; (Example)
         </blockquote>
         <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
+        <p className="mt-1 text-2xs text-muted-foreground">Hear What Our Community Is Saying (Examples):</p>
       </div>
     </section>
   );
@@ -246,7 +247,7 @@ TestimonialSection.displayName = 'TestimonialSection';
 // --- Final CTA Section ---
 const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
   return (
-    <section ref={ref} className="py-16 sm:py-20 px-4 sm:px-6 opacity-0">
+    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0">
       <div className="max-w-lg mx-auto text-center">
         <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
         <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
@@ -263,7 +264,7 @@ const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void
         >
           Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
         </Button>
-        <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results.</p>
+        <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
       </div>
     </section>
   );
@@ -320,10 +321,10 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
 };
 
 const AvatarOptions = [
-  { id: 'avatar1', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🌟', alt: 'GroZen Avatar Star', hint: 'star icon' },
-  { id: 'avatar2', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🚀', alt: 'GroZen Avatar Rocket', hint: 'rocket icon' },
-  { id: 'avatar3', src: 'https://placehold.co/80x80/D3D3D3/000000?text=💡', alt: 'GroZen Avatar Idea', hint: 'lightbulb idea' },
-  { id: 'avatar4', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🎨', alt: 'GroZen Avatar Palette', hint: 'art palette' },
+  { id: 'avatar1', src: 'https://placehold.co/80x80.png', alt: 'GroZen Avatar Star', hint: 'star icon' },
+  { id: 'avatar2', src: 'https://placehold.co/80x80.png', alt: 'GroZen Avatar Rocket', hint: 'rocket icon' },
+  { id: 'avatar3', src: 'https://placehold.co/80x80.png', alt: 'GroZen Avatar Idea', hint: 'lightbulb idea' },
+  { id: 'avatar4', src: 'https://placehold.co/80x80.png', alt: 'GroZen Avatar Palette', hint: 'art palette' },
 ];
 
 const MinimalSignupModal: React.FC<{ 
@@ -353,9 +354,9 @@ const MinimalSignupModal: React.FC<{
   }, [initialEmail, isOpen]);
   
   useEffect(() => {
-    if (currentUser && isOpen) {
-      router.push('/onboarding');
-      onClose();
+    if (currentUser && isOpen) { // If user becomes authenticated while modal is open (e.g. successful signup)
+      router.push('/onboarding'); // Redirect to onboarding
+      onClose(); // Close the modal
     }
   }, [currentUser, router, isOpen, onClose]);
 
@@ -388,7 +389,7 @@ const MinimalSignupModal: React.FC<{
   }, []);
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase(); // Allow alphanumeric and underscore
+    const newUsername = e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     setUsername(newUsername);
     setUsernameStatus('idle');
     setUsernameError('');
@@ -420,7 +421,7 @@ const MinimalSignupModal: React.FC<{
     evaluatePasswordStrength(newPassword);
   };
 
-  const validateStep0 = async () => { // Email
+  const validateStep0 = async () => { 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look right." });
       return false;
@@ -428,7 +429,7 @@ const MinimalSignupModal: React.FC<{
     setCurrentStep(1);
   };
 
-  const validateStep1 = async () => { // Username
+  const validateStep1 = async () => { 
     if (usernameStatus === 'checking') {
         toast({variant: "default", title: "Hold on...", description: "Checking username availability."});
         return false;
@@ -441,7 +442,7 @@ const MinimalSignupModal: React.FC<{
     return false; 
   };
 
-  const validateStep2 = async () => { // Password
+  const validateStep2 = async () => { 
     if (password.length < 6) {
       toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs 6+ characters." });
       return false;
@@ -459,6 +460,7 @@ const MinimalSignupModal: React.FC<{
         return;
     }
     setIsCompleting(true);
+    // Use signupWithDetails from usePlan context
     const success = await signupWithDetails(email, password, username, selectedAvatar);
     setIsCompleting(false);
     if (success) {
@@ -467,6 +469,7 @@ const MinimalSignupModal: React.FC<{
         description: "You're in! Get ready to glow up.",
         duration: 5000,
       });
+      // Redirection is handled by useEffect watching `currentUser`
     } 
   };
 
@@ -522,7 +525,7 @@ const MinimalSignupModal: React.FC<{
               <span className="text-xs text-muted-foreground w-14 text-right">{passwordStrength < 50 ? "Weak" : passwordStrength < 75 ? "Okay" : "Strong"}</span>
             </div>
           )}
-           {password.length === 0 && <div className="h-[22px] pt-1"></div>} {/* Placeholder for height consistency */}
+           {password.length === 0 && <div className="h-[22px] pt-1"></div>} 
         </div>
       ), 
       onNext: validateStep2, 
@@ -557,7 +560,7 @@ const MinimalSignupModal: React.FC<{
   
   const resetModal = useCallback(() => {
     setCurrentStep(0);
-    setEmail(initialEmail);
+    setEmail(initialEmail); // Keep initial email if provided
     setUsername('');
     setPassword('');
     setSelectedAvatar(AvatarOptions[0].src);
@@ -571,7 +574,6 @@ const MinimalSignupModal: React.FC<{
   useEffect(() => {
     if (isOpen) {
       setEmail(initialEmail);
-       // Reset other fields if modal reopens, to ensure clean state for signup
       if (currentStep !== 0 || username || password) {
         setUsername('');
         setPassword('');
@@ -579,10 +581,11 @@ const MinimalSignupModal: React.FC<{
         setUsernameStatus('idle');
         setUsernameError('');
         setPasswordStrength(0);
-        setCurrentStep(0); // Reset to first step if re-opened with new email potentially
+        if (!initialEmail) setCurrentStep(0); // Reset to first step if no initial email to preserve
+        else if (initialEmail && currentStep !== 0) setCurrentStep(0); // If initial email, always start from step 0 for flow
       }
     }
-  }, [initialEmail, isOpen]); // Only react to initialEmail and isOpen status
+  }, [initialEmail, isOpen]); 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && resetModal()}>
@@ -612,7 +615,7 @@ const MinimalSignupModal: React.FC<{
 
 // --- Main Landing Page Component ---
 const AddictionLandingPage: React.FC = () => {
-  const { currentUser, isLoadingAuth, isOnboardedState } = usePlan(); // Removed signupWithDetails as it's now in PlanProvider
+  const { currentUser, isLoadingAuth, isOnboardedState, signupWithDetails } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -630,7 +633,7 @@ const AddictionLandingPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) { // Increased sensitivity, new storage key
+      if (e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) {
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v2', 'true'); 
       }
@@ -652,14 +655,11 @@ const AddictionLandingPage: React.FC = () => {
   useEffect(() => {
     if (!isClient) return;
 
-    // Ensure IDs are set on the DOM elements for the observer to use
-    if (benefitsRef.current) benefitsRef.current.id = "benefits-section";
-    if (testimonialRef.current) testimonialRef.current.id = "testimonial-section";
-    if (finalCtaRef.current) finalCtaRef.current.id = "final-cta-section";
-
-    const elements = [benefitsRef.current, testimonialRef.current, finalCtaRef.current].filter(Boolean) as HTMLElement[];
-
-    if (elements.length === 0) return;
+    const elementsToObserve = [benefitsRef.current, testimonialRef.current, finalCtaRef.current].filter(
+      (el): el is HTMLElement => el !== null
+    );
+    
+    if (elementsToObserve.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -689,18 +689,18 @@ const AddictionLandingPage: React.FC = () => {
           }
         });
       },
-      { threshold: 0.1 } // Trigger when 10% of the element is visible
+      { threshold: 0.1 }
     );
 
-    elements.forEach(el => observer.observe(el));
+    elementsToObserve.forEach(el => observer.observe(el));
 
     return () => {
-      elements.forEach(el => { // Ensure unobserve is called on all potentially observed elements
+      elementsToObserve.forEach(el => {
         if (el) observer.unobserve(el);
       });
-      observer.disconnect(); // Fully disconnect observer on cleanup
+      observer.disconnect();
     };
-  }, [isClient, toast]); // `toast` is stable. `setScrolledAchievements` is stable via functional update. Refs are stable.
+  }, [isClient, toast]);
 
 
   const handleEarlyEmailSubmit = async (email: string) => {
@@ -734,7 +734,7 @@ const AddictionLandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-  if (!isClient || (isLoadingAuth && !currentUser) ) { 
+  if (!isClient || isLoadingAuth) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -769,5 +769,3 @@ const AddictionLandingPage: React.FC = () => {
 };
 
 export default AddictionLandingPage;
-
-    
