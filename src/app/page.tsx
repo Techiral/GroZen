@@ -1,20 +1,21 @@
+
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePlan } from '@/contexts/plan-context'; // Ensure this path is correct
+import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette } from 'lucide-react'; // Added Brain, Palette
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'; // Added setDoc
-import { db } from '@/lib/firebase'; // Assuming auth is exported for currentUser
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // --- Helper Components ---
 const AnimatedText: React.FC<{ text: string; delay?: number; className?: string; as?: keyof JSX.IntrinsicElements }> = ({ text, delay = 0, className = "", as = "span" }) => {
@@ -32,7 +33,7 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
         } else {
           clearInterval(interval);
         }
-      }, 30); // Adjust speed (milliseconds per character)
+      }, 30);
       return () => clearInterval(interval);
     }, delay);
     return () => clearTimeout(timeout);
@@ -40,21 +41,6 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
 
   return <CustomTag className={className}>{visibleText}</CustomTag>;
 };
-
-const useParallax = (factor: number) => {
-  const [offsetY, setOffsetY] = useState(0);
-  const handleScroll = () => {
-    setOffsetY(window.pageYOffset * factor);
-  };
-
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [factor]);
-
-  return offsetY;
-};
-
 
 // --- Exit Intent Popup (Simplified) ---
 const MinimalExitIntentPopup: React.FC<{ 
@@ -76,6 +62,7 @@ const MinimalExitIntentPopup: React.FC<{
     try {
       await onEmailSubmit(email);
       // Success toast handled by parent
+      setEmail(''); // Clear email on success
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -87,32 +74,32 @@ const MinimalExitIntentPopup: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="neumorphic max-w-sm mx-auto p-6 sm:p-8">
+      <DialogContent className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
         <DialogHeader className="text-center">
-          <Gift className="h-10 w-10 text-primary mx-auto mb-3" />
-          <DialogTitle className="text-xl sm:text-2xl font-bold">Wait! Your Free Gift 👇</DialogTitle>
-          <DialogDescription className="text-sm sm:text-base text-muted-foreground mt-1">
-            Snag an exclusive AI mini-plan. Instant value, 100% free.
+          <Gift className="h-8 w-8 text-primary mx-auto mb-2" />
+          <DialogTitle className="text-lg sm:text-xl font-bold">Wait! Free AI Plan ✨</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Get a sneak peek. Instant value, 100% free.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-3 mt-3">
           <Input
             type="email"
-            placeholder="Your Email for FREE Gift"
+            placeholder="Your Email for FREE Plan"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-12 text-base neumorphic-inset"
+            className="h-10 text-sm neumorphic-inset"
             required
             disabled={isSubmitting}
           />
           <Button 
             type="submit" 
-            className="w-full neumorphic-button-primary text-base py-3 h-12"
+            className="w-full neumorphic-button-primary text-sm py-2.5 h-10"
             disabled={isSubmitting}
             size="lg"
           >
-            {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Claim FREE Mini-Plan"}
-            <Sparkles className="ml-2 h-5 w-5" />
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Claim FREE Plan"}
+            <Sparkles className="ml-2 h-4 w-4" />
           </Button>
         </form>
       </DialogContent>
@@ -124,40 +111,31 @@ const MinimalExitIntentPopup: React.FC<{
 const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit: (email: string) => Promise<void>}> = ({ onCtaClick, onEmailSubmit }) => {
   const [heroEmail, setHeroEmail] = useState('');
   const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
-  const parallaxOffsetFast = useParallax(0.15);
-  const parallaxOffsetSlow = useParallax(0.05);
+  const [dynamicUserCount, setDynamicUserCount] = useState("10,000+"); // Static for now
 
   const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!heroEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(heroEmail)) {
+      // Basic validation, PlanProvider might have more robust checks via useToast
+      alert("Please enter a valid email."); // Simple alert for this context
+      return;
+    }
     setIsSubmittingHeroEmail(true);
     await onEmailSubmit(heroEmail);
     setIsSubmittingHeroEmail(false);
-    setHeroEmail(''); // Clear after submission
+    setHeroEmail('');
   };
   
   return (
     <section className="min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
-      {/* Animated Background Elements */}
       <div 
         className="absolute inset-0 opacity-10" 
         style={{ 
-          transform: `translateY(${parallaxOffsetSlow}px)`,
-          backgroundImage: 'radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.2) 0%, transparent 25%), radial-gradient(circle at 90% 80%, hsl(var(--accent) / 0.15) 0%, transparent 20%)',
+          backgroundImage: 'radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%), radial-gradient(circle at 90% 80%, hsl(var(--accent) / 0.08) 0%, transparent 25%)',
           animation: 'pulse-bg 12s infinite alternate ease-in-out'
         }}
         aria-hidden="true"
       />
-       <div 
-        className="absolute inset-0 opacity-5" 
-        style={{ 
-          transform: `translateY(${parallaxOffsetFast}px) rotate(45deg)`,
-          backgroundImage: 'linear-gradient(45deg, hsl(var(--primary) / 0.05) 25%, transparent 25%, transparent 50%, hsl(var(--primary) / 0.05) 50%, hsl(var(--primary) / 0.05) 75%, transparent 75%, transparent 100%)',
-          backgroundSize: '60px 60px',
-          animation: 'pulse-bg 15s infinite linear'
-        }}
-        aria-hidden="true"
-      />
-
       <div className="relative z-10 flex flex-col items-center">
         <div className="mb-4 sm:mb-6">
           <Logo size="text-3xl sm:text-4xl" />
@@ -170,12 +148,12 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
           AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
         </p>
 
-        <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-sm">
+        <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-xs">
           <Button 
-            onClick={() => onCtaClick(heroEmail)}
+            onClick={() => onCtaClick(heroEmail.trim() || undefined)} // Pass email if entered
             variant="neumorphic-primary" 
             size="xl" 
-            className="w-full text-base sm:text-lg group py-3" // Adjusted padding via className
+            className="w-full text-base sm:text-lg group py-3"
           >
             Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
           </Button>
@@ -183,11 +161,11 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
         
         <form 
           onSubmit={handleHeroEmailSubmit}
-          className="flex flex-col sm:flex-row gap-2 w-full max-w-sm mb-4"
+          className="flex flex-col sm:flex-row gap-2 w-full max-w-xs mb-4"
         >
           <Input
             type="email"
-            placeholder="Or get FREE AI mini-plan via Email!"
+            placeholder="Or get FREE AI mini-plan!"
             value={heroEmail}
             onChange={(e) => setHeroEmail(e.target.value)}
             className="h-11 text-sm sm:text-base neumorphic-inset flex-1"
@@ -201,37 +179,39 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
         </form>
 
         <div className="text-xs text-muted-foreground flex items-center">
-          <BadgeCheck className="h-4 w-4 mr-1.5 text-green-500" />
-          10,000+ Teens Glowing Up With GroZen!
+          <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
+          {dynamicUserCount} Teens Glowing Up With GroZen!
         </div>
       </div>
     </section>
   );
 };
 
-// --- Core Benefits Section ---
-const CoreBenefitItem: React.FC<{icon: React.ReactNode, title: string, delay: string, description: string}> = ({icon, title, delay, description}) => (
-  <div className="flex flex-col items-center space-y-2 opacity-0" style={{animationDelay: delay}}>
-    <div className="p-3 bg-card rounded-full neumorphic-sm text-primary mb-2">
-      {React.cloneElement(icon as React.ReactElement, { className: "h-7 w-7 sm:h-8 sm:w-8" })}
+// --- Core Benefits Section (Minimal) ---
+const CoreBenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string}> = ({icon, title, description}) => (
+  <div className="flex flex-col items-center space-y-1">
+    <div className="p-2.5 bg-card rounded-full neumorphic-sm text-primary mb-1.5">
+      {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6 sm:h-7 sm:w-7" })}
     </div>
-    <h3 className="text-base sm:text-lg font-semibold text-center">{title}</h3>
-    <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-[200px]">{description}</p>
+    <h3 className="text-sm sm:text-base font-semibold text-center">{title}</h3>
+    <p className="text-2xs sm:text-xs text-muted-foreground text-center max-w-[180px]">{description}</p>
   </div>
 );
 
 const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
   return (
-    <section ref={ref} className="py-12 sm:py-16 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
-      <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-          Your <span className="gradient-text">Fast Track</span> to Awesome.
+    <section 
+      ref={ref} 
+      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0" // Initial opacity for animation
+    >
+      <div className="max-w-3xl mx-auto text-center">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
+          Unlock Your <span className="gradient-text">Best Self</span>, Fast.
         </h2>
-        <p className="text-muted-foreground mb-10 sm:mb-12 text-sm sm:text-base">GroZen's AI is like your personal hype-squad & coach, 24/7.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10">
-          <CoreBenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that actually fit YOU." delay="0.1s" />
-          <CoreBenefitItem icon={<ThumbsUp />} title="Daily Confidence Boost" description="Feel better, instantly." delay="0.25s" />
-          <CoreBenefitItem icon={<Zap />} title="Unlock Best Self, Fast" description="Quick wins, real results." delay="0.4s" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+          <CoreBenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that fit YOU." />
+          <CoreBenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." />
+          <CoreBenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, fast." />
         </div>
       </div>
     </section>
@@ -239,23 +219,24 @@ const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
 });
 CoreBenefitsSection.displayName = 'CoreBenefitsSection';
 
+
 // --- Minimal Testimonial Section ---
 const TestimonialSection = React.forwardRef<HTMLDivElement>((props, ref) => {
   return (
-    <section ref={ref} className="py-12 sm:py-16 px-4 sm:px-6 opacity-0">
-      <div className="max-w-2xl mx-auto text-center">
+    <section ref={ref} className="py-10 sm:py-12 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
+      <div className="max-w-xl mx-auto text-center">
         <Image
-          src="https://placehold.co/80x80/D3D3D3/000000?text=✨" // Replace with actual image
-          alt="Happy GroZen User"
-          width={72}
-          height={72}
-          className="rounded-full mx-auto mb-4 neumorphic-sm border-2 border-primary/30"
+          src="https://placehold.co/60x60/D3D3D3/000000?text=😊"
+          alt="Happy GroZen User (Example)"
+          width={56}
+          height={56}
+          className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30"
           data-ai-hint="teenager avatar"
         />
-        <blockquote className="text-md sm:text-lg italic text-muted-foreground">
-          &ldquo;GroZen isn't just an app, it's a vibe. Finally something that gets teen life. Felt the change in like, 2 days!&rdquo;
+        <blockquote className="text-sm sm:text-md italic text-muted-foreground">
+          &ldquo;GroZen is a total vibe. Felt the change in like, 2 days!&rdquo;
         </blockquote>
-        <p className="mt-3 text-sm font-semibold text-primary">- Maya K. (Verified User)</p>
+        <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
       </div>
     </section>
   );
@@ -263,10 +244,10 @@ const TestimonialSection = React.forwardRef<HTMLDivElement>((props, ref) => {
 TestimonialSection.displayName = 'TestimonialSection';
 
 // --- Final CTA Section ---
-const FinalCtaSection: React.FC<{onCtaClick: () => void}> = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
+const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
   return (
-    <section ref={ref} className="py-16 sm:py-20 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
-      <div className="max-w-xl mx-auto text-center">
+    <section ref={ref} className="py-16 sm:py-20 px-4 sm:px-6 opacity-0">
+      <div className="max-w-lg mx-auto text-center">
         <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
         <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
           Ready for <span className="gradient-text">Your Glow Up</span>?
@@ -278,7 +259,7 @@ const FinalCtaSection: React.FC<{onCtaClick: () => void}> = React.forwardRef<HTM
           onClick={props.onCtaClick}
           variant="neumorphic-primary" 
           size="xl" 
-          className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3" // Adjusted padding
+          className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3"
         >
           Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
         </Button>
@@ -311,7 +292,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <h3 className="text-lg sm:text-xl font-semibold text-center text-primary">{title}</h3>
+      <h3 className="text-md sm:text-lg font-semibold text-center text-primary">{title}</h3>
       <div>{children}</div>
       <div className="flex flex-col sm:flex-row gap-2 pt-2">
         {onPrev && currentStep > 0 && (
@@ -339,10 +320,10 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
 };
 
 const AvatarOptions = [
-  { id: 'avatar1', src: 'https://placehold.co/100x100/D3D3D3/000000?text=🌟', alt: 'GroZen Avatar Star', hint: 'star icon' },
-  { id: 'avatar2', src: 'https://placehold.co/100x100/D3D3D3/000000?text=🚀', alt: 'GroZen Avatar Rocket', hint: 'rocket icon' },
-  { id: 'avatar3', src: 'https://placehold.co/100x100/D3D3D3/000000?text=💡', alt: 'GroZen Avatar Idea', hint: 'lightbulb idea' },
-  { id: 'avatar4', src: 'https://placehold.co/100x100/D3D3D3/000000?text=🎨', alt: 'GroZen Avatar Palette', hint: 'art palette' },
+  { id: 'avatar1', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🌟', alt: 'GroZen Avatar Star', hint: 'star icon' },
+  { id: 'avatar2', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🚀', alt: 'GroZen Avatar Rocket', hint: 'rocket icon' },
+  { id: 'avatar3', src: 'https://placehold.co/80x80/D3D3D3/000000?text=💡', alt: 'GroZen Avatar Idea', hint: 'lightbulb idea' },
+  { id: 'avatar4', src: 'https://placehold.co/80x80/D3D3D3/000000?text=🎨', alt: 'GroZen Avatar Palette', hint: 'art palette' },
 ];
 
 const MinimalSignupModal: React.FC<{ 
@@ -369,19 +350,19 @@ const MinimalSignupModal: React.FC<{
 
   useEffect(() => {
     if (initialEmail) setEmail(initialEmail);
-  }, [initialEmail, isOpen]); // Re-set email if modal reopens with a new initialEmail
+  }, [initialEmail, isOpen]);
   
   useEffect(() => {
-    if (currentUser && isOpen) { // Only redirect if modal was open and signup succeeded
+    if (currentUser && isOpen) {
       router.push('/onboarding');
-      onClose(); // Close modal after successful signup and redirection
+      onClose();
     }
   }, [currentUser, router, isOpen, onClose]);
 
   const checkUsernameAvailability = useCallback(async (name: string): Promise<boolean> => {
     if (!name.trim() || name.trim().length < 3) {
       setUsernameStatus('idle');
-      setUsernameError('Must be 3+ characters.');
+      setUsernameError('Must be 3+ chars.');
       return false;
     }
     setUsernameStatus('checking');
@@ -407,7 +388,7 @@ const MinimalSignupModal: React.FC<{
   }, []);
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value;
+    const newUsername = e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase(); // Allow alphanumeric and underscore
     setUsername(newUsername);
     setUsernameStatus('idle');
     setUsernameError('');
@@ -419,17 +400,17 @@ const MinimalSignupModal: React.FC<{
         checkUsernameAvailability(newUsername);
       }, 600);
     } else if (newUsername.trim().length > 0 && newUsername.trim().length < 3) {
-      setUsernameError('Needs to be 3+ characters long.');
+      setUsernameError('Needs 3+ characters.');
     }
   };
   
   const evaluatePasswordStrength = (pass: string) => {
     let strength = 0;
-    if (pass.length >= 6) strength += 25; // Min length
-    if (pass.length >= 8) strength += 25; // Good length
-    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) strength += 25; // Mixed case
-    if (/[0-9]/.test(pass)) strength += 15; // Numbers
-    if (/[^A-Za-z0-9]/.test(pass)) strength += 10; // Symbols
+    if (pass.length >= 6) strength += 25;
+    if (pass.length >= 8) strength += 25;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) strength += 25;
+    if (/[0-9]/.test(pass)) strength += 15;
+    if (/[^A-Za-z0-9]/.test(pass)) strength += 10;
     setPasswordStrength(Math.min(100, strength));
   };
 
@@ -448,12 +429,16 @@ const MinimalSignupModal: React.FC<{
   };
 
   const validateStep1 = async () => { // Username
+    if (usernameStatus === 'checking') {
+        toast({variant: "default", title: "Hold on...", description: "Checking username availability."});
+        return false;
+    }
     const isAvailable = await checkUsernameAvailability(username);
     if (isAvailable) {
       setCurrentStep(2);
       return true;
     }
-    return false; // Error toast handled by checkUsernameAvailability
+    return false; 
   };
 
   const validateStep2 = async () => { // Password
@@ -469,6 +454,10 @@ const MinimalSignupModal: React.FC<{
       toast({ variant: "destructive", title: "Oops!", description: "Please complete all fields to join." });
       return;
     }
+    if (usernameStatus !== 'available') {
+        toast({ variant: "destructive", title: "Username Issue", description: "Please choose an available username." });
+        return;
+    }
     setIsCompleting(true);
     const success = await signupWithDetails(email, password, username, selectedAvatar);
     setIsCompleting(false);
@@ -478,9 +467,7 @@ const MinimalSignupModal: React.FC<{
         description: "You're in! Get ready to glow up.",
         duration: 5000,
       });
-      // Redirection handled by useEffect monitoring currentUser
     } 
-    // signupWithDetails handles its own error toasts
   };
 
   const stepsConfig = [
@@ -498,20 +485,20 @@ const MinimalSignupModal: React.FC<{
       onNext: validateStep0 
     },
     { 
-      title: "Create Your Username", 
+      title: "Create Your GroZen Name", 
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-username" className="text-muted-foreground sr-only">Username</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input id="signup-username" type="text" placeholder="YourUniqueName" value={username} onChange={handleUsernameChange} className="pl-10 h-11 neumorphic-inset text-sm" />
+            <Input id="signup-username" type="text" placeholder="YourUniqueName (letters, numbers, _)" value={username} onChange={handleUsernameChange} className="pl-10 h-11 neumorphic-inset text-sm" />
             {usernameStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
             {usernameStatus === 'available' && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />}
             {usernameStatus === 'taken' && <X className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />}
           </div>
           {usernameError && <p className="text-xs text-red-500 text-center pt-1 h-4">{usernameError}</p>}
           {usernameStatus === 'available' && <p className="text-xs text-green-500 text-center pt-1 h-4">Sweet, it's yours!</p>}
-          {!usernameError && usernameStatus !== 'available' && <div className="h-4 pt-1"></div>}
+          {!usernameError && usernameStatus !== 'available' && usernameStatus !== 'checking' && <div className="h-4 pt-1"></div>}
         </div>
       ), 
       onNext: validateStep1, 
@@ -535,7 +522,7 @@ const MinimalSignupModal: React.FC<{
               <span className="text-xs text-muted-foreground w-14 text-right">{passwordStrength < 50 ? "Weak" : passwordStrength < 75 ? "Okay" : "Strong"}</span>
             </div>
           )}
-           {password.length === 0 && <div className="h-[22px] pt-1"></div>}
+           {password.length === 0 && <div className="h-[22px] pt-1"></div>} {/* Placeholder for height consistency */}
         </div>
       ), 
       onNext: validateStep2, 
@@ -546,7 +533,7 @@ const MinimalSignupModal: React.FC<{
       content: (
         <div className="space-y-3">
           <p className="text-center text-muted-foreground text-xs">Pick an avatar that represents you.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
             {AvatarOptions.map(avatar => (
               <button
                 key={avatar.id}
@@ -570,7 +557,7 @@ const MinimalSignupModal: React.FC<{
   
   const resetModal = useCallback(() => {
     setCurrentStep(0);
-    setEmail(initialEmail); // Keep initial email if provided
+    setEmail(initialEmail);
     setUsername('');
     setPassword('');
     setSelectedAvatar(AvatarOptions[0].src);
@@ -581,24 +568,25 @@ const MinimalSignupModal: React.FC<{
     onClose();
   }, [initialEmail, onClose]);
 
-  // Reset relevant fields if initialEmail changes when modal is already open or re-opens
   useEffect(() => {
     if (isOpen) {
       setEmail(initialEmail);
-      // Optionally reset other fields if it's considered a "new" signup attempt
-      // setUsername('');
-      // setPassword('');
-      // setSelectedAvatar(AvatarOptions[0].src);
-      // setUsernameStatus('idle');
-      // setPasswordStrength(0);
-      // setCurrentStep(0); // Could also reset to first step
+       // Reset other fields if modal reopens, to ensure clean state for signup
+      if (currentStep !== 0 || username || password) {
+        setUsername('');
+        setPassword('');
+        setSelectedAvatar(AvatarOptions[0].src);
+        setUsernameStatus('idle');
+        setUsernameError('');
+        setPasswordStrength(0);
+        setCurrentStep(0); // Reset to first step if re-opened with new email potentially
+      }
     }
-  }, [initialEmail, isOpen]);
-
+  }, [initialEmail, isOpen]); // Only react to initialEmail and isOpen status
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && resetModal()}>
-      <DialogContent className="neumorphic max-w-md mx-auto p-5 sm:p-6">
+      <DialogContent className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
         <DialogHeader className="mb-2 sm:mb-3">
           <div className="mx-auto mb-2">
             <Logo size="text-lg" />
@@ -624,7 +612,7 @@ const MinimalSignupModal: React.FC<{
 
 // --- Main Landing Page Component ---
 const AddictionLandingPage: React.FC = () => {
-  const { currentUser, isLoadingAuth, isOnboardedState, signupWithDetails } = usePlan();
+  const { currentUser, isLoadingAuth, isOnboardedState } = usePlan(); // Removed signupWithDetails as it's now in PlanProvider
   const router = useRouter();
   const { toast } = useToast();
   
@@ -642,70 +630,77 @@ const AddictionLandingPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 5 && !localStorage.getItem('grozen_exit_intent_shown_today_minimal')) {
+      if (e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) { // Increased sensitivity, new storage key
         setShowExitIntent(true);
-        localStorage.setItem('grozen_exit_intent_shown_today_minimal', 'true'); 
+        localStorage.setItem('grozen_exit_intent_shown_minimal_v2', 'true'); 
       }
     };
-    document.documentElement.addEventListener('mouseleave', handleMouseLeave); // Listen on documentElement
+    document.documentElement.addEventListener('mouseleave', handleMouseLeave);
     return () => document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
   }, []);
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
-      if (currentUser) {
-        // No automatic redirect here, signup modal handles its own flow.
-        // Redirection to /onboarding or /dashboard happens in PlanProvider or signup modal's useEffect.
+      if (currentUser && isOnboardedState) {
+        router.push('/dashboard');
+      } else if (currentUser && !isOnboardedState) {
+        router.push('/onboarding');
       }
     }
   }, [isClient, currentUser, isLoadingAuth, isOnboardedState, router]);
 
   useEffect(() => {
     if (!isClient) return;
+
+    // Ensure IDs are set on the DOM elements for the observer to use
+    if (benefitsRef.current) benefitsRef.current.id = "benefits-section";
+    if (testimonialRef.current) testimonialRef.current.id = "testimonial-section";
+    if (finalCtaRef.current) finalCtaRef.current.id = "final-cta-section";
+
+    const elements = [benefitsRef.current, testimonialRef.current, finalCtaRef.current].filter(Boolean) as HTMLElement[];
+
+    if (elements.length === 0) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            const targetElement = entry.target as HTMLElement;
+            targetElement.classList.remove('opacity-0');
+            targetElement.classList.add('animate-fade-in-up');
+
+            const achievementId = targetElement.id;
             
-            const achievementId = entry.target.id;
-            if (achievementId && !scrolledAchievements.includes(achievementId)) {
-              let achievementText = "";
-              if (achievementId === "benefits-section") achievementText = "Explorer Badge Unlocked!";
-              else if (achievementId === "testimonial-section") achievementText = "Social Butterfly Badge!";
-              else if (achievementId === "final-cta-section") achievementText = "Almost There Badge!";
-              
-              if (achievementText) {
-                toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
-                setScrolledAchievements(prev => [...prev, achievementId]);
+            setScrolledAchievements(prevAchievements => {
+              if (achievementId && !prevAchievements.includes(achievementId)) {
+                let achievementText = "";
+                if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
+                else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
+                else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
+                
+                if (achievementText) {
+                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
+                }
+                return [...prevAchievements, achievementId];
               }
-            }
-             observer.unobserve(entry.target); // Unobserve after animation
+              return prevAchievements;
+            });
+            observer.unobserve(targetElement);
           }
         });
       },
-      { threshold: 0.2 } // Trigger when 20% of the element is visible
+      { threshold: 0.1 } // Trigger when 10% of the element is visible
     );
-  
-    const sectionsToObserve = [
-      { ref: benefitsRef.current, id: "benefits-section" },
-      { ref: testimonialRef.current, id: "testimonial-section" },
-      { ref: finalCtaRef.current, id: "final-cta-section" }
-    ];
 
-    sectionsToObserve.forEach(item => {
-      if (item.ref) {
-        item.ref.id = item.id; // Assign ID for achievement tracking
-        observer.observe(item.ref);
-      }
-    });
-  
+    elements.forEach(el => observer.observe(el));
+
     return () => {
-      sectionsToObserve.forEach(item => {
-        if (item.ref) observer.unobserve(item.ref);
+      elements.forEach(el => { // Ensure unobserve is called on all potentially observed elements
+        if (el) observer.unobserve(el);
       });
+      observer.disconnect(); // Fully disconnect observer on cleanup
     };
-  }, [isClient, toast, scrolledAchievements]);
+  }, [isClient, toast]); // `toast` is stable. `setScrolledAchievements` is stable via functional update. Refs are stable.
 
 
   const handleEarlyEmailSubmit = async (email: string) => {
@@ -722,11 +717,10 @@ const AddictionLandingPage: React.FC = () => {
       });
       toast({
         title: "Awesome! ✨",
-        description: "Your free AI mini-plan is on its way to your inbox!",
+        description: "Your free AI mini-plan is on its way!",
         duration: 4000
       });
       if (showExitIntent) setShowExitIntent(false);
-      // Optionally, trigger signup modal with email prefilled
       setInitialModalEmail(email.trim());
       setIsSignupModalOpen(true);
     } catch (error) {
@@ -740,8 +734,7 @@ const AddictionLandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-
-  if (!isClient || (isLoadingAuth && !currentUser) ) { // Initial loading state for the whole page
+  if (!isClient || (isLoadingAuth && !currentUser) ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -776,3 +769,5 @@ const AddictionLandingPage: React.FC = () => {
 };
 
 export default AddictionLandingPage;
+
+    
