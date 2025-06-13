@@ -28,7 +28,8 @@ interface PlanContextType {
   isLoadingAuth: boolean;
   currentUserProfile: UserProfile | null;
   signupWithEmail: (email: string, pass: string) => Promise<User | null>;
-  signupWithDetails: (emailVal: string, passwordVal: string, usernameVal: string, avatarUrlVal: string) => Promise<boolean>; // For landing page modal
+  // Updated to take avatarDataUri string
+  signupWithDetails: (emailVal: string, passwordVal: string, usernameVal: string, avatarDataUri: string) => Promise<boolean>; 
   loginWithEmail: (email: string, pass: string) => Promise<User | null>;
   signInWithGoogle: () => Promise<User | null>;
   logoutUser: () => Promise<void>;
@@ -136,7 +137,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
              setCurrentUserProfile({
               displayName: userData.displayName || user.displayName || user.email?.split('@')[0] || 'GroZen User',
               email: user.email || '',
-              avatarUrl: userData.avatarUrl || user.photoURL || undefined
+              avatarUrl: userData.avatarUrl || user.photoURL || undefined // Use Firestore avatarUrl first
             });
             if (userData.onboardingData) {
               _setOnboardingData(userData.onboardingData as OnboardingData);
@@ -206,21 +207,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setMoodLogs(fetchedMoodLogs);
 
           } else {
-            // New user or user document doesn't exist, create it
+            // New user or user document doesn't exist, but Auth user exists.
+            // This scenario is mostly handled by signupWithDetails.
+            // If a user signs in via Google for the first time, onAuthStateChanged runs before signupWithDetails might complete its Firestore writes.
+            // So, we set a basic profile here. signupWithDetails will merge/overwrite with more specifics if called.
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
-            const initialAvatarUrl = user.photoURL || undefined; // Use Google avatar if available
+            const initialAvatarUrl = user.photoURL || undefined;
 
             setCurrentUserProfile({ displayName: initialProfileName, email: user.email || '', avatarUrl: initialAvatarUrl });
-            await setDoc(userDocRef, {
+            // Minimal user doc creation here; signupWithDetails will add more
+            await setDoc(doc(db, "users", user.uid), {
               email: user.email || null,
               displayName: initialProfileName,
-              avatarUrl: initialAvatarUrl,
+              avatarUrl: initialAvatarUrl, // This might be a Google URL if Google sign-in
               createdAt: serverTimestamp(),
-              onboardingData: null,
-              wellnessPlan: null,
-              currentGroceryList: null,
-              activeChallengeProgress: null,
-            });
+            }, { merge: true });
              _setOnboardingData(defaultOnboardingData);
             _setWellnessPlan(null);
             _setIsOnboardedState(false);
@@ -248,8 +249,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      // User document will be created by onAuthStateChanged listener
-      toast({ title: "Signup Successful", description: "Welcome to GroZen! Please complete your onboarding." });
+      // User document details (like displayName) will be missing until onboarding or modal signup.
+      // onAuthStateChanged will create a basic user doc if one doesn't exist.
+      toast({ title: "Signup Successful", description: "Welcome to GroZen! Please complete your onboarding or profile setup." });
       return userCredential.user;
     } catch (error: any) {
       console.error("Signup error", error);
@@ -259,77 +261,65 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signupWithDetails = async (emailVal: string, passwordVal: string, usernameVal: string, avatarUrlVal: string): Promise<boolean> => {
+  // Accepts avatarDataUri which is a base64 string from the validated upload
+  const signupWithDetails = async (emailVal: string, passwordVal: string, usernameVal: string, avatarDataUri: string): Promise<boolean> => {
     setIsLoadingAuth(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, emailVal, passwordVal);
       const user = userCredential.user;
 
-      // Update Firebase Auth profile (displayName, photoURL if needed)
+      // Update Firebase Auth profile (displayName, photoURL if we were using storage URLs)
+      // For now, photoURL on Auth profile isn't set with Data URI directly.
       await updateProfile(user, {
         displayName: usernameVal.trim(),
-        // photoURL: avatarUrlVal // If avatarUrlVal is a real URL and you want it on Auth profile
       });
 
       // Create/Claim username in 'usernames' collection
       const usernameDocRef = doc(db, "usernames", usernameVal.trim().toLowerCase());
       await setDoc(usernameDocRef, {
         userId: user.uid,
-        email: user.email // Storing email here can be useful for lookups/admin
+        email: user.email 
       });
 
       // Create user document in 'users' collection
-      // This will also be picked up by onAuthStateChanged, but doing it here ensures immediate availability
-      // and includes username/avatar from this specific flow.
       const userDocRef = doc(db, "users", user.uid);
-      await setDoc(userDocRef, {
+      const userDocPayload = {
         email: user.email,
         displayName: usernameVal.trim(),
-        avatarUrl: avatarUrlVal, // Store the chosen avatar
+        avatarUrl: avatarDataUri, // Store the Data URI string
         createdAt: serverTimestamp(),
         onboardingData: null,
         wellnessPlan: null,
         currentGroceryList: null,
         activeChallengeProgress: null,
-      }, { merge: true }); // merge:true handles if onAuthStateChanged was faster
+      };
 
-      // Update local state immediately
+      await setDoc(userDocRef, userDocPayload, { merge: true });
+
       setCurrentUserProfile({
         displayName: usernameVal.trim(),
-        email: user.email,
-        avatarUrl: avatarUrlVal
+        email: user.email || '', 
+        avatarUrl: avatarDataUri
       });
-      _setIsOnboardedState(false); // New user, needs onboarding
+      _setIsOnboardedState(false); 
 
-      // No explicit toast here, as the calling component (landing page modal) handles it.
-      // The onAuthStateChanged will also trigger, potentially re-fetching some data, which is fine.
-      return true; // Indicate success
+      return true; 
     } catch (error: any) {
       console.error("Detailed Signup error", error);
-      if (error.code === 'auth/email-already-in-use') {
-        toast({
-          variant: "destructive",
-          title: "Signup Failed",
-          description: "This email address is already in use. Try logging in or use a different email."
-        });
-      } else if (error.code === 'firestore/permission-denied') {
-         toast({
-          variant: "destructive",
-          title: "Signup Error",
-          description: "Could not save user details. Please check permissions or try again."
-        });
-      }
-      else {
-        toast({
-          variant: "destructive",
-          title: "Signup Failed",
-          description: error.message || "An unexpected error occurred during signup."
-        });
-      }
-      setIsLoadingAuth(false); // Ensure loading state is reset on error
-      return false; // Indicate failure
+      const commonErrorMessages: {[key: string]: string} = {
+        'auth/email-already-in-use': "This email address is already in use. Try logging in or use a different email.",
+        'firestore/permission-denied': "Could not save user details. Please check permissions or try again."
+      };
+      const description = commonErrorMessages[error.code] || error.message || "An unexpected error occurred during signup.";
+      
+      toast({
+        variant: "destructive",
+        title: "Signup Failed",
+        description: description
+      });
+      setIsLoadingAuth(false);
+      return false; 
     }
-    // setIsLoadingAuth(false) will be handled by onAuthStateChanged listener finishing
   };
 
   const loginWithEmail = async (email: string, pass: string): Promise<User | null> => {
@@ -351,7 +341,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      // User document creation/update will be handled by onAuthStateChanged
+      // onAuthStateChanged will handle user doc creation/update.
+      // If it's a new Google user, they might not have a username/avatar from our system yet.
+      // They would proceed to onboarding or could update profile details in settings.
       toast({ title: "Signed In with Google", description: "Welcome!" });
       return result.user;
     } catch (error: any) {
@@ -367,7 +359,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login'); // Redirect after state is cleared by onAuthStateChanged
+      router.push('/login'); 
     } catch (error: any) {
       console.error("Logout error", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not log out." });
@@ -426,7 +418,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await aiGenerateWellnessPlan(input);
       const parsedPlanCandidate = JSON.parse(result.plan);
 
-      if ( /* Basic validation for plan structure */
+      if (
         parsedPlanCandidate && Array.isArray(parsedPlanCandidate.meals) && parsedPlanCandidate.meals.length > 0 &&
         parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string') &&
         Array.isArray(parsedPlanCandidate.exercise) && Array.isArray(parsedPlanCandidate.mindfulness)
@@ -507,12 +499,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!currentUser || !_groceryList) return;
     const updatedItems = _groceryList.items.filter(item => item.id !== itemIdToDelete);
     const updatedGroceryList = { ..._groceryList, items: updatedItems };
-    _setGroceryList(updatedGroceryList); // Optimistic update
+    _setGroceryList(updatedGroceryList); 
     try {
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList); // Revert on error
+      _setGroceryList(_groceryList); 
       toast({ variant: "destructive", title: "Update Error" });
     }
   };
@@ -611,9 +603,8 @@ export const usePlan = (): PlanContextType => {
   return context;
 };
 
-// Extended UserProfile to include avatarUrl
 declare module '@/types/wellness' {
   interface UserProfile {
-    avatarUrl?: string;
+    avatarUrl?: string; // Already allows undefined, so Firestore sending null if avatarDataUri is undefined (defensively) is fine by type
   }
 }
