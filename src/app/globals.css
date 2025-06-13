@@ -3,6 +3,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Keyframes - MOVED TO ROOT */
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes pulse-bg {
+  0% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.05); }
+  100% { opacity: 0.1; transform: scale(1); }
+}
+
+/* Removed fadeInUp keyframes for now to ensure visibility */
+/*
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+*/
+
 @layer base {
   :root {
     --background: 0 0% 0%; /* Deep Black */
@@ -16,7 +42,7 @@
 
     --primary: 0 0% 82.7%; /* Light Gray - D3D3D3 - main interactive color */
     --primary-foreground: 0 0% 0%; /* Black text on light gray primary elements */
-    
+
     --secondary: 0 0% 20%; /* Dark Gray for secondary elements */
     --secondary-foreground: 0 0% 90%; /* Light Gray text for secondary elements */
 
@@ -39,7 +65,7 @@
     --neumorphic-bg: hsl(var(--background));
     --neumorphic-shadow-light: 2px 2px 5px rgba(255, 255, 255, 0.015), -2px -2px 5px rgba(0, 0, 0, 0.3);
     --neumorphic-shadow-light-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -2px -2px 5px rgba(255, 255, 255, 0.015);
-    
+
     /* More pronounced neumorphic for primary actions */
     --neumorphic-shadow-primary: 3px 3px 7px rgba(255, 255, 255, 0.02), -3px -3px 7px rgba(0, 0, 0, 0.4);
     --neumorphic-shadow-primary-inset: inset 3px 3px 7px rgba(0, 0, 0, 0.4), inset -3px -3px 7px rgba(255, 255, 255, 0.02);
@@ -59,20 +85,20 @@
   }
   body {
     @apply bg-background text-foreground;
-    @apply font-sans; 
+    @apply font-sans;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
   }
-  
-  p, span, div, li, td, th, label, a, button {
-    @apply text-xs sm:text-sm; 
-  }
-  .text-3xs { @apply text-[0.625rem] leading-tight; } 
-  .text-2xs { @apply text-[0.7rem] leading-tight; } 
 
-  h1 { @apply text-lg sm:text-xl md:text-2xl; } 
-  h2 { @apply text-base sm:text-lg md:text-xl; } 
+  p, span, div, li, td, th, label, a, button {
+    @apply text-xs sm:text-sm;
+  }
+  .text-3xs { @apply text-[0.625rem] leading-tight; }
+  .text-2xs { @apply text-[0.7rem] leading-tight; }
+
+  h1 { @apply text-lg sm:text-xl md:text-2xl; }
+  h2 { @apply text-base sm:text-lg md:text-xl; }
   h3 { @apply text-sm sm:text-base md:text-lg; }
 
   input, textarea, select {
@@ -103,29 +129,6 @@
   }
 }
 
-/* Global Keyframes */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes gradient-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-
-@keyframes pulse-bg {
-  0% { opacity: 0.1; transform: scale(1); }
-  50% { opacity: 0.25; transform: scale(1.05); }
-  100% { opacity: 0.1; transform: scale(1); }
-}
-
 
 @layer components {
   .neumorphic {
@@ -151,24 +154,24 @@
   }
 
   .neumorphic-button {
-    background-color: hsl(var(--card)); 
-    color: hsl(var(--card-foreground)); 
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
     box-shadow: var(--neumorphic-shadow-light);
-    border: 1px solid hsl(var(--primary) / 0.2); 
+    border: 1px solid hsl(var(--primary) / 0.2);
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-light-inset)] active:scale-[0.98] hover:opacity-90;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
   }
-  
+
   .neumorphic-button-primary {
-    background-color: hsl(var(--primary)); 
-    color: hsl(var(--primary-foreground)); 
-    box-shadow: var(--neumorphic-shadow-primary); 
-    border: 1px solid hsl(var(--primary) / 0.3); 
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: var(--neumorphic-shadow-primary);
+    border: 1px solid hsl(var(--primary) / 0.3);
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-primary-inset)] active:scale-[0.98] hover:opacity-95;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
   }
-  
-  .btn-xl { 
+
+  .btn-xl {
     @apply text-lg px-8 py-4 h-16;
   }
 
@@ -177,7 +180,7 @@
     background-size: 200% auto; /* Required for gradient animation */
     animation: gradient-flow 5s ease-in-out infinite alternate;
   }
-  
+
   .edge-to-edge {
     width: 100vw;
     position: relative;
@@ -187,7 +190,10 @@
     margin-right: -50vw;
   }
 
+  /* Removed .animate-fade-in-up to ensure elements are visible by default */
+  /*
   .animate-fade-in-up {
     animation: fadeInUp 0.8s ease-out forwards;
   }
+  */
 }

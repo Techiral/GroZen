@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Star, Brain, Palette, RadioTower, MessageCircle, Award } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -50,10 +50,10 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
 };
 
 
-const MinimalExitIntentPopup: React.FC<{ 
+const MinimalExitIntentPopup: React.FC<{
   isOpen: boolean;
-  onClose: () => void; 
-  onEmailSubmit: (email: string) => Promise<void>; 
+  onClose: () => void;
+  onEmailSubmit: (email: string) => Promise<void>;
 }> = ({ isOpen, onClose, onEmailSubmit }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,15 +68,14 @@ const MinimalExitIntentPopup: React.FC<{
     setIsSubmitting(true);
     try {
       await onEmailSubmit(email);
-      setEmail(''); 
-      // onClose(); // Keep open on success to show toast, user can close manually
+      setEmail('');
     } catch (error) {
       // Error toast handled by parent
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   if (!isOpen) return null;
 
   return (
@@ -99,8 +98,8 @@ const MinimalExitIntentPopup: React.FC<{
             required
             disabled={isSubmitting}
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full neumorphic-button-primary text-sm py-2.5 h-10"
             disabled={isSubmitting}
             size="lg"
@@ -114,180 +113,7 @@ const MinimalExitIntentPopup: React.FC<{
   );
 };
 
-// --- Hero Section ---
-const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit: (email: string) => Promise<void>}> = ({ onCtaClick, onEmailSubmit }) => {
-  const [heroEmail, setHeroEmail] = useState('');
-  const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
-  const [showTagline, setShowTagline] = useState(false);
-  const [showCta, setShowCta] = useState(false);
-  const { toast } = useToast(); 
-
-  const handleHeroEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!heroEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(heroEmail)) {
-      toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look right." });
-      return;
-    }
-    setIsSubmittingHeroEmail(true);
-    await onEmailSubmit(heroEmail); 
-    setIsSubmittingHeroEmail(false);
-    // setHeroEmail(''); // Keep email in field on success for UX, in case modal doesn't open
-  };
-  
-  return (
-    <section className="min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
-      <div 
-        className="absolute inset-0 opacity-10" 
-        style={{ 
-          backgroundImage: 'radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%), radial-gradient(circle at 90% 80%, hsl(var(--accent) / 0.08) 0%, transparent 25%)',
-          animation: 'pulse-bg 12s infinite alternate ease-in-out'
-        }}
-        aria-hidden="true"
-      />
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="mb-4 sm:mb-6">
-          <Logo size="text-3xl sm:text-4xl" />
-        </div>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-1 sm:mb-2">
-          <AnimatedText text="Instant Teen" className="block" as="span" onComplete={() => setShowTagline(true)} />
-          {showTagline && <span className="gradient-text block leading-tight tracking-tight"><AnimatedText text="Glow Up ✨" delay={100} onComplete={() => setShowCta(true)} /></span>}
-        </h1>
-        {showCta && (
-          <>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-lg mb-6 sm:mb-8 animate-fade-in-up">
-              AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
-            </p>
-
-            <div className="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-xs animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-              <Button 
-                onClick={() => onCtaClick(heroEmail.trim() || undefined)}
-                variant="neumorphic-primary" 
-                size="xl" 
-                className="w-full text-base sm:text-lg group py-3"
-              >
-                Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
-              </Button>
-            </div>
-            
-            <form 
-              onSubmit={handleHeroEmailSubmit}
-              className="flex flex-col sm:flex-row gap-2 w-full max-w-xs mb-4 animate-fade-in-up"
-              style={{animationDelay: '0.6s'}}
-            >
-              <Input
-                type="email"
-                placeholder="Or get FREE AI mini-plan via Email!"
-                value={heroEmail}
-                onChange={(e) => setHeroEmail(e.target.value)}
-                className="h-11 text-sm sm:text-base neumorphic-inset flex-1"
-                disabled={isSubmittingHeroEmail}
-                aria-label="Enter email for free mini-plan"
-              />
-              <Button type="submit" variant="neumorphic" size="lg" className="h-11 text-sm sm:text-base px-4" disabled={isSubmittingHeroEmail}>
-                {isSubmittingHeroEmail ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                <span className="sm:hidden ml-2">Get Plan</span>
-              </Button>
-            </form>
-
-            <div className="text-xs text-muted-foreground flex items-center animate-fade-in-up" style={{animationDelay: '0.9s'}}>
-              <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
-              10,000+ Teens Glowing Up With GroZen!
-            </div>
-             <p className="text-xs text-muted-foreground mt-2 animate-fade-in-up" style={{animationDelay: '1s'}}>It's Completely FREE Right Now!</p>
-          </>
-        )}
-      </div>
-    </section>
-  );
-};
-
-// --- Core Benefits Section (Minimal) ---
-const CoreBenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string}> = ({icon, title, description}) => (
-  <div className="flex flex-col items-center space-y-1">
-    <div className="p-2.5 bg-card rounded-full neumorphic-sm text-primary mb-1.5">
-      {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6 sm:h-7 sm:w-7" })}
-    </div>
-    <h3 className="text-sm sm:text-base font-semibold text-center">{title}</h3>
-    <p className="text-2xs sm:text-xs text-muted-foreground text-center max-w-[180px]">{description}</p>
-  </div>
-);
-
-const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
-  return (
-    <section 
-      ref={ref} 
-      id="benefits-section"
-      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0 bg-card"
-    >
-      <div className="max-w-3xl mx-auto text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
-          Unlock Your <span className="gradient-text">Best Self</span>, Fast.
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-          <CoreBenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that fit YOU." />
-          <CoreBenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." />
-          <CoreBenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, fast." />
-        </div>
-      </div>
-    </section>
-  );
-});
-CoreBenefitsSection.displayName = 'CoreBenefitsSection';
-
-
-// --- Minimal Testimonial Section ---
-const TestimonialSection = React.forwardRef<HTMLDivElement>((props, ref) => {
-  return (
-    <section ref={ref} id="testimonial-section" className="py-10 sm:py-12 px-4 sm:px-6 bg-card edge-to-edge opacity-0">
-      <div className="max-w-xl mx-auto text-center">
-        <Image
-          src="https://placehold.co/60x60.png" 
-          alt="Happy GroZen User (Example)"
-          width={56}
-          height={56}
-          className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30"
-          data-ai-hint="teenager avatar"
-        />
-        <blockquote className="text-sm sm:text-md italic text-muted-foreground">
-          &ldquo;GroZen is a total vibe. Felt the change in like, 2 days!&rdquo; (Example)
-        </blockquote>
-        <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
-        <p className="mt-1 text-2xs text-muted-foreground">Hear What Our Community Is Saying (Examples):</p>
-      </div>
-    </section>
-  );
-});
-TestimonialSection.displayName = 'TestimonialSection';
-
-// --- Final CTA Section ---
-const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
-  return (
-    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0 bg-card">
-      <div className="max-w-lg mx-auto text-center">
-        <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
-        <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-          Ready for <span className="gradient-text">Your Glow Up</span>?
-        </h2>
-        <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-          Stop scrolling, start shining. Your best self is a click away. <strong className="text-primary font-semibold">And yes, it's 100% FREE!</strong>
-        </p>
-        <Button 
-          onClick={props.onCtaClick}
-          variant="neumorphic-primary" 
-          size="xl" 
-          className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3"
-        >
-          Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
-        </Button>
-        <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
-      </div>
-    </section>
-  );
-});
-FinalCtaSection.displayName = 'FinalCtaSection';
-
-
-// --- Minimal Gamified Signup Modal ---
+// --- Minimal Signup Modal ---
 const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: () => Promise<boolean | void>; onPrev?: () => void; onComplete?: () => Promise<void>; currentStep: number; totalSteps: number; isCompleting?: boolean; nextText?: string; prevText?: string; completeText?: string }> = ({ title, children, onNext, onPrev, onComplete, currentStep, totalSteps, isCompleting, nextText = "Next", prevText = "Back", completeText = "Glow Up!" }) => {
   const [isLoadingNext, setIsLoadingNext] = useState(false);
 
@@ -296,10 +122,10 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
       setIsLoadingNext(true);
       const canProceed = await onNext();
       setIsLoadingNext(false);
-      if (canProceed === false) return; 
+      if (canProceed === false) return;
     }
   };
-  
+
   const handleComplete = async () => {
     if (onComplete) {
       await onComplete();
@@ -316,7 +142,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
             {prevText}
           </Button>
         )}
-        {currentStep === 0 && !onPrev && <div className="sm:flex-1 hidden sm:block"></div>} 
+        {currentStep === 0 && !onPrev && <div className="sm:flex-1 hidden sm:block"></div>}
         {onNext && currentStep < totalSteps - 1 && (
           <Button onClick={handleNext} className="neumorphic-button-primary flex-1 h-10 sm:h-11 text-sm" disabled={isLoadingNext}>
             {isLoadingNext ? <Loader2 className="h-4 w-4 animate-spin" /> : nextText}
@@ -342,12 +168,12 @@ const AvatarOptions = [
   { id: 'avatar4', src: 'https://placehold.co/80x80.png', alt: 'GroZen Avatar Palette', hint: 'art palette' },
 ];
 
-const MinimalSignupModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
+const MinimalSignupModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
   initialEmail?: string;
 }> = ({ isOpen, onClose, initialEmail = '' }) => {
-  const { signupWithDetails, currentUser } = usePlan(); 
+  const { signupWithDetails, currentUser } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -358,7 +184,7 @@ const MinimalSignupModal: React.FC<{
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AvatarOptions[0].src);
-  
+
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [usernameError, setUsernameError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -366,21 +192,21 @@ const MinimalSignupModal: React.FC<{
 
   useEffect(() => {
     if (isOpen) {
-      setEmail(initialEmail || ''); // Reset email with initialEmail prop when modal opens
+      setEmail(initialEmail || '');
       setUsername('');
       setPassword('');
       setSelectedAvatar(AvatarOptions[0].src);
-      setCurrentStep(0); 
+      setCurrentStep(0);
       setUsernameStatus('idle');
       setUsernameError('');
       setPasswordStrength(0);
     }
-  }, [isOpen, initialEmail]); // Depend on isOpen and initialEmail
-  
+  }, [isOpen, initialEmail]);
+
   useEffect(() => {
-    if (currentUser && isOpen) { 
-      router.push('/onboarding'); 
-      onClose(); 
+    if (currentUser && isOpen) {
+      router.push('/onboarding');
+      onClose();
     }
   }, [currentUser, router, isOpen, onClose]);
 
@@ -429,7 +255,7 @@ const MinimalSignupModal: React.FC<{
       setUsernameError('Needs 3+ characters.');
     }
   };
-  
+
   const evaluatePasswordStrength = (pass: string) => {
     let strength = 0;
     if (pass.length >= 6) strength += 25;
@@ -446,7 +272,7 @@ const MinimalSignupModal: React.FC<{
     evaluatePasswordStrength(newPassword);
   };
 
-  const validateStep0 = async () => { 
+  const validateStep0 = async () => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look right." });
       return false;
@@ -455,7 +281,7 @@ const MinimalSignupModal: React.FC<{
     return true;
   };
 
-  const validateStep1 = async () => { 
+  const validateStep1 = async () => {
     if (usernameStatus === 'checking') {
         toast({variant: "default", title: "Hold on...", description: "Checking username availability."});
         return false;
@@ -465,10 +291,10 @@ const MinimalSignupModal: React.FC<{
       setCurrentStep(2);
       return true;
     }
-    return false; 
+    return false;
   };
 
-  const validateStep2 = async () => { 
+  const validateStep2 = async () => {
     if (password.length < 6) {
       toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs 6+ characters." });
       return false;
@@ -495,15 +321,12 @@ const MinimalSignupModal: React.FC<{
         description: "You're in! Get ready to glow up.",
         duration: 5000,
       });
-      // Redirection is handled by the useEffect watching `currentUser`
-    } else {
-      // Error toast is handled within signupWithDetails in PlanProvider
     }
   };
 
   const stepsConfig = [
-    { 
-      title: "Your Email to Start", 
+    {
+      title: "Your Email to Start",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-email" className="text-muted-foreground sr-only">Email Address</Label>
@@ -512,11 +335,11 @@ const MinimalSignupModal: React.FC<{
             <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11 neumorphic-inset text-sm" />
           </div>
         </div>
-      ), 
-      onNext: validateStep0 
+      ),
+      onNext: validateStep0
     },
-    { 
-      title: "Create Your GroZen Name", 
+    {
+      title: "Create Your GroZen Name",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-username" className="text-muted-foreground sr-only">Username</Label>
@@ -531,12 +354,12 @@ const MinimalSignupModal: React.FC<{
           {usernameStatus === 'available' && <p className="text-xs text-green-500 text-center pt-1 h-4">Sweet, it's yours!</p>}
           {!usernameError && usernameStatus !== 'available' && usernameStatus !== 'checking' && <div className="h-4 pt-1"></div>}
         </div>
-      ), 
-      onNext: validateStep1, 
-      onPrev: () => setCurrentStep(0) 
+      ),
+      onNext: validateStep1,
+      onPrev: () => setCurrentStep(0)
     },
-    { 
-      title: "Secure Your Account", 
+    {
+      title: "Secure Your Account",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-password" className="text-muted-foreground sr-only">Password</Label>
@@ -553,14 +376,14 @@ const MinimalSignupModal: React.FC<{
               <span className="text-xs text-muted-foreground w-14 text-right">{passwordStrength < 50 ? "Weak" : passwordStrength < 75 ? "Okay" : "Strong"}</span>
             </div>
           )}
-           {password.length === 0 && <div className="h-[22px] pt-1"></div>} 
+           {password.length === 0 && <div className="h-[22px] pt-1"></div>}
         </div>
-      ), 
-      onNext: validateStep2, 
-      onPrev: () => setCurrentStep(1) 
+      ),
+      onNext: validateStep2,
+      onPrev: () => setCurrentStep(1)
     },
-    { 
-      title: "Choose Your Vibe", 
+    {
+      title: "Choose Your Vibe",
       content: (
         <div className="space-y-3">
           <p className="text-center text-muted-foreground text-xs">Pick an avatar that represents you.</p>
@@ -580,16 +403,14 @@ const MinimalSignupModal: React.FC<{
             ))}
           </div>
         </div>
-      ), 
-      onComplete: handleCompleteSignup, 
-      onPrev: () => setCurrentStep(2) 
+      ),
+      onComplete: handleCompleteSignup,
+      onPrev: () => setCurrentStep(2)
     },
   ];
-  
+
   const resetModalAndClose = useCallback(() => {
     setCurrentStep(0);
-    // Don't reset email if initialEmail was provided and is the source of truth for the current flow
-    // setEmail(initialEmail || ''); 
     setUsername('');
     setPassword('');
     setSelectedAvatar(AvatarOptions[0].src);
@@ -626,35 +447,43 @@ const MinimalSignupModal: React.FC<{
   );
 };
 
+// --- Benefit Item ---
+const BenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string}> = ({icon, title, description}) => (
+  <div className="flex flex-col items-center space-y-1 text-center">
+    <div className="p-2.5 bg-card rounded-full neumorphic-sm text-primary mb-1.5">
+      {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6 sm:h-7 sm:w-7" })}
+    </div>
+    <h3 className="text-sm sm:text-base font-semibold">{title}</h3>
+    <p className="text-2xs sm:text-xs text-muted-foreground max-w-[200px]">{description}</p>
+  </div>
+);
+
 
 // --- Main Landing Page Component ---
 const AddictionLandingPage: React.FC = () => {
   const { currentUser, isLoadingAuth, isOnboardedState } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [isClient, setIsClient] = useState(false);
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
-  
-  const benefitsRef = useRef<HTMLDivElement>(null);
-  const testimonialRef = useRef<HTMLDivElement>(null);
-  const finalCtaRef = useRef<HTMLDivElement>(null);
-  const [scrolledAchievements, setScrolledAchievements] = useState<string[]>([]);
+  const [showTagline, setShowTagline] = useState(false);
+  const [showHeroCTA, setShowHeroCTA] = useState(false);
 
 
   useEffect(() => {
-    setIsClient(true); 
+    setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
-      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v2')) {
+      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v3')) {
         setShowExitIntent(true);
-        localStorage.setItem('grozen_exit_intent_shown_minimal_v2', 'true'); 
+        localStorage.setItem('grozen_exit_intent_shown_minimal_v3', 'true');
       }
     };
     document.documentElement.addEventListener('mouseleave', handleMouseLeave);
     return () => document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
-  }, [isSignupModalOpen]); 
+  }, [isSignupModalOpen]);
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -666,71 +495,17 @@ const AddictionLandingPage: React.FC = () => {
     }
   }, [isClient, currentUser, isLoadingAuth, isOnboardedState, router]);
 
-  // Intersection Observer for scroll animations
-  useEffect(() => {
-      if (!isClient) return;
-
-      const elementsToObserve = [
-          benefitsRef.current,
-          testimonialRef.current,
-          finalCtaRef.current,
-      ].filter(Boolean) as HTMLElement[];
-
-      if (elementsToObserve.length === 0) {
-          return;
-      }
-
-      const observer = new IntersectionObserver(
-          (entries) => {
-              entries.forEach((entry) => {
-                  if (entry.isIntersecting) {
-                      const targetElement = entry.target as HTMLElement;
-                      targetElement.classList.remove('opacity-0');
-                      targetElement.classList.add('animate-fade-in-up');
-
-                      const achievementId = targetElement.id;
-                      setScrolledAchievements(prevAchievements => {
-                          if (achievementId && !prevAchievements.includes(achievementId)) {
-                              let achievementText = "";
-                              if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
-                              else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
-                              else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
-                              
-                              if (achievementText) {
-                                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
-                              }
-                              return [...prevAchievements, achievementId];
-                          }
-                          return prevAchievements;
-                      });
-                      observer.unobserve(targetElement);
-                  }
-              });
-          },
-          { threshold: 0.1 }
-      );
-
-      elementsToObserve.forEach(el => observer.observe(el));
-
-      return () => {
-          elementsToObserve.forEach(el => {
-              observer.unobserve(el);
-          });
-          observer.disconnect();
-      };
-  }, [isClient, toast]); // Keep toast in dependencies as it's used in the callback. scrolledAchievements is updated via functional update.
-
 
   const handleEarlyEmailSubmit = async (email: string) => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hold Up!", description: "Please enter a valid email address." });
       return;
     }
-    
+
     try {
       await addDoc(collection(db, "earlyAccessSignups"), {
         email: email.trim(),
-        source: showExitIntent ? 'exit_intent_minimal' : 'hero_minimal',
+        source: 'exit_intent_minimal_v3',
         createdAt: serverTimestamp()
       });
       toast({
@@ -739,20 +514,20 @@ const AddictionLandingPage: React.FC = () => {
         duration: 4000
       });
       if (showExitIntent) setShowExitIntent(false);
-      setInitialModalEmail(email.trim()); 
-      setIsSignupModalOpen(true); 
+      setInitialModalEmail(email.trim());
+      setIsSignupModalOpen(true);
     } catch (error) {
       console.error("Error saving early access email:", error);
       toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
     }
   };
-  
+
   const openSignupModalWithEmail = (email?: string) => {
     setInitialModalEmail(email || '');
     setIsSignupModalOpen(true);
   };
 
-  if (!isClient || (isLoadingAuth && !currentUser) ) { 
+  if (!isClient || isLoadingAuth ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -761,47 +536,113 @@ const AddictionLandingPage: React.FC = () => {
       </div>
     );
   }
-  
-  // These conditions should ideally not show loaders if already handled by the redirects above,
-  // but are kept as fallbacks during the brief period before router.push completes.
-  if (currentUser && !isOnboardedState && !isLoadingAuth) { 
-    // router.push('/onboarding'); // This is already handled in an earlier useEffect
-    return ( 
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-            <Logo size="text-3xl" />
-            <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
-            <p className="mt-3 text-sm text-muted-foreground">Loading your space...</p>
-        </div>
-    );
-  }
 
-  if (currentUser && isOnboardedState && !isLoadingAuth) { 
-     // router.push('/dashboard'); // This is already handled in an earlier useEffect
-     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-            <Logo size="text-3xl" />
-            <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
-            <p className="mt-3 text-sm text-muted-foreground">Taking you to your dashboard...</p>
-        </div>
-    );
-  }
-  
   return (
     <>
-      <main className="min-h-screen bg-background text-foreground overflow-x-hidden">
-        <HeroSection onCtaClick={openSignupModalWithEmail} onEmailSubmit={handleEarlyEmailSubmit}/>
-        <CoreBenefitsSection ref={benefitsRef} />
-        <TestimonialSection ref={testimonialRef} />
-        <FinalCtaSection ref={finalCtaRef} onCtaClick={() => openSignupModalWithEmail()} />
+      <main className="min-h-screen bg-background text-foreground">
+        {/* Hero Section */}
+        <section className="min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%), radial-gradient(circle at 90% 80%, hsl(var(--accent) / 0.08) 0%, transparent 25%)',
+              animation: 'pulse-bg 12s infinite alternate ease-in-out'
+            }}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="mb-4 sm:mb-6">
+              <Logo size="text-3xl sm:text-4xl" />
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-1 sm:mb-2">
+              <AnimatedText text="Instant Teen" className="block" as="span" onComplete={() => setShowTagline(true)} charDelay={40} />
+              {showTagline && <span className="gradient-text block leading-tight tracking-tight"><AnimatedText text="Glow Up ✨" delay={100} onComplete={() => setShowHeroCTA(true)} charDelay={50} /></span>}
+            </h1>
+            {showHeroCTA && (
+              <>
+                <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-lg mb-6 sm:mb-8">
+                  AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
+                </p>
+                <Button
+                  onClick={() => openSignupModalWithEmail()}
+                  variant="neumorphic-primary"
+                  size="xl"
+                  className="w-full max-w-xs text-base sm:text-lg group py-3 mb-6"
+                >
+                  Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
+                </Button>
+                <div className="text-xs text-muted-foreground flex items-center">
+                  <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400" />
+                  10,000+ Teens Glowing Up With GroZen!
+                </div>
+                 <p className="text-xs text-muted-foreground mt-2">It's Completely FREE Right Now!</p>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* Simplified Benefits Section - Directly in flow, no animation */}
+        <section id="why-grozen" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
+              Unlock Your <span className="gradient-text">Best Self</span>, Fast.
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that fit YOU." />
+              <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." />
+              <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, fast." />
+            </div>
+          </div>
+        </section>
+        
+        {/* Simplified Testimonial Section - Directly in flow */}
+        <section id="testimonial" className="py-10 sm:py-12 px-4 sm:px-6 bg-background">
+          <div className="max-w-xl mx-auto text-center">
+            <Image
+              src="https://placehold.co/60x60.png"
+              alt="Happy GroZen User (Example)"
+              width={56}
+              height={56}
+              className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30"
+              data-ai-hint="teenager avatar"
+            />
+            <blockquote className="text-sm sm:text-md italic text-muted-foreground">
+              &ldquo;GroZen is a total vibe. Felt the change in like, 2 days!&rdquo; (Example)
+            </blockquote>
+            <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
+          </div>
+        </section>
+
+        {/* Final CTA Section - Directly in flow */}
+        <section id="final-cta" className="py-16 sm:py-20 px-4 sm:px-6 bg-card">
+          <div className="max-w-lg mx-auto text-center">
+            <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
+              Ready for <span className="gradient-text">Your Glow Up</span>?
+            </h2>
+            <p className="text-muted-foreground mb-8 text-sm sm:text-base">
+              Stop scrolling, start shining. Your best self is a click away. <strong className="text-primary font-semibold">And yes, it's 100% FREE!</strong>
+            </p>
+            <Button
+              onClick={() => openSignupModalWithEmail()}
+              variant="neumorphic-primary"
+              size="xl"
+              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3"
+            >
+              Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
+          </div>
+        </section>
       </main>
 
-      <MinimalExitIntentPopup 
+      <MinimalExitIntentPopup
         isOpen={showExitIntent}
         onClose={() => setShowExitIntent(false)}
         onEmailSubmit={handleEarlyEmailSubmit}
       />
-      
-      <MinimalSignupModal 
+
+      <MinimalSignupModal
         isOpen={isSignupModalOpen}
         onClose={() => setIsSignupModalOpen(false)}
         initialEmail={initialModalEmail}
