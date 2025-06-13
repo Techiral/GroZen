@@ -14,17 +14,18 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground text-foreground", // Changed bg-background to bg-transparent, border-input to border-border, ensured text-foreground
+          "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground text-foreground", 
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground text-foreground", // Ensured text-foreground for resting state
-        neumorphic: "neumorphic text-accent-foreground bg-accent active:neumorphic-inset hover:opacity-90",
-        "neumorphic-primary": "neumorphic text-primary-foreground bg-primary active:neumorphic-inset hover:opacity-90"
+        ghost: "hover:bg-accent hover:text-accent-foreground text-foreground",
+        neumorphic: "neumorphic-button", // Uses class from globals.css
+        "neumorphic-primary": "neumorphic-button-primary" // Uses class from globals.css
       },
       size: {
-        default: "h-10 px-4 py-2",
+        default: "h-10 px-4 py-2", // Standard ShadCN default
         sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        lg: "h-11 rounded-md px-8", // Standard ShadCN large
+        xl: "h-14 px-10 py-4 text-lg rounded-lg", // Custom XL size for prominent CTAs
         icon: "h-10 w-10",
       },
     },
