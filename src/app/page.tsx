@@ -69,7 +69,7 @@ const MinimalExitIntentPopup: React.FC<{
     try {
       await onEmailSubmit(email);
       setEmail(''); 
-      onClose(); 
+      // onClose(); // Keep open on success to show toast, user can close manually
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -120,7 +120,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
   const [isSubmittingHeroEmail, setIsSubmittingHeroEmail] = useState(false);
   const [showTagline, setShowTagline] = useState(false);
   const [showCta, setShowCta] = useState(false);
-  const { toast } = useToast(); // Moved useToast to ensure it's called unconditionally
+  const { toast } = useToast(); 
 
   const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +131,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
     setIsSubmittingHeroEmail(true);
     await onEmailSubmit(heroEmail); 
     setIsSubmittingHeroEmail(false);
-    setHeroEmail(''); 
+    // setHeroEmail(''); // Keep email in field on success for UX, in case modal doesn't open
   };
   
   return (
@@ -176,7 +176,7 @@ const HeroSection: React.FC<{onCtaClick: (email?: string) => void; onEmailSubmit
             >
               <Input
                 type="email"
-                placeholder="Or get FREE AI mini-plan!"
+                placeholder="Or get FREE AI mini-plan via Email!"
                 value={heroEmail}
                 onChange={(e) => setHeroEmail(e.target.value)}
                 className="h-11 text-sm sm:text-base neumorphic-inset flex-1"
@@ -217,7 +217,7 @@ const CoreBenefitsSection = React.forwardRef<HTMLDivElement>((props, ref) => {
     <section 
       ref={ref} 
       id="benefits-section"
-      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0 bg-card" // Added bg-card
+      className="py-12 sm:py-16 px-4 sm:px-6 opacity-0 bg-card"
     >
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10">
@@ -262,7 +262,7 @@ TestimonialSection.displayName = 'TestimonialSection';
 // --- Final CTA Section ---
 const FinalCtaSection = React.forwardRef<HTMLDivElement, {onCtaClick: () => void}>((props, ref) => {
   return (
-    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0 bg-card"> {/* Added bg-card */}
+    <section ref={ref} id="final-cta-section" className="py-16 sm:py-20 px-4 sm:px-6 opacity-0 bg-card">
       <div className="max-w-lg mx-auto text-center">
         <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4" />
         <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
@@ -347,7 +347,7 @@ const MinimalSignupModal: React.FC<{
   onClose: () => void; 
   initialEmail?: string;
 }> = ({ isOpen, onClose, initialEmail = '' }) => {
-  const { signupWithDetails, currentUser, loginWithEmail } = usePlan(); // usePlan from context
+  const { signupWithDetails, currentUser } = usePlan(); 
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -365,8 +365,8 @@ const MinimalSignupModal: React.FC<{
   const usernameDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isOpen && initialEmail) {
-      setEmail(initialEmail);
+    if (isOpen) {
+      setEmail(initialEmail || ''); // Reset email with initialEmail prop when modal opens
       setUsername('');
       setPassword('');
       setSelectedAvatar(AvatarOptions[0].src);
@@ -374,24 +374,11 @@ const MinimalSignupModal: React.FC<{
       setUsernameStatus('idle');
       setUsernameError('');
       setPasswordStrength(0);
-    } else if (isOpen && !initialEmail) {
-      setEmail('');
-      setUsername('');
-      setPassword('');
-      setSelectedAvatar(AvatarOptions[0].src);
-      setCurrentStep(0);
-      setUsernameStatus('idle');
-      setUsernameError('');
-      setPasswordStrength(0);
     }
-  }, [isOpen, initialEmail]);
+  }, [isOpen, initialEmail]); // Depend on isOpen and initialEmail
   
   useEffect(() => {
-    // This effect handles redirection AFTER successful signup
     if (currentUser && isOpen) { 
-      // User is now signed up and currentUser object is available
-      // We don't need to call loginWithEmail explicitly here if signupWithDetails logs them in.
-      // PlanProvider's onAuthStateChanged should handle setting onboarded state etc.
       router.push('/onboarding'); 
       onClose(); 
     }
@@ -501,9 +488,6 @@ const MinimalSignupModal: React.FC<{
     }
     setIsCompleting(true);
     const success = await signupWithDetails(email, password, username, selectedAvatar);
-    // signupWithDetails now handles user creation and Firestore updates.
-    // The onAuthStateChanged listener in PlanProvider will pick up the new user,
-    // and the useEffect hook above will handle redirection to /onboarding.
     setIsCompleting(false);
     if (success) {
       toast({
@@ -604,7 +588,8 @@ const MinimalSignupModal: React.FC<{
   
   const resetModalAndClose = useCallback(() => {
     setCurrentStep(0);
-    setEmail(''); 
+    // Don't reset email if initialEmail was provided and is the source of truth for the current flow
+    // setEmail(initialEmail || ''); 
     setUsername('');
     setPassword('');
     setSelectedAvatar(AvatarOptions[0].src);
@@ -681,59 +666,59 @@ const AddictionLandingPage: React.FC = () => {
     }
   }, [isClient, currentUser, isLoadingAuth, isOnboardedState, router]);
 
+  // Intersection Observer for scroll animations
   useEffect(() => {
-    if (!isClient) return;
+      if (!isClient) return;
 
-    const elementsToObserve = [
-        benefitsRef.current, 
-        testimonialRef.current, 
-        finalCtaRef.current
-    ].filter(Boolean) as HTMLElement[]; 
-    
-    if (elementsToObserve.length === 0) return;
+      const elementsToObserve = [
+          benefitsRef.current,
+          testimonialRef.current,
+          finalCtaRef.current,
+      ].filter(Boolean) as HTMLElement[];
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const targetElement = entry.target as HTMLElement;
-            targetElement.classList.remove('opacity-0');
-            targetElement.classList.add('animate-fade-in-up');
+      if (elementsToObserve.length === 0) {
+          return;
+      }
 
-            const achievementId = targetElement.id;
-            
-            setScrolledAchievements(prevAchievements => {
-              if (achievementId && !prevAchievements.includes(achievementId)) {
-                let achievementText = "";
-                if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
-                else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
-                else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
-                
-                if (achievementText) {
-                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
-                }
-                return [...prevAchievements, achievementId];
-              }
-              return prevAchievements;
-            });
-            observer.unobserve(targetElement);
-          }
-        });
-      },
-      { threshold: 0.1 } 
-    );
+      const observer = new IntersectionObserver(
+          (entries) => {
+              entries.forEach((entry) => {
+                  if (entry.isIntersecting) {
+                      const targetElement = entry.target as HTMLElement;
+                      targetElement.classList.remove('opacity-0');
+                      targetElement.classList.add('animate-fade-in-up');
 
-    elementsToObserve.forEach(el => {
-        if (el) observer.observe(el); 
-    });
+                      const achievementId = targetElement.id;
+                      setScrolledAchievements(prevAchievements => {
+                          if (achievementId && !prevAchievements.includes(achievementId)) {
+                              let achievementText = "";
+                              if (achievementId === "benefits-section") achievementText = "Benefits Unlocked!";
+                              else if (achievementId === "testimonial-section") achievementText = "Social Proof Badge!";
+                              else if (achievementId === "final-cta-section") achievementText = "Final Stretch!";
+                              
+                              if (achievementText) {
+                                  toast({ title: "✨ Achievement!", description: achievementText, duration: 2000 });
+                              }
+                              return [...prevAchievements, achievementId];
+                          }
+                          return prevAchievements;
+                      });
+                      observer.unobserve(targetElement);
+                  }
+              });
+          },
+          { threshold: 0.1 }
+      );
 
-    return () => {
-      elementsToObserve.forEach(el => {
-        if (el) observer.unobserve(el);
-      });
-      observer.disconnect();
-    };
-  }, [isClient, toast]);
+      elementsToObserve.forEach(el => observer.observe(el));
+
+      return () => {
+          elementsToObserve.forEach(el => {
+              observer.unobserve(el);
+          });
+          observer.disconnect();
+      };
+  }, [isClient, toast]); // Keep toast in dependencies as it's used in the callback. scrolledAchievements is updated via functional update.
 
 
   const handleEarlyEmailSubmit = async (email: string) => {
@@ -777,8 +762,10 @@ const AddictionLandingPage: React.FC = () => {
     );
   }
   
-  if (currentUser && !isOnboardedState && !isLoadingAuth) { // Added !isLoadingAuth to prevent premature redirect
-    router.push('/onboarding');
+  // These conditions should ideally not show loaders if already handled by the redirects above,
+  // but are kept as fallbacks during the brief period before router.push completes.
+  if (currentUser && !isOnboardedState && !isLoadingAuth) { 
+    // router.push('/onboarding'); // This is already handled in an earlier useEffect
     return ( 
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
             <Logo size="text-3xl" />
@@ -788,8 +775,8 @@ const AddictionLandingPage: React.FC = () => {
     );
   }
 
-  if (currentUser && isOnboardedState && !isLoadingAuth) { // Added !isLoadingAuth
-     router.push('/dashboard');
+  if (currentUser && isOnboardedState && !isLoadingAuth) { 
+     // router.push('/dashboard'); // This is already handled in an earlier useEffect
      return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
             <Logo size="text-3xl" />
@@ -824,4 +811,3 @@ const AddictionLandingPage: React.FC = () => {
 };
 
 export default AddictionLandingPage;
-

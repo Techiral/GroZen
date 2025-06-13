@@ -103,6 +103,30 @@
   }
 }
 
+/* Global Keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes pulse-bg {
+  0% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.05); }
+  100% { opacity: 0.1; transform: scale(1); }
+}
+
+
 @layer components {
   .neumorphic {
     background-color: var(--neumorphic-bg);
@@ -127,43 +151,31 @@
   }
 
   .neumorphic-button {
-    background-color: hsl(var(--accent)); /* Light Gray BG */
-    color: hsl(var(--accent-foreground)); /* Black text */
+    background-color: hsl(var(--card)); 
+    color: hsl(var(--card-foreground)); 
     box-shadow: var(--neumorphic-shadow-light);
-    border: 1px solid hsl(var(--primary) / 0.2); /* Subtle light gray border */
+    border: 1px solid hsl(var(--primary) / 0.2); 
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-light-inset)] active:scale-[0.98] hover:opacity-90;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
   }
   
   .neumorphic-button-primary {
-    background-color: hsl(var(--primary)); /* Light Gray BG */
-    color: hsl(var(--primary-foreground)); /* Black text */
-    box-shadow: var(--neumorphic-shadow-primary); /* More pronounced shadow */
-    border: 1px solid hsl(var(--primary) / 0.3); /* Subtle border */
+    background-color: hsl(var(--primary)); 
+    color: hsl(var(--primary-foreground)); 
+    box-shadow: var(--neumorphic-shadow-primary); 
+    border: 1px solid hsl(var(--primary) / 0.3); 
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-primary-inset)] active:scale-[0.98] hover:opacity-95;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
   }
   
-  /* Custom button sizes for landing page CTAs if needed */
-  .btn-xl { /* Example, can be applied via Button component's size prop if variant is added */
+  .btn-xl { 
     @apply text-lg px-8 py-4 h-16;
   }
 
-
   .gradient-text {
     @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary;
+    background-size: 200% auto; /* Required for gradient animation */
     animation: gradient-flow 5s ease-in-out infinite alternate;
-  }
-
-  @keyframes gradient-flow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 100% 50%; }
-  }
-  
-  @keyframes pulse-bg {
-    0% { opacity: 0.1; transform: scale(1); }
-    50% { opacity: 0.25; transform: scale(1.05); }
-    100% { opacity: 0.1; transform: scale(1); }
   }
   
   .edge-to-edge {
@@ -175,19 +187,7 @@
     margin-right: -50vw;
   }
 
-  /* Animation for fade-in-up effect */
   .animate-fade-in-up {
     animation: fadeInUp 0.8s ease-out forwards;
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 }
