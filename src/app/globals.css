@@ -3,10 +3,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Keyframes - MOVED TO ROOT */
+/* Global Keyframes */
 @keyframes gradient-flow {
   0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes pulse-bg {
@@ -15,8 +16,6 @@
   100% { opacity: 0.1; transform: scale(1); }
 }
 
-/* Removed fadeInUp keyframes for now to ensure visibility */
-/*
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -27,7 +26,32 @@
     transform: translateY(0);
   }
 }
-*/
+
+@keyframes input-pulse {
+  0%, 100% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 0 0px hsl(var(--primary) / 0.3); }
+  50% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 0 3px hsl(var(--primary) / 0.2); }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 0 0px hsla(120, 60%, 50%, 0.4); }
+  50% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 8px 2px hsla(120, 60%, 50%, 0.3); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 0 0px hsla(0, 70%, 50%, 0.4); }
+  50% { box-shadow: var(--neumorphic-shadow-light-inset), 0 0 8px 2px hsla(0, 70%, 50%, 0.3); }
+}
+
+@keyframes button-press {
+  0% { transform: scale(1); box-shadow: var(--neumorphic-shadow-primary); }
+  50% { transform: scale(0.97); box-shadow: var(--neumorphic-shadow-primary-inset); }
+  100% { transform: scale(1); box-shadow: var(--neumorphic-shadow-primary); }
+}
+@keyframes button-hover-pulse {
+  0%, 100% { transform: scale(1.02); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.95; }
+}
+
 
 @layer base {
   :root {
@@ -143,12 +167,12 @@
   }
 
   .neumorphic-inset {
-    background-color: var(--neumorphic-bg); /* or hsl(var(--input)) if inputs should be darker */
+    background-color: var(--neumorphic-bg); 
     box-shadow: var(--neumorphic-shadow-light-inset);
     @apply rounded-lg transition-all duration-200;
   }
   .neumorphic-inset-sm {
-    background-color: var(--neumorphic-bg); /* or hsl(var(--input)) */
+    background-color: var(--neumorphic-bg); 
     box-shadow: var(--neumorphic-shadow-light-inset);
     @apply rounded-md transition-all duration-200;
   }
@@ -159,7 +183,7 @@
     box-shadow: var(--neumorphic-shadow-light);
     border: 1px solid hsl(var(--primary) / 0.2);
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-light-inset)] active:scale-[0.98] hover:opacity-90;
-    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
+    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; 
   }
 
   .neumorphic-button-primary {
@@ -167,8 +191,8 @@
     color: hsl(var(--primary-foreground));
     box-shadow: var(--neumorphic-shadow-primary);
     border: 1px solid hsl(var(--primary) / 0.3);
-    @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-primary-inset)] active:scale-[0.98] hover:opacity-95;
-    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; /* Base button sizing */
+    @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-primary-inset)] active:scale-[0.97] hover:opacity-95;
+    @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; 
   }
 
   .btn-xl {
@@ -177,8 +201,8 @@
 
   .gradient-text {
     @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary;
-    background-size: 200% auto; /* Required for gradient animation */
-    animation: gradient-flow 5s ease-in-out infinite alternate;
+    background-size: 300% auto; 
+    animation: gradient-flow 4s ease-in-out infinite alternate;
   }
 
   .edge-to-edge {
@@ -189,11 +213,31 @@
     margin-left: -50vw;
     margin-right: -50vw;
   }
-
-  /* Removed .animate-fade-in-up to ensure elements are visible by default */
-  /*
+  
   .animate-fade-in-up {
-    animation: fadeInUp 0.8s ease-out forwards;
+    animation: fadeInUp 0.6s ease-out forwards;
   }
-  */
+  .animate-input-pulse {
+    animation: input-pulse 1.5s ease-out infinite;
+  }
+  .animate-pulse-green {
+    animation: pulse-green 1.2s ease-in-out infinite;
+  }
+  .animate-pulse-red {
+    animation: pulse-red 1.2s ease-in-out infinite;
+  }
+  .animate-button-press {
+    animation: button-press 0.2s ease-out;
+  }
+  .animate-button-hover {
+    animation: button-hover-pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  .animate-bounce-slow {
+    animation: bounce 1.5s infinite;
+  }
+  .animate-ping-slow {
+     animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
 }
