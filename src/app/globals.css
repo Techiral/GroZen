@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -195,6 +196,58 @@
   .will-change-opacity {
     will-change: opacity;
   }
+
+  /* Button styling for secondary/outline CTAs - Light Gray Text/Border, Transparent BG */
+  .btn-secondary-cta {
+    background-color: transparent;
+    color: hsl(var(--primary)); /* Light Gray text */
+    border: 2px solid hsl(var(--primary)); /* Light Gray border */
+    box-shadow: none;
+    @apply rounded-lg transition-all duration-200 font-semibold;
+    @apply text-sm px-4 py-2 h-10 sm:text-base sm:px-6 sm:py-2.5 sm:h-12;
+  }
+  .btn-secondary-cta:hover {
+    background-color: hsl(var(--primary) / 0.1); /* Subtle Light Gray fill */
+    color: hsl(var(--foreground)); /* White text on hover */
+  }
+  .btn-secondary-cta:active {
+    background-color: hsl(var(--primary) / 0.2);
+    transform: translateY(1px);
+  }
+  
+  /* General interactive element class for accents, if needed outside buttons */
+  .interactive-accent {
+    color: hsl(var(--accent)); /* Light Gray */
+  }
+  .interactive-accent:hover {
+    color: hsl(var(--foreground)); /* White */
+  }
+
+  /* Edge-to-edge full viewport width */
+  .edge-to-edge {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
+
+  /* Neumorphic accent border for cards on main page */
+  .neumorphic-accent-border {
+    border: 1px solid hsl(var(--accent) / 0.2);
+    box-shadow: 
+      5px 5px 10px hsl(var(--background) / 0.7), 
+      -5px -5px 10px hsl(var(--card) / 0.3), /* Using --card (very dark gray) for the lighter shadow part on black bg */
+      inset 1px 1px 2px hsl(var(--accent) / 0.1),
+      inset -1px -1px 2px hsl(var(--background) / 0.5);
+  }
+
+  .neumorphic-accent-border-sm {
+    border: 1px solid hsl(var(--accent) / 0.15);
+    box-shadow: 
+      3px 3px 6px hsl(var(--background) / 0.6), 
+      -3px -3px 6px hsl(var(--card) / 0.25), /* Using --card for lighter shadow part */
+      inset 1px 1px 1px hsl(var(--accent) / 0.05),
+      inset -1px -1px 1px hsl(var(--background) / 0.4);
+  }
 }
 
 /* Critical CSS for above-the-fold content */
@@ -220,3 +273,4 @@
   font-display: swap;
   src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 }
+    
