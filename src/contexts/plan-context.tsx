@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import { format } from 'date-fns';
 
+
 interface PlanContextType {
   currentUser: User | null;
   isAdminUser: boolean;
@@ -123,7 +124,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUserProfile(null);
 
       if (user) {
-        const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'QNSRsQsMqRRuS4288vtlBYT1a7E2'; 
+        const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'QNSRsQsMqRRuS4288vtlBYT1a7E2';
         if (adminUid && user.uid === adminUid) {
           setIsAdminUser(true);
         }
@@ -208,18 +209,31 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setMoodLogs(fetchedMoodLogs);
 
           } else {
-            console.log(`onAuthStateChanged: User ${user.uid} authenticated, but no Firestore document found. This might be a new user or just after Google Sign-In before full profile setup.`);
+            console.log(`onAuthStateChanged: User ${user.uid} authenticated, but no Firestore document found.`);
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
-            const initialAvatarUrl = user.photoURL || undefined; 
+            const initialAvatarUrl = user.photoURL || undefined;
 
             setCurrentUserProfile({ displayName: initialProfileName, email: user.email || '', avatarUrl: initialAvatarUrl });
-            
-            // Do NOT create a basic doc here if signupWithDetails is supposed to handle it.
-            // signupWithDetails will explicitly create the doc.
-            // If a user signs in with Google and has NEVER been through signupWithDetails,
-            // they will be redirected to onboarding, and completeOnboarding would save the initial user doc portions.
-            // This avoids race conditions or overwriting.
-            console.log(`onAuthStateChanged: Basic profile info set for ${user.uid}. No Firestore doc created here; expecting signup or onboarding flow to handle it.`);
+             console.log(`onAuthStateChanged: Attempting to create basic user doc for new Google/provider sign-in: ${user.uid}`);
+             const basicUserDoc = {
+                email: user.email,
+                displayName: initialProfileName,
+                avatarUrl: initialAvatarUrl || null, // Ensure null if undefined
+                createdAt: serverTimestamp(),
+                onboardingData: null,
+                wellnessPlan: null,
+                currentGroceryList: null,
+                activeChallengeProgress: null,
+             };
+             console.log("Basic user doc payload:", basicUserDoc);
+             try {
+                await setDoc(doc(db, "users", user.uid), basicUserDoc, { merge: true });
+                console.log(`onAuthStateChanged: Basic user doc created for ${user.uid}`);
+             } catch (basicDocError) {
+                console.error(`onAuthStateChanged: Failed to create basic user doc for ${user.uid}`, basicDocError);
+                toast({ variant: "destructive", title: "Account Setup Incomplete", description: "Could not initialize your profile. Please try signing up manually or contact support."});
+             }
+
 
             _setOnboardingData(defaultOnboardingData);
             _setWellnessPlan(null);
@@ -231,7 +245,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
           console.error("Error in onAuthStateChanged fetching/creating user data from Firestore:", error);
           toast({ variant: "destructive", title: "Error Loading Data", description: "Could not load your saved data." });
-          clearPlanAndData(true, false); 
+          clearPlanAndData(true, false);
         } finally {
           setIsLoadingAuth(false);
         }
@@ -262,7 +276,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let user: User | null = null;
     try {
       console.log("Attempting signupWithDetails for email:", emailVal, "username:", usernameVal);
-      console.log("AvatarDataUri received by signupWithDetails:", typeof avatarDataUri, avatarDataUri ? avatarDataUri.substring(0, 30) + "..." : "avatarDataUri is falsey");
+      console.log("AvatarDataUri received by signupWithDetails:", typeof avatarDataUri, avatarDataUri ? avatarDataUri.substring(0, 30) + "..." : "avatarDataUri is falsey or empty");
 
 
       const userCredential = await createUserWithEmailAndPassword(auth, emailVal, passwordVal);
@@ -277,8 +291,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const trimmedUsername = usernameVal.trim().toLowerCase();
       const usernameDocRef = doc(db, "usernames", trimmedUsername);
       const usernameData = {
-        userId: user.uid, 
-        email: user.email, 
+        userId: user.uid,
+        email: user.email,
       };
       console.log("Attempting to set username document:", `/usernames/${trimmedUsername}`, "with data:", usernameData);
       console.log("Authenticated user UID for username rule check (request.auth.uid):", user.uid);
@@ -286,11 +300,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(usernameDocRef, usernameData);
       console.log("Username document created successfully.");
 
-      const userDocRef = doc(db, "users", user.uid); 
+      const userDocRef = doc(db, "users", user.uid);
       const userDocPayload = {
         email: user.email,
         displayName: usernameVal.trim(),
-        avatarUrl: avatarDataUri && typeof avatarDataUri === 'string' && avatarDataUri.trim() !== "" ? avatarDataUri : null,
+        avatarUrl: (avatarDataUri && typeof avatarDataUri === 'string' && avatarDataUri.trim() !== "") ? avatarDataUri : null, // Ensure null if empty or falsey
         createdAt: serverTimestamp(),
         onboardingData: null,
         wellnessPlan: null,
@@ -300,25 +314,26 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("Attempting to set user document:", `/users/${user.uid}`, "with payload:", userDocPayload);
       console.log("Authenticated user UID for user doc rule check (request.auth.uid):", user.uid);
       console.log("Document ID for user doc rule check (userIdFromPath):", user.uid);
-      await setDoc(userDocRef, userDocPayload, { merge: true }); 
+      await setDoc(userDocRef, userDocPayload, { merge: true });
       console.log("User document created/merged successfully.");
 
       setCurrentUserProfile({
         displayName: usernameVal.trim(),
         email: user.email || '',
-        avatarUrl: userDocPayload.avatarUrl || undefined 
+        avatarUrl: userDocPayload.avatarUrl || undefined
       });
-      _setIsOnboardedState(false); 
+      _setIsOnboardedState(false);
 
       toast({ title: "Signup Complete!", description: "Welcome to GroZen!" });
-      setIsLoadingAuth(false); // Explicitly set here as all async ops for signup are done
+      setIsLoadingAuth(false);
       return true;
 
-    } catch (error: any) {
+    } catch (error: any)
+    {
       console.error("Detailed Signup error (signupWithDetails):", error);
       console.error("Error code:", error.code);
       console.error("Error message:", error.message);
-      
+
       if (user && (error.code?.includes("permission-denied") || error.message?.includes("permission denied") || error.message?.includes("Missing or insufficient permissions"))) {
         try {
           console.warn("Firestore write failed due to permissions, attempting to delete created Firebase Auth user:", user.uid);
@@ -336,11 +351,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         'FirebaseError: Missing or insufficient permissions.': "A permission error occurred while saving your profile. Please ensure the app has the necessary permissions.",
       };
       let description = commonErrorMessages[error.code] || commonErrorMessages[error.message] || error.message || "An unexpected error occurred during signup.";
-      
+
       if (error.message && error.message.includes("Unsupported field value: undefined") && error.message.includes("avatarUrl")) {
         description = "There was an issue processing your avatar. Please try uploading and validating it again. If the problem persists, try a different photo.";
       }
-
 
       toast({
         variant: "destructive",
@@ -387,7 +401,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login'); 
+      router.push('/login');
     } catch (error: any) {
       console.error("Logout error", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not log out." });
@@ -440,7 +454,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (JSON.stringify(data) !== JSON.stringify(_onboardingData)) {
         await setDoc(userDocRef, { onboardingData: data, updatedAt: serverTimestamp() }, { merge: true });
         _setOnboardingData(data);
-        _setIsOnboardedState(true); 
+        _setIsOnboardedState(true);
       }
       const input: GenerateWellnessPlanInput = data;
       const result = await aiGenerateWellnessPlan(input);
@@ -448,7 +462,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (
         parsedPlanCandidate && Array.isArray(parsedPlanCandidate.meals) && parsedPlanCandidate.meals.length > 0 &&
-        parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string') && 
+        parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string') &&
         Array.isArray(parsedPlanCandidate.exercise) && Array.isArray(parsedPlanCandidate.mindfulness)
       ) {
         const planToSet = parsedPlanCandidate as WellnessPlan;
@@ -462,7 +476,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error("Failed to generate plan:", err);
       _setErrorPlan(err.message);
       toast({ variant: "destructive", title: "Error Generating Plan", description: err.message });
-      _setWellnessPlan(null); 
+      _setWellnessPlan(null);
     } finally {
       _setIsLoadingPlan(false);
     }
@@ -507,8 +521,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const input: GenerateGroceryListInput = { meals: currentPlan.meals as Meal[] };
       const result: GenerateGroceryListOutput = await aiGenerateGroceryList(input);
       const newGroceryList: GroceryList = {
-        id: _groceryList?.id || crypto.randomUUID(), 
-        items: result.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })), 
+        id: _groceryList?.id || crypto.randomUUID(),
+        items: result.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })),
         generatedDate: new Date().toISOString(),
       };
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: newGroceryList, updatedAt: serverTimestamp() }, { merge: true });
@@ -527,12 +541,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!currentUser || !_groceryList) return;
     const updatedItems = _groceryList.items.filter(item => item.id !== itemIdToDelete);
     const updatedGroceryList = { ..._groceryList, items: updatedItems };
-    _setGroceryList(updatedGroceryList); 
+    _setGroceryList(updatedGroceryList);
     try {
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList); 
+      _setGroceryList(_groceryList);
       toast({ variant: "destructive", title: "Update Error" });
     }
   };
@@ -561,7 +575,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (userData.currentGroceryList) {
           processedGL = {...userData.currentGroceryList, items: userData.currentGroceryList.items?.map((i:any) => ({...i, id: i.id || crypto.randomUUID()})) || []};
       }
-      return { ...userData, id: targetUserId, moodLogs: fetchedMoodLogs, groceryList: processedGL } as FullUserDetail;
+      return { ...userData, id: targetUserId, moodLogs: fetchedMoodLogs, groceryList: processedGL, activeChallengeProgress: userData.activeChallengeProgress || null } as FullUserDetail;
     } catch (error) { console.error(error); return null; }
   };
 
@@ -596,22 +610,41 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const fetchLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
-    if (!currentUser) return []; 
+    if (!currentUser) {
+      console.log("fetchLeaderboardData: No current user, returning empty array.");
+      return [];
+    }
+    console.log("fetchLeaderboardData: Current user authenticated, proceeding to fetch.");
     try {
       const q = query(
-        collection(db, "users"), 
-        where("activeChallengeProgress.challengeId", "==", CURRENT_CHALLENGE.id), 
-        orderBy("activeChallengeProgress.daysCompleted", "desc"), 
+        collection(db, "users"),
+        where("activeChallengeProgress.challengeId", "==", CURRENT_CHALLENGE.id),
+        orderBy("activeChallengeProgress.daysCompleted", "desc"),
         limit(10)
       );
+      console.log("fetchLeaderboardData: Query constructed:", q);
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ 
-        id: d.id, 
-        email: d.data().email, 
-        displayName: d.data().displayName, 
-        daysCompleted: d.data().activeChallengeProgress.daysCompleted 
-      } as LeaderboardEntry));
-    } catch (e) { console.error("Error fetching leaderboard data:", e); return []; }
+      console.log(`fetchLeaderboardData: Query executed. Found ${snap.docs.length} documents.`);
+      if (snap.empty) {
+        console.log("fetchLeaderboardData: No users found matching leaderboard criteria.");
+      }
+      return snap.docs.map(d => {
+        const data = d.data();
+        console.log("fetchLeaderboardData: Mapping document:", d.id, data);
+        return {
+          id: d.id,
+          email: data.email,
+          displayName: data.displayName,
+          daysCompleted: data.activeChallengeProgress?.daysCompleted || 0
+        } as LeaderboardEntry
+      });
+    } catch (e: any) {
+      console.error("fetchLeaderboardData: Error fetching leaderboard data:", e);
+      console.error("Error code:", e.code);
+      console.error("Error message:", e.message);
+      toast({variant: "destructive", title: "Leaderboard Error", description: "Could not load leaderboard. " + e.message });
+      return [];
+    }
   };
 
   const isPlanAvailable = !!_wellnessPlan?.meals?.length;
@@ -641,10 +674,11 @@ export const usePlan = (): PlanContextType => {
   return context;
 };
 
-declare module '@/types/wellness' {
-  interface UserProfile {
-    avatarUrl?: string;
-  }
-}
+// Ensure UserProfile type is extended correctly if you plan to add avatarUrl there.
+// It's currently being set directly on currentUserProfile.
+// declare module '@/types/wellness' {
+//   interface UserProfile {
+//     avatarUrl?: string;
+//   }
+// }
 
-    

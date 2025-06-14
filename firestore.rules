@@ -4,69 +4,47 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Define your Admin UID here. Replace 'YOUR_ADMIN_UID_HERE' with your actual Admin UID.
-    // For example, 'QNSRsQsMqRRuS4288vtlBYT1a7E2' was an example.
-    // If you are unsure or don't have one set up yet, for testing signup,
-    // the non-admin parts of the rules should suffice.
+    // Define your Admin UID here. Replace with your actual Admin UID if different.
+    // Ensure 'QNSRsQsMqRRuS4288vtlBYT1a7E2' IS YOUR CORRECT ADMIN UID.
     function isAdmin() {
-      // return request.auth != null && request.auth.uid == 'YOUR_ADMIN_UID_HERE';
-      // Example:
       return request.auth != null && request.auth.uid == 'QNSRsQsMqRRuS4288vtlBYT1a7E2';
     }
 
     // --- Usernames Collection ---
-    // Allows checking username availability and claiming usernames during signup.
     match /usernames/{username} {
-      // Allow anyone to check if a username document exists (for availability check).
       allow get: if true;
-
-      // Allow an authenticated user to create their username document if:
-      // 1. They are logged in (request.auth != null).
-      // 2. The 'userId' field in the new document (request.resource.data.userId)
-      //    matches their own authenticated UID (request.auth.uid).
-      // An admin can also create these if needed.
       allow create: if request.auth != null &&
                        (request.resource.data.userId == request.auth.uid || isAdmin());
-
-      // Only an admin should update or delete username documents directly.
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // --- Users Collection ---
-    // Stores main user profile data, onboarding info, wellness plans, etc.
-    match /users/{userIdFromPath} { // Renamed {userId} to {userIdFromPath} for clarity in rules
-      // An admin can read/write any user's document.
-      // A regular authenticated user can only read/write their own document.
+    // --- Rules for operations on individual documents within the 'users' collection ---
+    match /users/{userIdFromPath} { // Renamed wildcard for clarity
       allow get: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
-
-      // Allow user to create their own document if their authenticated UID matches the document ID.
-      // Or allow admin to create.
       allow create: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
-
-      // Allow user to update their own document if their authenticated UID matches the document ID.
-      // Or allow admin to update.
       allow update: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
-
-      // Only an admin should be able to delete a user's main document.
       allow delete: if isAdmin();
 
       // --- MoodLogs Subcollection (nested under each user) ---
       match /moodLogs/{logId} {
-        // An admin can read/write/delete any user's mood logs.
-        // A regular authenticated user can only read/write/delete their own mood logs.
-        // Here, userIdFromPath refers to the {userIdFromPath} from the parent /users/{userIdFromPath} match.
         allow read, write, delete: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
       }
     }
 
-    // --- Early Access Signups Collection ---
-    // For emails submitted through the exit-intent popup.
-    match /earlyAccessSignups/{docId} {
-      // Allow anyone to create a document (i.e., submit their email).
-      allow create: if true;
+    // --- Rules for LIST operations on the 'users' collection itself ---
+    // This allows authenticated users to perform queries like the leaderboard one.
+    match /users { // No wildcard document ID here, applies to the collection path
+        allow list: if request.auth != null;
+        // Note: 'read' permission here would be 'list' + 'get'.
+        // We want 'get' to be more specific (handled by /users/{userIdFromPath}),
+        // so only 'list' is granted here broadly for authenticated users.
+    }
 
-      // Only an admin can read, update, or delete these signups.
+
+    // --- Early Access Signups Collection ---
+    match /earlyAccessSignups/{docId} {
+      allow create: if true;
       allow read, update, delete: if isAdmin();
     }
   }
