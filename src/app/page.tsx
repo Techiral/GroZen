@@ -8,15 +8,15 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress as ShadProgress } from '@/components/ui/progress';
+import { Progress as ShadProgress } from '@/components/ui/progress'; // Renamed to avoid conflict
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, PaletteIcon, Rocket, BrainIcon, BarChart3, Smile, Target, ShoppingCart, Award, Users, Atom } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, PaletteIcon, Rocket, BrainIcon, Atom, Smile, Award, Users, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import anime from 'animejs';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // For early access and username check
+import { db } from '@/lib/firebase';
 import { validateHumanFace, type ValidateHumanFaceOutput } from '@/ai/flows/validate-human-face';
 
 
@@ -32,13 +32,13 @@ const MinimalExitIntentPopup: React.FC<{
 
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -20 }); // Initial state
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.95, translateY: -10 });
       anime({
         targets: dialogContentRef.current,
         opacity: 1,
         scale: 1,
         translateY: 0,
-        duration: 300, // Quick and simple
+        duration: 300,
         easing: 'easeOutQuad',
       });
     }
@@ -97,7 +97,6 @@ const MinimalExitIntentPopup: React.FC<{
     </Dialog>
   );
 };
-
 
 // Helper: Signup Step Component (for MinimalSignupModal)
 const SignupStep: React.FC<{
@@ -204,18 +203,17 @@ const MinimalSignupModal: React.FC<{
   
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -20 });
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
       anime({
         targets: dialogContentRef.current,
         opacity: 1,
         scale: 1,
         translateY: 0,
-        duration: 300, 
+        duration: 350, 
         easing: 'easeOutQuad', 
       });
     }
   }, [isOpen]);
-
 
   useEffect(() => {
     if (isOpen) {
@@ -239,7 +237,6 @@ const MinimalSignupModal: React.FC<{
     }
   }, [currentUser, router, isOpen, onClose]);
 
-
   const checkUsernameAvailability = useCallback(async (name: string): Promise<boolean> => {
     if (!name.trim() || name.trim().length < 3) {
       setUsernameStatus('idle');
@@ -249,7 +246,7 @@ const MinimalSignupModal: React.FC<{
     setUsernameStatus('checking');
     setUsernameError('');
     try {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500)); 
       const usernameDocRef = doc(db, "usernames", name.trim().toLowerCase());
       const docSnap = await getDoc(usernameDocRef);
       if (docSnap.exists()) {
@@ -310,7 +307,7 @@ const MinimalSignupModal: React.FC<{
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // Max 2MB
+      if (file.size > 2 * 1024 * 1024) { 
         setPhotoValidationError("Max file size is 2MB. Please choose a smaller image.");
         setPhotoValidationStatus('error');
         setUploadedImageFile(null);
@@ -325,7 +322,7 @@ const MinimalSignupModal: React.FC<{
             setUploadedImagePreview(reader.result as string);
             setPhotoValidationStatus('idle');
             setPhotoValidationError('');
-            setSelectedAvatar(undefined); // Reset selected avatar until validation
+            setSelectedAvatar(undefined); 
         } else {
             setPhotoValidationError("Could not read the selected file. Please try another image.");
             setPhotoValidationStatus('error');
@@ -349,7 +346,7 @@ const MinimalSignupModal: React.FC<{
     if (!uploadedImagePreview || typeof uploadedImagePreview !== 'string' || uploadedImagePreview.trim() === "") {
       setPhotoValidationError("Please select or upload a valid image first.");
       setPhotoValidationStatus('error');
-      setSelectedAvatar(undefined); // Ensure avatar is undefined if no valid preview
+      setSelectedAvatar(undefined); 
       return;
     }
     setPhotoValidationStatus('validating');
@@ -357,24 +354,23 @@ const MinimalSignupModal: React.FC<{
     try {
       const result: ValidateHumanFaceOutput = await validateHumanFace({ imageDataUri: uploadedImagePreview });
       if (result.isHumanFace) {
-        setSelectedAvatar(uploadedImagePreview); // Set the valid preview as the avatar
+        setSelectedAvatar(uploadedImagePreview); 
         setPhotoValidationStatus('validated');
         toast({ title: "Face Detected! 👍", description: "Looks good! You can proceed." });
       } else {
         setPhotoValidationStatus('error');
         setPhotoValidationError(result.reason || "This doesn't look like a human face. Please upload a clear photo of your face.");
-        setSelectedAvatar(undefined); // Clear avatar if validation fails
+        setSelectedAvatar(undefined); 
       }
     } catch (error) {
       console.error("Error validating photo:", error);
       setPhotoValidationStatus('error');
       setPhotoValidationError("Validation failed. Please try again or use a different photo.");
-      setSelectedAvatar(undefined); // Clear avatar on error
+      setSelectedAvatar(undefined); 
     }
   };
 
-  // Step validation functions
-  const validateStep0 = async () => { // Email
+  const validateStep0 = async () => { 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look quite right." });
       return false;
@@ -383,20 +379,20 @@ const MinimalSignupModal: React.FC<{
     return true;
   };
 
-  const validateStep1 = async () => { // Username
+  const validateStep1 = async () => { 
     if (usernameStatus === 'checking') {
         toast({variant: "default", title: "Hold on...", description: "Checking if this awesome name is free..."});
-        return false; // Don't proceed while checking
+        return false; 
     }
-    const isAvailable = await checkUsernameAvailability(username); // Re-check on next click if needed
+    const isAvailable = await checkUsernameAvailability(username); 
     if (isAvailable) {
       setCurrentStep(2);
       return true;
     }
-    return false; // Stay on this step if not available or error
+    return false; 
   };
 
-  const validateStep2 = async () => { // Password
+  const validateStep2 = async () => { 
     if (password.length < 6) {
       toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs to be at least 6 characters." });
       return false;
@@ -405,36 +401,32 @@ const MinimalSignupModal: React.FC<{
     return true;
   };
   
-  const validateStep3AndProceed = async () => { // Avatar
-    // Ensure avatar is actually set from a validated photo
+  const validateStep3AndProceed = async () => { 
     if (photoValidationStatus === 'validated' && selectedAvatar && typeof selectedAvatar === 'string' && selectedAvatar.trim() !== "") {
-      setCurrentStep(4); // Proceed to final confirmation step
+      setCurrentStep(4); 
       return true;
     }
-    // If not validated or no avatar selected from a validated photo
-    toast({ variant: "destructive", title: "Photo Required", description: "Please upload, validate your face photo, and ensure it's correctly processed to continue." });
+    toast({ variant: "destructive", title: "Photo Required", description: "Please upload and validate your face photo to continue." });
     return false;
   };
 
-
   const handleCompleteSignup = async () => {
     setIsCompleting(true);
-    // Final check for selectedAvatar before submission
     if (!selectedAvatar || typeof selectedAvatar !== 'string' || selectedAvatar.trim() === "") {
       toast({
         variant: "destructive",
         title: "Avatar Required",
-        description: "A validated profile photo is essential. Please go back, upload your photo, ensure it's validated, and make sure it's correctly processed.",
+        description: "A validated profile photo is essential. Please ensure it's uploaded and validated.",
       });
       setIsCompleting(false);
       return; 
     }
-     if (!email || !username || !password ) { // Basic check
+     if (!email || !username || !password ) { 
       toast({ variant: "destructive", title: "Missing Info", description: "Email, username, or password missing." });
       setIsCompleting(false);
       return;
     }
-    if (usernameStatus !== 'available') { // Ensure username is confirmed available
+    if (usernameStatus !== 'available') { 
         toast({ variant: "destructive", title: "Username Issue", description: "Please pick an available username first." });
         setIsCompleting(false);
         return;
@@ -443,15 +435,12 @@ const MinimalSignupModal: React.FC<{
     const success = await signupWithDetails(email, password, username, selectedAvatar);
     setIsCompleting(false);
     if (success) {
-      // The useEffect for currentUser will handle redirect to onboarding
       toast({
         title: "WELCOME TO GROZEN! 🎉",
         description: "You're officially in! Get ready to unleash your awesome.",
         duration: 6000,
       });
-      // onClose will be handled by currentUser effect typically
     }
-    // If signup fails, user stays on modal, error toast shown by signupWithDetails
   };
 
   const stepsConfig = [
@@ -483,7 +472,7 @@ const MinimalSignupModal: React.FC<{
               onChange={handleUsernameChange}
               className={cn(
                 "pl-10 h-11 neumorphic-inset text-sm focus:animate-input-pulse",
-                usernameStatus === 'available' && "border-green-500 animate-pulse-green", // Visual feedback
+                usernameStatus === 'available' && "border-green-500 animate-pulse-green", 
                 usernameStatus === 'taken' && "border-red-500 animate-pulse-red"
               )}
             />
@@ -493,11 +482,12 @@ const MinimalSignupModal: React.FC<{
           </div>
           {usernameError && <p className="text-xs text-red-500 text-center pt-1 h-4">{usernameError}</p>}
           {usernameStatus === 'available' && <p className="text-xs text-green-500 text-center pt-1 h-4">Sweet, it's yours! ✨</p>}
-          {!usernameError && usernameStatus !== 'available' && usernameStatus !== 'checking' && <div className="h-4 pt-1"></div>} {/* Placeholder for consistent height */}
+          {!usernameError && usernameStatus !== 'available' && usernameStatus !== 'checking' && <div className="h-4 pt-1"></div>}
         </div>
       ),
       onNext: validateStep1,
-      onPrev: () => setCurrentStep(0)
+      onPrev: () => setCurrentStep(0),
+      nextDisabled: usernameStatus !== 'available'
     },
     { 
       title: "Secure Your Account",
@@ -528,7 +518,7 @@ const MinimalSignupModal: React.FC<{
               </p>
             </div>
           )}
-           {password.length === 0 && <div className="h-[30px] pt-1"></div>} {/* Placeholder for consistent height */}
+           {password.length === 0 && <div className="h-[30px] pt-1"></div>}
         </div>
       ),
       onNext: validateStep2,
@@ -553,7 +543,7 @@ const MinimalSignupModal: React.FC<{
           {uploadedImagePreview && (
             <div className="mt-3 space-y-2 text-center">
               <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className={cn("rounded-lg mx-auto neumorphic-sm object-cover ring-2", photoValidationStatus === 'validated' ? "ring-green-500" : "ring-transparent")} data-ai-hint="user avatar preview" />
-              {photoValidationStatus !== 'validated' && ( // Only show validate button if not yet validated or if re-uploading
+              {photoValidationStatus !== 'validated' && ( 
                 <Button
                   onClick={handleValidatePhoto}
                   className="neumorphic-button text-xs h-9 w-full sm:w-auto"
@@ -568,23 +558,22 @@ const MinimalSignupModal: React.FC<{
           {photoValidationStatus === 'validating' && <p className="text-xs text-primary text-center flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" />Validating with AI...</p>}
           {photoValidationStatus === 'validated' && <p className="text-xs text-green-500 text-center flex items-center justify-center"><ThumbsUp className="h-4 w-4 mr-2" />Face Detected! Looks Great.</p>}
           {photoValidationError && <p className="text-xs text-red-500 text-center pt-1">{photoValidationError}</p>}
-          {/* Button to clear/reset photo selection */}
-          { (uploadedImagePreview || photoValidationError) && ( // Show if there's a preview or an error related to a photo
+          { (uploadedImagePreview || photoValidationError) && ( 
             <Button
                 variant="outline"
                 size="sm"
                 onClick={resetAvatarState}
                 className="neumorphic-button text-xs h-8 w-full sm:w-auto mt-2"
-                disabled={photoValidationStatus === 'validating'} // Disable if currently validating
+                disabled={photoValidationStatus === 'validating'} 
             >
                 <X className="mr-2 h-3 w-3" /> Clear Photo / Try Another
             </Button>
           )}
         </div>
       ),
-      onNext: validateStep3AndProceed, // Use this to move to the final confirmation step
+      onNext: validateStep3AndProceed, 
       onPrev: () => setCurrentStep(2),
-      nextDisabled: photoValidationStatus !== 'validated' || !selectedAvatar // Disable next if photo not validated and selected
+      nextDisabled: photoValidationStatus !== 'validated' || !selectedAvatar 
     },
     { 
       title: "You're All Set!",
@@ -592,38 +581,29 @@ const MinimalSignupModal: React.FC<{
         <div className="text-center space-y-3">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto animate-bounce-slow" />
           <p>Your GroZen profile is ready!</p>
-          {/* Display the validated and selected avatar here */}
           {selectedAvatar && <Image src={selectedAvatar} alt="Your selected avatar" width={80} height={80} className="rounded-full mx-auto neumorphic-sm object-cover ring-4 ring-primary/50 shadow-2xl" data-ai-hint="user avatar" />}
           <p className="text-xs text-muted-foreground">Click "Glow Up!" to start your journey.</p>
         </div>
       ),
-      onComplete: handleCompleteSignup, // Final action
-      onPrev: () => {
-        // Potentially reset avatar state if going back from final confirmation
-        // or just go back to the photo upload step.
-        // For simplicity, just go back to photo upload.
-        // If they change their mind about the photo, they can re-upload/validate.
-        setCurrentStep(3);
-      }
+      onComplete: handleCompleteSignup, 
+      onPrev: () => setCurrentStep(3)
     },
   ];
 
   const resetModalAndClose = useCallback(() => {
-    // Reset all state related to the modal form
-    setEmail(initialEmail || ''); // Reset email or use initial if provided
+    setEmail(initialEmail || ''); 
     setUsername('');
     setPassword('');
-    resetAvatarState(); // Resets all avatar-related states
+    resetAvatarState(); 
     setCurrentStep(0);
     setUsernameStatus('idle');
     setUsernameError('');
     setPasswordStrength(0);
     setPasswordMessage('');
     setShowPassword(false);
-    setIsCompleting(false); // Ensure completing flag is reset
-    onClose(); // Call the passed onClose handler
+    setIsCompleting(false); 
+    onClose(); 
   }, [onClose, initialEmail, resetAvatarState]);
-
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && resetModalAndClose()}>
@@ -642,7 +622,7 @@ const MinimalSignupModal: React.FC<{
           onPrev={stepsConfig[currentStep].onPrev}
           onComplete={stepsConfig[currentStep].onComplete}
           isCompleting={isCompleting}
-          nextDisabled={stepsConfig[currentStep].nextDisabled} // Pass this down
+          nextDisabled={stepsConfig[currentStep].nextDisabled}
         >
           {stepsConfig[currentStep].content}
         </SignupStep>
@@ -692,7 +672,6 @@ const LandingPage: React.FC = () => {
   const stepContentRefs = useRef<(HTMLDivElement | null)[]>([]);
   const progressBarFillRef = useRef<HTMLDivElement>(null);
 
-
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
@@ -702,13 +681,13 @@ const LandingPage: React.FC = () => {
       }
     };
     
-    if (typeof window !== "undefined") { // Ensure window is defined
+    if (typeof window !== "undefined") { 
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
         return () => {
           document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
         };
     }
-  }, [isSignupModalOpen, showDiscovery]); // Dependencies
+  }, [isSignupModalOpen, showDiscovery]); 
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -717,22 +696,18 @@ const LandingPage: React.FC = () => {
       } else if (currentUser && !isOnboardedState) {
         router.push('/onboarding');
       }
-      // If !currentUser, stay on landing page
     }
   }, [isClient, currentUser, isLoadingAuth, isOnboardedState, router]);
 
   const handleEarlyEmailSubmit = async (email: string) => {
-    // Basic client-side validation
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hold Up!", description: "Please enter a valid email address." });
       return;
     }
     try {
-      // Simulate saving to a "soft" list (e.g., local state, or Firestore if rules allow unauth writes to a specific collection)
-      // For this example, we'll use Firestore for 'earlyAccessSignups'
       await addDoc(collection(db, "earlyAccessSignups"), {
         email: email.trim(),
-        source: 'exit_intent_minimal_v5', // Differentiate this source
+        source: 'exit_intent_minimal_v5', 
         createdAt: serverTimestamp()
       });
       toast({
@@ -740,9 +715,9 @@ const LandingPage: React.FC = () => {
         description: "Your free AI mini-plan is on its way! Now, let's create your account.",
         duration: 4000
       });
-      if (showExitIntent) setShowExitIntent(false); // Close exit intent
-      setInitialModalEmail(email.trim()); // Pre-fill email in the main signup
-      setIsSignupModalOpen(true); // Open main signup modal
+      if (showExitIntent) setShowExitIntent(false); 
+      setInitialModalEmail(email.trim()); 
+      setIsSignupModalOpen(true); 
     } catch (error) {
       console.error("Error saving early access email:", error);
       toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
@@ -754,39 +729,36 @@ const LandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-  // --- Gamified Discovery Path Logic ---
   const startDiscovery = () => {
     if (heroContentRef.current && discoveryContainerRef.current) {
-      anime({ // Animate hero out
+      anime({ 
         targets: heroContentRef.current,
-        opacity: 0,
-        translateY: -30,
-        scale: 0.95,
+        opacity: [1, 0], // Animate from current opacity (should be 1) to 0
+        translateY: [0, -30],
+        scale: [1, 0.95],
         duration: 400,
         easing: 'easeInExpo',
         begin: () => {
           if (heroContentRef.current) heroContentRef.current.style.pointerEvents = 'none';
         },
         complete: () => {
-          setShowDiscovery(true); // Set state to show discovery path
-          // Animate discovery path in AFTER hero is out and state is set
+          setShowDiscovery(true); 
           anime.set(discoveryContainerRef.current!, { opacity: 0, translateY: 30, scale: 0.95 });
           anime({
             targets: discoveryContainerRef.current,
-            opacity: 1,
-            translateY: 0,
-            scale: 1,
+            opacity: [0, 1],
+            translateY: [30, 0],
+            scale: [0.95, 1],
             duration: 600,
             easing: 'easeOutExpo',
           });
         }
       });
-    } else { // Fallback if refs aren't ready (less likely with proper timing)
+    } else { 
       setShowDiscovery(true);
     }
     setCurrentDiscoveryStep(0);
   };
-
 
   const handleNextDiscoveryStep = () => {
     const currentStepRef = stepContentRefs.current[currentDiscoveryStep];
@@ -795,9 +767,9 @@ const LandingPage: React.FC = () => {
       if (currentStepRef) {
         anime({
           targets: currentStepRef,
-          opacity: 0,
-          scale: 0.9,
-          translateY: -20,
+          opacity: [1, 0],
+          scale: [1, 0.9],
+          translateY: [0, -20],
           duration: 350,
           easing: 'easeInExpo',
           begin: () => { if(currentStepRef) currentStepRef.style.pointerEvents = 'none'; },
@@ -806,56 +778,48 @@ const LandingPage: React.FC = () => {
           }
         });
       } else {
-         // If ref is somehow null, just advance state
         setCurrentDiscoveryStep(prev => prev + 1);
       }
     } else {
-      // Last step, open signup modal
       openSignupModalWithEmail(initialModalEmail);
     }
   };
 
-  // Effect for Hero Content Animation In (Only if not showing discovery)
   useEffect(() => {
     if (isClient && heroContentRef.current && !showDiscovery) {
       anime.set(heroContentRef.current, { opacity: 0, translateY: 20, scale: 0.98 });
       anime({
         targets: heroContentRef.current,
-        opacity: 1,
-        translateY: 0,
-        scale: 1,
+        opacity: [0, 1],
+        translateY: [20, 0],
+        scale: [0.98, 1],
         duration: 800,
-        delay: 100, // Small delay after mount
+        delay: 100, 
         easing: 'easeOutQuad',
       });
     } else if (heroContentRef.current && showDiscovery) {
-      // Ensure hero is hidden if discovery is shown
       anime.set(heroContentRef.current, { opacity: 0, pointerEvents: 'none' });
     }
   }, [isClient, showDiscovery]);
 
-
-  // Effect for Discovery Step Content & Progress Bar Animation
  useEffect(() => {
     if (showDiscovery && isClient) {
-      // Animate current step in
       const currentStepRef = stepContentRefs.current[currentDiscoveryStep];
       if (currentStepRef) {
-        // Ensure it's visible and interactive before animation
-        currentStepRef.style.opacity = '0';
+        // Explicitly set opacity to 0 before animating to 1
+        anime.set(currentStepRef, { opacity: 0, scale: 0.95, translateY: 15 });
         currentStepRef.style.pointerEvents = 'auto'; 
         anime({
           targets: currentStepRef,
-          opacity: 1,
+          opacity: [0, 1],
           scale: [0.95, 1],
           translateY: [15, 0],
           duration: 500,
           easing: 'easeOutExpo',
-          delay: 50, // Slight delay for smoother transition
+          delay: 50, 
         });
       }
 
-      // Update progress bar
       if (progressBarFillRef.current) {
         const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
         anime({
@@ -868,8 +832,7 @@ const LandingPage: React.FC = () => {
     }
   }, [currentDiscoveryStep, showDiscovery, isClient]);
 
-
-  if (!isClient || (isLoadingAuth && !currentUser) ) { // Show loading only if not client or loading auth for non-user
+  if (!isClient || (isLoadingAuth && !currentUser) ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -886,9 +849,9 @@ const LandingPage: React.FC = () => {
           <section
             ref={heroContentRef}
             className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative"
-            style={{ perspective: '1000px' }} // For potential 3D transforms on children
+            style={{ perspective: '1000px' }} 
           >
-            {/* Initial content here, ensures heroContentRef is part of layout before animation */}
+            {/* Content starts visible, Anime.js handles initial state for animation */}
             <div className="relative z-10 flex flex-col items-center">
               <div className="mb-4 sm:mb-6">
                 <Logo size="text-3xl sm:text-4xl md:text-5xl" />
@@ -917,25 +880,23 @@ const LandingPage: React.FC = () => {
         {showDiscovery && (
           <section
             ref={discoveryContainerRef}
-            className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center opacity-0" // Start hidden, JS will animate
-            style={{ perspective: '1000px' }}
+            className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center" 
+            style={{ perspective: '1000px' }} // Initially opaque for anime.js to control
           >
             <div className="w-full max-w-lg mx-auto text-center">
-              {/* Progress Bar */}
               <div className="w-full bg-muted rounded-full h-2.5 mb-6 sm:mb-10 neumorphic-inset-sm overflow-hidden">
                 <div ref={progressBarFillRef} className="bg-gradient-to-r from-primary via-accent to-primary/70 h-2.5 rounded-full" style={{ width: '0%' }}></div>
               </div>
-
-              {/* Step Content Area - relative positioning for absolute children */}
               <div className="relative min-h-[280px] sm:min-h-[320px] mb-6 sm:mb-10">
                 {discoveryStepsContent.map((step, index) => (
                   <div
                     key={index}
                     ref={el => stepContentRefs.current[index] = el}
                     className={cn(
-                      "absolute inset-0 flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4 opacity-0", // Start hidden
-                      // currentDiscoveryStep === index ? "opacity-100" : "opacity-0 pointer-events-none" // JS handles opacity now
+                      "absolute inset-0 flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4", 
+                      currentDiscoveryStep !== index && "pointer-events-none" 
                     )}
+                    // Anime.js will control opacity and transform
                   >
                     <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 animate-pulse-slow">
                       {step.icon}
@@ -945,8 +906,6 @@ const LandingPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-
-              {/* Navigation Button */}
               <Button
                 onClick={handleNextDiscoveryStep}
                 variant="neumorphic-primary"
