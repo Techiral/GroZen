@@ -7,7 +7,7 @@ import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPl
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
 import { generateGroceryList as aiGenerateGroceryList, type GenerateGroceryListInput, type GenerateGroceryListOutput } from '@/ai/flows/generate-grocery-list';
 import { useToast } from "@/hooks/use-toast";
-import { auth, db, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from '@/lib/firebase'; // Added sendPasswordResetEmail
+import { auth, db, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from '@/lib/firebase';
 import {
   User,
   onAuthStateChanged,
@@ -33,7 +33,7 @@ interface PlanContextType {
   loginWithEmail: (email: string, pass: string) => Promise<User | null>;
   signInWithGoogle: () => Promise<User | null>;
   logoutUser: () => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<boolean>; // Added
+  sendPasswordReset: (email: string) => Promise<boolean>;
   updateUserDisplayName: (newName: string) => Promise<void>;
   onboardingData: OnboardingData | null;
   wellnessPlan: WellnessPlan | null;
@@ -593,12 +593,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return [];
     }
     try {
+      console.log("fetchAllUsers: Admin authenticated. Fetching all users from 'users' collection.");
       const snap = await getDocs(collection(db, "users"));
-      return snap.docs.map(d => ({
-          id: d.id,
-          email: d.data().email,
-          displayName: d.data().displayName
-        } as UserListItem));
+      console.log(`fetchAllUsers: Found ${snap.docs.length} user documents.`);
+      return snap.docs.map(d => {
+          const data = d.data();
+          const userItem: UserListItem = {
+              id: d.id,
+              email: data.email || null,
+              displayName: data.displayName || null,
+              avatarUrl: data.avatarUrl || undefined
+          };
+          console.log("fetchAllUsers: Mapping user:", userItem);
+          return userItem;
+        });
     } catch (error) {
         console.error("Error fetching all users (admin):", error);
         toast({variant: "destructive", title: "Admin Error", description: "Could not fetch user list."});
@@ -629,12 +637,15 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           processedGL = {...userData.currentGroceryList, items: userData.currentGroceryList.items?.map((i:any) => ({...i, id: i.id || crypto.randomUUID()})) || []};
       }
       return {
-          ...userData,
           id: targetUserId,
+          email: userData.email || null,
+          displayName: userData.displayName || null,
+          avatarUrl: userData.avatarUrl || undefined,
+          onboardingData: userData.onboardingData || null,
+          wellnessPlan: userData.wellnessPlan || null,
           moodLogs: fetchedMoodLogs,
           groceryList: processedGL,
           activeChallengeProgress: userData.activeChallengeProgress || null,
-          avatarUrl: userData.avatarUrl || undefined
         } as FullUserDetail;
     } catch (error) {
         console.error("Error fetching user details (admin):", error);
@@ -752,3 +763,4 @@ export const usePlan = (): PlanContextType => {
   if (context === undefined) throw new Error('usePlan must be used within a PlanProvider');
   return context;
 };
+

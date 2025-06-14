@@ -3,12 +3,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Users, Eye, LogOut } from 'lucide-react';
+import { Loader2, Users, Eye, LogOut, UserCircle } from 'lucide-react';
 import type { UserListItem } from '@/types/wellness';
 
 export default function AdminPage() {
@@ -87,16 +88,39 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-2xs sm:text-xs py-2 px-2 sm:px-3">UID</TableHead>
+                    <TableHead className="text-2xs sm:text-xs py-2 px-2 sm:px-3 w-[40px] sm:w-[50px]">Avatar</TableHead>
+                    <TableHead className="text-2xs sm:text-xs py-2 px-2 sm:px-3">Display Name</TableHead>
                     <TableHead className="text-2xs sm:text-xs py-2 px-2 sm:px-3">Email</TableHead>
+                    <TableHead className="text-2xs sm:text-xs py-2 px-2 sm:px-3">UID</TableHead>
                     <TableHead className="text-right text-2xs sm:text-xs py-2 px-2 sm:px-3">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium text-2xs sm:text-xs py-1.5 px-2 sm:px-3 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[120px] md:max-w-xs">{user.id}</TableCell>
-                      <TableCell className="text-2xs sm:text-xs py-1.5 px-2 sm:px-3 truncate max-w-[100px] xs:max-w-[150px] sm:max-w-xs">{user.email}</TableCell>
+                      <TableCell className="py-1.5 px-2 sm:px-3">
+                        {user.avatarUrl ? (
+                          <Image
+                            src={user.avatarUrl}
+                            alt={user.displayName || user.email || 'User Avatar'}
+                            width={24}
+                            height={24}
+                            className="rounded-full object-cover h-6 w-6 neumorphic-sm"
+                            data-ai-hint="user avatar"
+                          />
+                        ) : (
+                          <UserCircle className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium text-2xs sm:text-xs py-1.5 px-2 sm:px-3 truncate max-w-[100px] sm:max-w-[150px]">
+                        {user.displayName || 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-2xs sm:text-xs py-1.5 px-2 sm:px-3 truncate max-w-[120px] xs:max-w-[180px] sm:max-w-xs">
+                        {user.email}
+                      </TableCell>
+                      <TableCell className="text-2xs sm:text-xs py-1.5 px-2 sm:px-3 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[120px] md:max-w-xs">
+                        {user.id}
+                      </TableCell>
                       <TableCell className="text-right py-1.5 px-2 sm:px-3">
                         <Button
                           variant="outline"

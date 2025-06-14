@@ -88,7 +88,7 @@ export default function AdminUserDetailPage() {
     );
   }
   
-  const { onboardingData, wellnessPlan, moodLogs, groceryList } = userData;
+  const { onboardingData, wellnessPlan, moodLogs, groceryList, avatarUrl } = userData;
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
@@ -112,15 +112,29 @@ export default function AdminUserDetailPage() {
       </header>
       
       <Card className="neumorphic mb-4 sm:mb-5">
-        <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-          <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
-            <UserCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> User Details
-          </CardTitle>
-          <CardDescription className="text-2xs sm:text-xs text-muted-foreground">
-            User ID: <span className="font-mono text-foreground/80">{userData.id}</span>
-            <br />
-            Email: <span className="text-foreground/80">{userData.email || 'N/A'}</span>
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-2.5">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={userData.displayName || userData.email || 'User Avatar'}
+              width={48}
+              height={48}
+              className="rounded-full object-cover h-10 w-10 sm:h-12 sm:w-12 neumorphic-sm"
+              data-ai-hint="user avatar"
+            />
+          ) : (
+            <UserCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
+          )}
+          <div className="flex-1">
+            <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
+               {userData.displayName || 'User Profile'}
+            </CardTitle>
+            <CardDescription className="text-2xs sm:text-xs text-muted-foreground">
+              User ID: <span className="font-mono text-foreground/80">{userData.id}</span>
+              <br />
+              Email: <span className="text-foreground/80">{userData.email || 'N/A'}</span>
+            </CardDescription>
+          </div>
         </CardHeader>
       </Card>
 

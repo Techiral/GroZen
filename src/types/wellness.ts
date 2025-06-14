@@ -57,8 +57,8 @@ export interface GroceryList {
 // For User's public profile aspects like display name
 export interface UserProfile {
   displayName: string | null;
-  email: string | null; 
-  avatarUrl?: string; // Added avatarUrl here for profile context
+  email: string | null;
+  avatarUrl?: string;
 }
 
 // For Admin Dashboard
@@ -66,15 +66,16 @@ export interface UserListItem {
   id: string; // UID
   email: string | null;
   displayName?: string | null;
+  avatarUrl?: string; // Added for admin list page
 }
 
-export interface FullUserDetail extends UserListItem {
+export interface FullUserDetail extends UserListItem { // FullUserDetail now extends UserListItem
   onboardingData: OnboardingData | null;
   wellnessPlan: WellnessPlan | null;
   moodLogs: MoodLog[];
   groceryList: GroceryList | null;
   activeChallengeProgress?: UserActiveChallenge | null;
-  avatarUrl?: string; // Ensure avatarUrl is part of full detail
+  // avatarUrl is inherited from UserListItem
 }
 
 // For Mood Chart
@@ -100,12 +101,11 @@ export interface UserActiveChallenge {
   daysCompleted: number;
 }
 
-// For Leaderboard display - Email removed for privacy
+// For Leaderboard display
 export interface LeaderboardEntry {
   id: string; // UID
-  displayName: string | null; // Display name is public
+  displayName: string | null;
   daysCompleted: number;
-  rank?: number; // Optional rank, to be assigned client-side
-  avatarUrl?: string; // Optional avatar for leaderboard
+  rank?: number;
+  avatarUrl?: string;
 }
-
