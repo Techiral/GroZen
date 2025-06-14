@@ -3,14 +3,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Trophy, ArrowLeft, Users } from 'lucide-react';
+import { Loader2, Trophy, ArrowLeft, Users, UserCircle } from 'lucide-react';
 import type { LeaderboardEntry } from '@/types/wellness';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
+import { cn } from '@/lib/utils';
 
 export default function LeaderboardPage() {
   const router = useRouter();
@@ -92,15 +94,29 @@ export default function LeaderboardPage() {
                   <TableRow>
                     <TableHead className="text-2xs sm:text-xs w-[50px] text-center">Rank</TableHead>
                     <TableHead className="text-2xs sm:text-xs">Participant</TableHead>
-                    <TableHead className="text-right text-2xs sm:text-xs">Days Completed</TableHead>
+                    <TableHead className="text-right text-2xs sm:text-xs">Days Logged</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leaderboard.map((entry) => (
-                    <TableRow key={entry.id}>
+                  {leaderboard.map((entry, index) => (
+                    <TableRow key={entry.id} className={cn(currentUser?.uid === entry.id && "bg-primary/10")}>
                       <TableCell className="font-medium text-2xs sm:text-xs text-center">{entry.rank}</TableCell>
                       <TableCell className="text-2xs sm:text-xs truncate max-w-[150px] sm:max-w-xs md:max-w-sm">
-                        {entry.displayName || entry.email?.split('@')[0] || 'Anonymous User'}
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          {entry.avatarUrl ? (
+                            <Image 
+                              src={entry.avatarUrl} 
+                              alt={entry.displayName || 'User avatar'} 
+                              width={24} 
+                              height={24} 
+                              className="rounded-full neumorphic-sm object-cover h-5 w-5 sm:h-6 sm:w-6"
+                              data-ai-hint="user avatar"
+                            />
+                          ) : (
+                            <UserCircle className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                          )}
+                          <span className="truncate">{entry.displayName || 'GroZen User'}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right text-2xs sm:text-xs font-semibold">{entry.daysCompleted}</TableCell>
                     </TableRow>

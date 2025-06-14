@@ -4,48 +4,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Define your Admin UID here. Replace with your actual Admin UID if different.
-    // Ensure 'QNSRsQsMqRRuS4288vtlBYT1a7E2' IS YOUR CORRECT ADMIN UID.
+    // Define your Admin UID here. Replace 'YOUR_ADMIN_UID_HERE' with your actual Admin UID.
+    // For example, 'QNSRsQsMqRRuS4288vtlBYT1a7E2' was an example.
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'QNSRsQsMqRRuS4288vtlBYT1a7E2';
+      // return request.auth != null && request.auth.uid == 'YOUR_ADMIN_UID_HERE';
+      // If you don't have a specific admin, you can keep this as false,
+      // but admin-specific operations won't work.
+      return request.auth != null && request.auth.uid == 'QNSRsQsMqRRuS4288vtlBYT1a7E2'; // Replace if your admin UID is different
     }
 
     // --- Usernames Collection ---
     match /usernames/{username} {
-      allow get: if true;
+      allow get: if true; // Anyone can check username availability
       allow create: if request.auth != null &&
                        (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // --- Rules for operations on individual documents within the 'users' collection ---
-    match /users/{userIdFromPath} { // Renamed wildcard for clarity
-      allow get: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
+    // --- Users Collection ---
+    match /users/{userIdFromPath} { // Renamed {userId} to {userIdFromPath} for clarity in rules
+      // For listing users (e.g., leaderboard query):
+      // Any authenticated user can attempt to list/query the collection.
+      // The actual success of the query also depends on read permissions for individual documents returned.
+      allow list: if request.auth != null;
+
+      // For reading individual user documents:
+      // Any authenticated user can read ANY user document.
+      // WARNING: THIS IS BROAD FOR A PROTOTYPE TO MAKE THE LEADERBOARD WORK.
+      // In a production app, for general reads, you'd typically want:
+      // `allow read: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());`
+      // And use a separate, denormalized collection for leaderboards with public-only data.
+      allow read: if request.auth != null;
+
+      // For creating/updating their own profile or if admin:
       allow create: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
       allow update: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
+
+      // Only admin can delete top-level user documents:
       allow delete: if isAdmin();
 
-      // --- MoodLogs Subcollection (nested under each user) ---
+      // --- MoodLogs Subcollection ---
       match /moodLogs/{logId} {
+        // User can manage their own mood logs. Admin can manage any.
         allow read, write, delete: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
       }
     }
 
-    // --- Rules for LIST operations on the 'users' collection itself ---
-    // This allows authenticated users to perform queries like the leaderboard one.
-    match /users { // No wildcard document ID here, applies to the collection path
-        allow list: if request.auth != null;
-        // Note: 'read' permission here would be 'list' + 'get'.
-        // We want 'get' to be more specific (handled by /users/{userIdFromPath}),
-        // so only 'list' is granted here broadly for authenticated users.
-    }
-
-
     // --- Early Access Signups Collection ---
     match /earlyAccessSignups/{docId} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow create: if true; // Anyone can submit email
+      allow read, update, delete: if isAdmin(); // Only admin manages this list
     }
   }
 }
