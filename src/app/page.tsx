@@ -1,5 +1,4 @@
 
-      
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, ChangeEvent } from 'react';
@@ -11,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target, ShoppingCart, Users } from 'lucide-react';
 import Image from 'next/image';
 import anime from 'animejs';
 import { cn } from '@/lib/utils';
@@ -666,15 +665,15 @@ const LandingPage: React.FC = () => {
       if (parallaxBg1Ref.current) {
         anime({
           targets: parallaxBg1Ref.current,
-          translateY: scrollY * 0.2, // Slower speed
+          translateY: scrollY * 0.2, 
           easing: 'linear',
-          duration: 50 // Make it very responsive to scroll
+          duration: 50 
         });
       }
       if (parallaxBg2Ref.current) {
         anime({
           targets: parallaxBg2Ref.current,
-          translateY: scrollY * 0.4, // Slightly faster than bg1
+          translateY: scrollY * 0.4, 
           easing: 'linear',
           duration: 50
         });
@@ -790,17 +789,20 @@ const LandingPage: React.FC = () => {
 
         {/* Features/Benefits Section */}
         <section id="features" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto text-center">
             <h2 className={cn("text-2xl sm:text-3xl font-bold mb-2 opacity-0 animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
               Your Personal AI Wellness Coach
             </h2>
             <p className={cn("text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto opacity-0 animate-fade-in-up")} style={{animationDelay: '0.4s'}}>
               GroZen makes wellness easy and fun. Get what you need to feel amazing, all in one app.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
               <FeatureCard icon={<Target />} title="Custom AI Plans" description="Workouts, meals & mindfulness, just for you." delay="0.6s"/>
               <FeatureCard icon={<Smile />} title="Instant Mood Boosts" description="Track your mood, get smart feedback & feel better." delay="0.8s"/>
               <FeatureCard icon={<BarChart3 />} title="See Real Progress" description="Log daily wins & watch your transformation." delay="1.0s" />
+              <FeatureCard icon={<ShoppingCart />} title="Smart Grocery Lists" description="AI generates shopping lists from your meal plan." delay="1.2s" />
+              <FeatureCard icon={<Award />} title="Engaging Challenges" description="Join fun challenges & build healthy habits." delay="1.4s" />
+              <FeatureCard icon={<Users />} title="Community Leaderboard" description="Motivate and get motivated by others." delay="1.6s" />
             </div>
           </div>
         </section>
@@ -844,5 +846,3 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-
-    
