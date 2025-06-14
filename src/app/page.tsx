@@ -25,7 +25,7 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
   const CustomTag = as;
 
   useEffect(() => {
-    setVisibleText(""); 
+    setVisibleText("");
     let currentText = "";
     const chars = text.split("");
     const initialTimeout = setTimeout(() => {
@@ -49,7 +49,7 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
     return () => clearTimeout(initialTimeout);
   }, [text, delay, charDelay, onComplete]);
 
-  return <CustomTag className={className}>{visibleText}{visibleText.length === text.length ? '' : <span className="inline-block w-0.5 h-[1em] bg-primary animate-ping ml-0.5 opacity-70"></span>}</CustomTag>;
+  return <CustomTag className={className}>{visibleText}{visibleText.length === text.length ? '' : <span className="inline-block w-0.5 h-[1em] bg-primary animate-ping-slow ml-0.5 opacity-70"></span>}</CustomTag>;
 };
 
 
@@ -71,7 +71,7 @@ const MinimalExitIntentPopup: React.FC<{
     setIsSubmitting(true);
     try {
       await onEmailSubmit(email);
-      setEmail(''); 
+      setEmail('');
     } catch (error) {
       // Error toast handled by parent
     } finally {
@@ -180,7 +180,7 @@ const MinimalSignupModal: React.FC<{
   const [email, setEmail] = useState(initialEmail);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // For avatar upload
   const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
@@ -196,7 +196,7 @@ const MinimalSignupModal: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
-  const resetAvatarState = () => {
+  const resetAvatarState = useCallback(() => {
     setUploadedImageFile(null);
     setUploadedImagePreview(null);
     setSelectedAvatar(undefined);
@@ -205,7 +205,7 @@ const MinimalSignupModal: React.FC<{
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Reset file input
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -220,7 +220,7 @@ const MinimalSignupModal: React.FC<{
       setPasswordMessage('');
       setShowPassword(false);
     }
-  }, [isOpen, initialEmail]);
+  }, [isOpen, initialEmail, resetAvatarState]);
 
   useEffect(() => {
     if (currentUser && isOpen) {
@@ -286,7 +286,7 @@ const MinimalSignupModal: React.FC<{
     if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) { strength += 20; if (strength > 60) msg = "Solid!"; }
     if (/[0-9]/.test(pass)) { strength += 10; if (strength > 70) msg = "Strong!";}
     if (/[^A-Za-z0-9]/.test(pass)) { strength += 10; if (strength > 80) msg = "Super Strong! 💪";}
-    
+
     setPasswordStrength(Math.min(100, strength));
     setPasswordMessage(msg);
   };
@@ -311,19 +311,35 @@ const MinimalSignupModal: React.FC<{
       setUploadedImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUploadedImagePreview(reader.result as string);
-        setPhotoValidationStatus('idle'); // Reset to idle, ready for validation
-        setPhotoValidationError('');
-        setSelectedAvatar(undefined); // Clear previously validated avatar
+        if (typeof reader.result === 'string' && reader.result.trim() !== "") {
+            setUploadedImagePreview(reader.result as string);
+            setPhotoValidationStatus('idle');
+            setPhotoValidationError('');
+            setSelectedAvatar(undefined);
+        } else {
+            setPhotoValidationError("Could not read the selected file. Please try another image.");
+            setPhotoValidationStatus('error');
+            setUploadedImageFile(null);
+            setUploadedImagePreview(null);
+            setSelectedAvatar(undefined);
+        }
+      };
+      reader.onerror = () => {
+        setPhotoValidationError("Error reading file. Please try another image.");
+        setPhotoValidationStatus('error');
+        setUploadedImageFile(null);
+        setUploadedImagePreview(null);
+        setSelectedAvatar(undefined);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleValidatePhoto = async () => {
-    if (!uploadedImagePreview) {
-      setPhotoValidationError("Please select an image first.");
+    if (!uploadedImagePreview || typeof uploadedImagePreview !== 'string' || uploadedImagePreview.trim() === "") {
+      setPhotoValidationError("Please select or upload a valid image first.");
       setPhotoValidationStatus('error');
+      setSelectedAvatar(undefined);
       return;
     }
     setPhotoValidationStatus('validating');
@@ -331,7 +347,7 @@ const MinimalSignupModal: React.FC<{
     try {
       const result: ValidateHumanFaceOutput = await validateHumanFace({ imageDataUri: uploadedImagePreview });
       if (result.isHumanFace) {
-        setSelectedAvatar(uploadedImagePreview); // Store the Data URI of the validated face
+        setSelectedAvatar(uploadedImagePreview);
         setPhotoValidationStatus('validated');
         toast({ title: "Face Detected! 👍", description: "Looks good! You can proceed." });
       } else {
@@ -374,16 +390,16 @@ const MinimalSignupModal: React.FC<{
       toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs to be at least 6 characters." });
       return false;
     }
-    setCurrentStep(3); // Move to avatar step
+    setCurrentStep(3);
     return true;
   };
-  
+
   const validateStep3AndProceed = async () => { // Avatar validation step
-    if (photoValidationStatus === 'validated' && selectedAvatar) {
-      setCurrentStep(4); // Proceed to final confirmation step
+    if (photoValidationStatus === 'validated' && selectedAvatar && typeof selectedAvatar === 'string' && selectedAvatar.trim() !== "") {
+      setCurrentStep(4);
       return true;
     }
-    toast({ variant: "destructive", title: "Photo Required", description: "Please upload and validate your face photo to continue." });
+    toast({ variant: "destructive", title: "Photo Required", description: "Please upload, validate your face photo, and ensure it's correctly processed to continue." });
     return false;
   };
 
@@ -391,7 +407,7 @@ const MinimalSignupModal: React.FC<{
   const handleCompleteSignup = async () => {
     setIsCompleting(true);
     if (!email || !username || !password ) {
-      toast({ variant: "destructive", title: "Oops!", description: "Email, username, or password missing." });
+      toast({ variant: "destructive", title: "Missing Info", description: "Email, username, or password missing." });
       setIsCompleting(false);
       return;
     }
@@ -400,12 +416,18 @@ const MinimalSignupModal: React.FC<{
         setIsCompleting(false);
         return;
     }
-    if (typeof selectedAvatar !== 'string' || !selectedAvatar) {
-      toast({ variant: "destructive", title: "Photo Error", description: "A validated profile photo is required. Please go back and complete that step." });
+    // Strengthened check for selectedAvatar
+    if (!selectedAvatar || typeof selectedAvatar !== 'string' || selectedAvatar.trim() === "") {
+      toast({
+        variant: "destructive",
+        title: "Avatar Required",
+        description: "A validated profile photo is essential. Please go back, upload your photo, and ensure it's validated.",
+      });
       setIsCompleting(false);
-      return;
+      return; // Stop execution if avatar is not a valid string
     }
 
+    // If we reach here, selectedAvatar is a non-empty string.
     const success = await signupWithDetails(email, password, username, selectedAvatar);
     setIsCompleting(false);
     if (success) {
@@ -440,17 +462,17 @@ const MinimalSignupModal: React.FC<{
           <Label htmlFor="signup-username" className="text-muted-foreground sr-only">Username</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              id="signup-username" 
-              type="text" 
-              placeholder="YourUniqueName (letters, numbers, _)" 
-              value={username} 
-              onChange={handleUsernameChange} 
+            <Input
+              id="signup-username"
+              type="text"
+              placeholder="YourUniqueName (letters, numbers, _)"
+              value={username}
+              onChange={handleUsernameChange}
               className={cn(
                 "pl-10 h-11 neumorphic-inset text-sm focus:animate-input-pulse",
                 usernameStatus === 'available' && "border-green-500 animate-pulse-green",
                 usernameStatus === 'taken' && "border-red-500 animate-pulse-red"
-              )} 
+              )}
             />
             {usernameStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
             {usernameStatus === 'available' && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />}
@@ -478,15 +500,15 @@ const MinimalSignupModal: React.FC<{
           </div>
           {password.length > 0 && (
             <div className="space-y-1 pt-1">
-              <Progress 
-                value={passwordStrength} 
+              <Progress
+                value={passwordStrength}
                 className={cn(
-                  "h-1.5 flex-1 transition-all duration-300", 
-                  passwordStrength < 30 ? "[&>div]:bg-red-500" : 
-                  passwordStrength < 60 ? "[&>div]:bg-yellow-500" : 
+                  "h-1.5 flex-1 transition-all duration-300",
+                  passwordStrength < 30 ? "[&>div]:bg-red-500" :
+                  passwordStrength < 60 ? "[&>div]:bg-yellow-500" :
                   passwordStrength < 80 ? "[&>div]:bg-green-400" :
                   "[&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-primary"
-                )} 
+                )}
               />
               <p className="text-xs text-muted-foreground text-center h-4">
                 {passwordMessage || (password.length > 0 && "Keep typing...")}
@@ -517,12 +539,12 @@ const MinimalSignupModal: React.FC<{
           />
           {uploadedImagePreview && (
             <div className="mt-3 space-y-2 text-center">
-              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className="rounded-lg mx-auto neumorphic-sm object-cover" data-ai-hint="user avatar preview"/>
+              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className="rounded-lg mx-auto neumorphic-sm object-cover ring-2 ring-transparent peer-data-[status=validated]:ring-green-500" data-ai-hint="user avatar preview" />
               {photoValidationStatus !== 'validated' && (
-                <Button 
-                  onClick={handleValidatePhoto} 
-                  className="neumorphic-button text-xs h-9 w-full sm:w-auto" 
-                  disabled={photoValidationStatus === 'validating' || photoValidationStatus === 'uploading'}
+                <Button
+                  onClick={handleValidatePhoto}
+                  className="neumorphic-button text-xs h-9 w-full sm:w-auto"
+                  disabled={photoValidationStatus === 'validating' || photoValidationStatus === 'uploading' || !uploadedImagePreview}
                 >
                   {photoValidationStatus === 'validating' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
                   Validate Photo
@@ -533,36 +555,36 @@ const MinimalSignupModal: React.FC<{
           {photoValidationStatus === 'validating' && <p className="text-xs text-primary text-center flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" />Validating with AI...</p>}
           {photoValidationStatus === 'validated' && <p className="text-xs text-green-500 text-center flex items-center justify-center"><ThumbsUp className="h-4 w-4 mr-2" />Face Detected! Looks Great.</p>}
           {photoValidationError && <p className="text-xs text-red-500 text-center pt-1">{photoValidationError}</p>}
-           <Button 
+          { (uploadedImagePreview || photoValidationError) && (
+            <Button
                 variant="outline"
                 size="sm"
-                onClick={resetAvatarState} 
+                onClick={resetAvatarState}
                 className="neumorphic-button text-xs h-8 w-full sm:w-auto mt-2"
                 disabled={photoValidationStatus === 'validating'}
             >
                 <X className="mr-2 h-3 w-3" /> Clear Photo / Try Another
             </Button>
+          )}
         </div>
       ),
       onNext: validateStep3AndProceed,
       onPrev: () => setCurrentStep(2),
-      nextDisabled: photoValidationStatus !== 'validated' // Disable "Next" if photo not validated
+      nextDisabled: photoValidationStatus !== 'validated' || !selectedAvatar
     },
     { // Step 4: Final Confirmation
       title: "You're All Set!",
       content: (
         <div className="text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto animate-bounce" />
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto animate-bounce-slow" />
           <p>Your GroZen profile is ready!</p>
-          {selectedAvatar && <Image src={selectedAvatar} alt="Your selected avatar" width={80} height={80} className="rounded-full mx-auto neumorphic-sm object-cover" data-ai-hint="user avatar" />}
+          {selectedAvatar && <Image src={selectedAvatar} alt="Your selected avatar" width={80} height={80} className="rounded-full mx-auto neumorphic-sm object-cover ring-4 ring-primary/50 shadow-2xl" data-ai-hint="user avatar" />}
           <p className="text-xs text-muted-foreground">Click "Glow Up!" to start your journey.</p>
         </div>
       ),
       onComplete: handleCompleteSignup,
       onPrev: () => {
-        // When going back from final confirmation, reset to avatar step
-        // No need to reset photoValidationStatus here as user might want to keep the validated photo
-        setCurrentStep(3); 
+        setCurrentStep(3);
       }
     },
   ];
@@ -578,7 +600,7 @@ const MinimalSignupModal: React.FC<{
     setPasswordMessage('');
     setIsCompleting(false);
     onClose();
-  }, [onClose]);
+  }, [onClose, resetAvatarState]);
 
 
   return (
@@ -618,17 +640,17 @@ const AddictionLandingPage: React.FC = () => {
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
-  
+
   const [heroHeadline, setHeroHeadline] = useState("Instant Teen");
   const [heroTagline, setHeroTagline] = useState("");
   const [showSubheadline, setShowSubheadline] = useState(false);
   const [showHeroCTA, setShowHeroCTA] = useState(false);
   const [showSocialProof, setShowSocialProof] = useState(false);
   const [showFreebie, setShowFreebie] = useState(false);
-  const [showBenefits, setShowBenefits] = useState(false);
+
+  const [showWhyGrozen, setShowWhyGrozen] = useState(false);
   const [showTestimonial, setShowTestimonial] = useState(false);
   const [showFinalCTA, setShowFinalCTA] = useState(false);
-
 
   useEffect(() => {
     setIsClient(true);
@@ -662,7 +684,7 @@ const AddictionLandingPage: React.FC = () => {
     try {
       await addDoc(collection(db, "earlyAccessSignups"), {
         email: email.trim(),
-        source: 'exit_intent_minimal_v4_avatar_upload', 
+        source: 'exit_intent_minimal_v4_avatar_upload_fix',
         createdAt: serverTimestamp()
       });
       toast({
@@ -749,64 +771,70 @@ const AddictionLandingPage: React.FC = () => {
               </div>
             )}
              {showFreebie && (
-                <p className={cn("text-xs text-muted-foreground mt-2 opacity-0", showFreebie && "animate-fade-in-up")} style={{animationDelay: '0.7s'}} onAnimationEnd={() => setShowBenefits(true)}>It's Completely FREE Right Now!</p>
+                <p className={cn("text-xs text-muted-foreground mt-2 opacity-0", showFreebie && "animate-fade-in-up")} style={{animationDelay: '0.7s'}} onAnimationEnd={() => setShowWhyGrozen(true)}>It's Completely FREE Right Now!</p>
              )}
           </div>
         </section>
 
         {/* Why GroZen Section */}
-        <section id="why-grozen" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
-          <div className="max-w-3xl mx-auto text-center">
-             <h2 className={cn("text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 opacity-0", showBenefits && "animate-fade-in-up")} style={{animationDelay: '0s'}}>
-              Unlock Your <span className="gradient-text">Best Self</span>, Instantly.
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that get YOU. Fast." show={showBenefits} delay="0.2s"/>
-              <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." show={showBenefits} delay="0.4s"/>
-              <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, quick." show={showBenefits} delay="0.6s" />
+        {showWhyGrozen && (
+          <section id="why-grozen" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className={cn("text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 opacity-0", showWhyGrozen && "animate-fade-in-up")} style={{animationDelay: '0s'}} onAnimationEnd={() => setShowTestimonial(true)}>
+                Unlock Your <span className="gradient-text">Best Self</span>, Instantly.
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+                <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that get YOU. Fast." show={showWhyGrozen} delay="0.2s"/>
+                <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." show={showWhyGrozen} delay="0.4s"/>
+                <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, quick." show={showWhyGrozen} delay="0.6s" />
+              </div>
             </div>
-          </div>
-        </section>
-        
+          </section>
+        )}
+
         {/* Testimonial Section */}
-        <section id="testimonial" className={cn("py-10 sm:py-12 px-4 sm:px-6 bg-background opacity-0", showBenefits && "animate-fade-in-up")} style={{animationDelay: '0.8s'}} onAnimationEnd={() => setShowTestimonial(true)}>
-          <div className="max-w-xl mx-auto text-center">
-            <Image
-              src="https://placehold.co/60x60.png" 
-              alt="Happy GroZen User (Example)"
-              width={56}
-              height={56}
-              className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30 transition-transform duration-300 hover:scale-110"
-              data-ai-hint="teenager avatar happy"
-            />
-            <blockquote className="text-sm sm:text-md italic text-muted-foreground">
-              &ldquo;GroZen is a total game-changer. Felt the glow up in like, 2 days! So much fun too!&rdquo; (Example)
-            </blockquote>
-            <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
-          </div>
-        </section>
+        {showTestimonial && (
+            <section id="testimonial" className={cn("py-10 sm:py-12 px-4 sm:px-6 bg-background opacity-0", showTestimonial && "animate-fade-in-up")} style={{animationDelay: '0.2s'}} onAnimationEnd={() => setShowFinalCTA(true)}>
+            <div className="max-w-xl mx-auto text-center">
+                <Image
+                src="https://placehold.co/60x60.png"
+                alt="Happy GroZen User (Example)"
+                width={56}
+                height={56}
+                className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30 transition-transform duration-300 hover:scale-110"
+                data-ai-hint="teenager avatar happy"
+                />
+                <blockquote className="text-sm sm:text-md italic text-muted-foreground">
+                &ldquo;GroZen is a total game-changer. Felt the glow up in like, 2 days! So much fun too!&rdquo; (Example)
+                </blockquote>
+                <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
+            </div>
+            </section>
+        )}
 
         {/* Final CTA Section */}
-        <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-card opacity-0", showTestimonial && "animate-fade-in-up")} style={{animationDelay: '0.2s'}} onAnimationEnd={() => setShowFinalCTA(true)}>
-          <div className="max-w-lg mx-auto text-center">
-            <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-              Ready for <span className="gradient-text">Your Glow Up</span>?
-            </h2>
-            <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-              Stop scrolling, start shining. Your best self is one click away. <strong className="text-primary font-semibold">And yes, it's 100% FREE!</strong>
-            </p>
-            <Button
-              onClick={() => openSignupModalWithEmail()}
-              variant="neumorphic-primary"
-              size="xl"
-              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:animate-button-hover"
-            >
-              Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
-          </div>
-        </section>
+        {showFinalCTA && (
+            <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-card opacity-0", showFinalCTA && "animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
+            <div className="max-w-lg mx-auto text-center">
+                <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
+                <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
+                Ready for <span className="gradient-text">Your Glow Up</span>?
+                </h2>
+                <p className="text-muted-foreground mb-8 text-sm sm:text-base">
+                Stop scrolling, start shining. Your best self is one click away. <strong className="text-primary font-semibold">And yes, it's 100% FREE!</strong>
+                </p>
+                <Button
+                onClick={() => openSignupModalWithEmail()}
+                variant="neumorphic-primary"
+                size="xl"
+                className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:animate-button-hover"
+                >
+                Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
+            </div>
+            </section>
+        )}
       </main>
 
       <MinimalExitIntentPopup
