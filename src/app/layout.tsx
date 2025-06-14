@@ -10,11 +10,10 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-// Updated Metadata for minimal, dopamine-focused landing page
 export const metadata: Metadata = {
-  title: 'GroZen: Instant Teen Glow Up ✨',
-  description: 'Unlock your best self in minutes. AI wellness, 100% free for teens. Fast results, feel amazing. Join now!',
-  keywords: 'teen wellness, AI coach, instant results, free app, teen fitness, mental wellbeing, body confidence, grozen',
+  title: 'GroZen: AI Wellness for Teens - Simple, Fast, Free',
+  description: 'Get your free, personalized AI wellness plan with GroZen. Designed for teens to boost mood, fitness, and confidence. Start your glow up today!',
+  keywords: 'teen wellness, AI wellness, free wellness app, teen fitness, teen mental health, personalized plan, grozen, ai coach, mood tracking, habit building',
   authors: [{ name: 'GroZen Team' }],
   creator: 'GroZen',
   publisher: 'GroZen',
@@ -24,14 +23,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://grozen.app', // Replace with your actual domain
     siteName: 'GroZen',
-    title: 'GroZen: Instant Teen Transformation ✨ Free AI Wellness',
-    description: 'AI-powered wellness for teens. Get personalized plans, boost confidence, and feel amazing. Free to start!',
+    title: 'GroZen: Simple AI Wellness & Fitness for Teens (Free)',
+    description: 'Unlock your potential with GroZen! Free AI-powered wellness plans for teens. Improve fitness, mood, and habits. Quick and easy to start.',
     images: [
       {
-        url: 'https://grozen.app/og-image-minimal.jpg', // Replace with your actual OG image URL
+        url: 'https://grozen.app/og-image-main.jpg', // Replace with your actual OG image URL
         width: 1200,
         height: 630,
-        alt: 'GroZen - Instant Teen Wellness App',
+        alt: 'GroZen - AI Wellness App for Teens',
       },
     ],
   },
@@ -39,14 +38,14 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@GroZenApp', // Replace with your Twitter handle
     creator: '@GroZenApp', // Replace with your Twitter handle
-    title: 'GroZen: Instant Teen Glow Up ✨ Free AI Wellness',
-    description: 'Tap into AI-powered wellness designed for teens. Fast, free, and fun. Transform today! #GroZen #TeenWellness',
-    images: ['https://grozen.app/twitter-image-minimal.jpg'], // Replace with your actual Twitter image URL
+    title: 'GroZen: Free AI Wellness Designed for Teens ✨',
+    description: 'Personalized AI plans for fitness, mood, and more. Simple, fast, and 100% free. Join GroZen and start your transformation! #GroZen #TeenWellness #AIcoach',
+    images: ['https://grozen.app/twitter-image-main.jpg'], // Replace with your actual Twitter image URL
   },
-  manifest: '/manifest.json', // Ensure you have a manifest.json for PWA capabilities
+  manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.png', // Ensure favicon.png is in /public
-    apple: '/apple-touch-icon.png', // Ensure apple-touch-icon.png is in /public
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
   },
   alternates: {
     canonical: 'https://grozen.app', // Replace with your actual domain
@@ -54,18 +53,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#000000', // Matches Deep Black background
+  themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1, // Max scale 1 for better control on dopamine-focused UI
+  maximumScale: 1,
 };
 
-// Simplified Schema.org for the new focus
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'GroZen',
-  description: 'Instant AI-powered wellness app for teens. Get personalized plans, boost confidence, and feel amazing. 100% Free.',
+  description: 'AI-powered wellness and fitness app for teens. Get free personalized plans to improve mood, habits, and confidence. Simple, fast, and effective.',
   url: 'https://grozen.app', // Replace with your actual domain
   applicationCategory: 'HealthApplication',
   operatingSystem: 'Web',
@@ -74,10 +72,14 @@ const jsonLd = {
     price: '0',
     priceCurrency: 'USD',
   },
-  keywords: 'teen wellness, AI coach, free wellness app, instant results, teen mental health, teen fitness',
+  keywords: 'teen wellness, AI coach, free wellness app, fitness app, mental health app, personalized wellness, habit tracker',
   audience: {
     '@type': 'Audience',
     audienceType: 'Teenagers',
+    geographicArea: {
+        "@type": "AdministrativeArea",
+        name: "Worldwide"
+    },
     suggestedMinAge: 13,
     suggestedMaxAge: 19,
   }
@@ -95,11 +97,8 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* Add Google Site Verification if you have one */}
-        {/* <meta name="google-site-verification" content="YOUR_CODE_HERE" /> */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Preconnect to image placeholders or CDN if used */}
         <link rel="dns-prefetch" href="https://placehold.co" /> 
       </head>
       <body 

@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target } from 'lucide-react';
 import Image from 'next/image';
+import anime from 'animejs';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -20,39 +21,6 @@ import { validateHumanFace, type ValidateHumanFaceOutput } from '@/ai/flows/vali
 
 
 // --- Helper Components ---
-const AnimatedText: React.FC<{ text: string; delay?: number; className?: string; as?: keyof JSX.IntrinsicElements; charDelay?: number; onComplete?: () => void; }> = ({ text, delay = 0, className = "", as = "span", charDelay = 30, onComplete }) => {
-  const [visibleText, setVisibleText] = useState("");
-  const CustomTag = as;
-
-  useEffect(() => {
-    setVisibleText("");
-    let currentText = "";
-    const chars = text.split("");
-    const initialTimeout = setTimeout(() => {
-      if (chars.length === 0 && onComplete) {
-        onComplete();
-        return;
-      }
-      const charInterval = setInterval(() => {
-        if (chars.length > 0) {
-          currentText += chars.shift();
-          setVisibleText(currentText);
-        } else {
-          clearInterval(charInterval);
-          if (onComplete) {
-            onComplete();
-          }
-        }
-      }, charDelay);
-      return () => clearInterval(charInterval);
-    }, delay);
-    return () => clearTimeout(initialTimeout);
-  }, [text, delay, charDelay, onComplete]);
-
-  return <CustomTag className={className}>{visibleText}{visibleText.length === text.length ? '' : <span className="inline-block w-0.5 h-[1em] bg-primary animate-ping ml-0.5 opacity-70"></span>}</CustomTag>;
-};
-
-
 const MinimalExitIntentPopup: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -61,6 +29,21 @@ const MinimalExitIntentPopup: React.FC<{
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && dialogContentRef.current) {
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -20 });
+      anime({
+        targets: dialogContentRef.current,
+        opacity: 1,
+        scale: 1,
+        translateY: 0,
+        duration: 300,
+        easing: 'easeOutQuad',
+      });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +66,7 @@ const MinimalExitIntentPopup: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
+      <DialogContent ref={dialogContentRef} className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
         <DialogHeader className="text-center">
           <Gift className="h-8 w-8 text-primary mx-auto mb-2 animate-bounce" />
           <DialogTitle className="text-lg sm:text-xl font-bold">Wait! Free AI Plan ✨</DialogTitle>
@@ -193,6 +176,7 @@ const MinimalSignupModal: React.FC<{
   const [passwordMessage, setPasswordMessage] = useState('');
   const usernameDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
 
   const resetAvatarState = useCallback(() => {
@@ -205,6 +189,21 @@ const MinimalSignupModal: React.FC<{
       fileInputRef.current.value = "";
     }
   }, []);
+  
+  useEffect(() => {
+    if (isOpen && dialogContentRef.current) {
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -20 });
+      anime({
+        targets: dialogContentRef.current,
+        opacity: 1,
+        scale: 1,
+        translateY: 0,
+        duration: 400, // Slightly longer for main modal
+        easing: 'easeOutExpo', // A bit more expressive easing
+      });
+    }
+  }, [isOpen]);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -405,17 +404,6 @@ const MinimalSignupModal: React.FC<{
 
   const handleCompleteSignup = async () => {
     setIsCompleting(true);
-    if (!email || !username || !password ) {
-      toast({ variant: "destructive", title: "Missing Info", description: "Email, username, or password missing." });
-      setIsCompleting(false);
-      return;
-    }
-    if (usernameStatus !== 'available') {
-        toast({ variant: "destructive", title: "Username Issue", description: "Please pick an available username first." });
-        setIsCompleting(false);
-        return;
-    }
-    
     if (!selectedAvatar || typeof selectedAvatar !== 'string' || selectedAvatar.trim() === "") {
       toast({
         variant: "destructive",
@@ -424,6 +412,16 @@ const MinimalSignupModal: React.FC<{
       });
       setIsCompleting(false);
       return; 
+    }
+     if (!email || !username || !password ) {
+      toast({ variant: "destructive", title: "Missing Info", description: "Email, username, or password missing." });
+      setIsCompleting(false);
+      return;
+    }
+    if (usernameStatus !== 'available') {
+        toast({ variant: "destructive", title: "Username Issue", description: "Please pick an available username first." });
+        setIsCompleting(false);
+        return;
     }
 
     const success = await signupWithDetails(email, password, username, selectedAvatar);
@@ -439,7 +437,7 @@ const MinimalSignupModal: React.FC<{
 
   const stepsConfig = [
     { 
-      title: "Your Email to Start the Magic",
+      title: "Your Email to Start",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-email" className="text-muted-foreground sr-only">Email Address</Label>
@@ -452,7 +450,7 @@ const MinimalSignupModal: React.FC<{
       onNext: validateStep0
     },
     { 
-      title: "Create Your GroZen Alias",
+      title: "Create Your GroZen Username",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-username" className="text-muted-foreground sr-only">Username</Label>
@@ -483,7 +481,7 @@ const MinimalSignupModal: React.FC<{
       onPrev: () => setCurrentStep(0)
     },
     { 
-      title: "Secure Your Glow Up Zone",
+      title: "Secure Your Account",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-password" className="text-muted-foreground sr-only">Password</Label>
@@ -601,7 +599,7 @@ const MinimalSignupModal: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && resetModalAndClose()}>
-      <DialogContent className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
+      <DialogContent ref={dialogContentRef} className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
         <DialogHeader className="mb-2 sm:mb-3">
           <div className="mx-auto mb-2">
             <Logo size="text-lg" />
@@ -627,7 +625,17 @@ const MinimalSignupModal: React.FC<{
 
 
 // --- Main Landing Page Component ---
-const AddictionLandingPage: React.FC = () => {
+const FeatureCard: React.FC<{icon: React.ReactNode, title: string, description: string, delay: string}> = ({icon, title, description, delay}) => (
+  <div className={cn("flex flex-col items-center text-center p-4 neumorphic-sm rounded-lg opacity-0 animate-fade-in-up")} style={{animationDelay: delay}}>
+    <div className="p-3 bg-primary/10 rounded-full text-primary mb-3">
+      {React.cloneElement(icon as React.ReactElement, { className: "h-7 w-7" })}
+    </div>
+    <h3 className="text-md sm:text-lg font-semibold mb-1">{title}</h3>
+    <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
+  </div>
+);
+
+const LandingPage: React.FC = () => {
   const { currentUser, isLoadingAuth, isOnboardedState } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
@@ -636,31 +644,26 @@ const AddictionLandingPage: React.FC = () => {
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
-
-  const [heroHeadline, setHeroHeadline] = useState("Instant Teen");
-  const [heroTagline, setHeroTagline] = useState("");
-  const [showSubheadline, setShowSubheadline] = useState(false);
-  const [showHeroCTA, setShowHeroCTA] = useState(false);
-  const [showSocialProof, setShowSocialProof] = useState(false);
-  const [showFreebie, setShowFreebie] = useState(false);
-  
-  const [showWhyGrozen, setShowWhyGrozen] = useState(false);
-  const [showTestimonial, setShowTestimonial] = useState(false);
-  const [showFinalCTA, setShowFinalCTA] = useState(false);
-
+  const [heroElementsVisible, setHeroElementsVisible] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
+    const timeoutId = setTimeout(() => setHeroElementsVisible(true), 100); // Short delay for entry animation trigger
+
     const handleMouseLeave = (e: MouseEvent) => {
-      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v4')) {
+      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
         setShowExitIntent(true);
-        localStorage.setItem('grozen_exit_intent_shown_minimal_v4', 'true');
+        localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
       }
     };
     if (typeof window !== "undefined") {
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
-        return () => document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
+        return () => {
+          clearTimeout(timeoutId);
+          document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
+        };
     }
+     return () => clearTimeout(timeoutId);
   }, [isSignupModalOpen]);
 
   useEffect(() => {
@@ -681,7 +684,7 @@ const AddictionLandingPage: React.FC = () => {
     try {
       await addDoc(collection(db, "earlyAccessSignups"), {
         email: email.trim(),
-        source: 'exit_intent_minimal_v4_avatar_upload_fix',
+        source: 'exit_intent_minimal_v5',
         createdAt: serverTimestamp()
       });
       toast({
@@ -708,130 +711,86 @@ const AddictionLandingPage: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
         <Loader2 className="mt-6 h-8 w-8 animate-spin text-primary" />
-        <p className="mt-3 text-sm text-muted-foreground">Igniting GroZen...</p>
+        <p className="mt-3 text-sm text-muted-foreground">Loading GroZen...</p>
       </div>
     );
   }
-
- const BenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string, delay: string}> = ({icon, title, description, delay}) => (
-    <div className={cn("flex flex-col items-center space-y-1 text-center opacity-0 animate-fade-in-up")} style={{animationDelay: delay}}>
-      <div className="p-2.5 bg-card rounded-full neumorphic-sm text-primary mb-1.5 transition-all duration-300 ease-out hover:scale-110 hover:shadow-lg hover:text-accent">
-        {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6 sm:h-7 sm:w-7" })}
-      </div>
-      <h3 className="text-sm sm:text-base font-semibold">{title}</h3>
-      <p className="text-2xs sm:text-xs text-muted-foreground max-w-[200px]">{description}</p>
-    </div>
-  );
 
   return (
     <>
       <main className="min-h-screen bg-background text-foreground">
         {/* Hero Section */}
-        <section className="min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
+        <section className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
           <div
             className="absolute inset-0 opacity-10"
             style={{
-              backgroundImage: 'radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%), radial-gradient(circle at 90% 80%, hsl(var(--accent) / 0.08) 0%, transparent 25%)',
-              animation: 'pulse-bg 12s infinite alternate ease-in-out'
+              backgroundImage: 'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.05) 0%, transparent 35%), radial-gradient(circle at 80% 75%, hsl(var(--accent) / 0.04) 0%, transparent 30%)',
             }}
             aria-hidden="true"
           />
-          <div className="relative z-10 flex flex-col items-center">
+          <div className={cn("relative z-10 flex flex-col items-center", heroElementsVisible ? 'animate-fade-in-up' : 'opacity-0')}>
             <div className="mb-4 sm:mb-6">
               <Logo size="text-3xl sm:text-4xl" />
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-1 sm:mb-2">
-              <AnimatedText text={heroHeadline} className="block" as="span" onComplete={() => setHeroTagline("Glow Up ✨")} charDelay={50} />
-              {heroTagline && <span className="gradient-text block leading-tight tracking-tight"><AnimatedText text={heroTagline} delay={100} onComplete={() => setShowSubheadline(true)} charDelay={60}/></span>}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-3 sm:mb-4 leading-tight">
+              AI Wellness for Teens: <br className="hidden sm:block" />
+              <span className="gradient-text">Simple, Fast, Free.</span>
             </h1>
-            {showSubheadline && (
-              <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-lg mb-6 sm:mb-8 opacity-0 animate-fade-in-up" style={{animationDelay: '0.2s'}} onAnimationEnd={() => setShowHeroCTA(true)}>
-                AI wellness that gets you. Fast results, feel awesome. <strong className="text-primary font-semibold">100% FREE!</strong>
-              </p>
-            )}
-            {showHeroCTA && (
-              <div className={cn("opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.4s'}} onAnimationEnd={() => setShowSocialProof(true)}>
-                <Button
-                  onClick={() => openSignupModalWithEmail()}
-                  variant="neumorphic-primary"
-                  size="xl"
-                  className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press hover:animate-button-hover"
-                >
-                  Start Free Transformation <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
-                </Button>
-              </div>
-            )}
-            {showSocialProof && (
-              <div className={cn("text-xs text-muted-foreground flex items-center opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.6s'}} onAnimationEnd={() => setShowFreebie(true)}>
-                <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400 animate-bounce-slow" />
-                10,000+ Teens Glowing Up With GroZen!
-              </div>
-            )}
-             {showFreebie && (
-                <p className={cn("text-xs text-muted-foreground mt-2 opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.7s'}} onAnimationEnd={() => setShowWhyGrozen(true)}>It's Completely FREE Right Now!</p>
-             )}
+            <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-xl mb-6 sm:mb-8">
+              Unlock your best self with GroZen. Get personalized AI plans for fitness, mood, and habits. <strong className="text-primary font-semibold">It's 100% Free.</strong>
+            </p>
+            <Button
+              onClick={() => openSignupModalWithEmail()}
+              variant="neumorphic-primary"
+              size="xl"
+              className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press hover:animate-button-hover"
+            >
+              Start Your Free Plan <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Join thousands of teens transforming their lives!
+            </p>
           </div>
         </section>
 
-        {/* Why GroZen Section Simplified */}
-        {showWhyGrozen && (
-          <section id="why-grozen" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
-            <div className="max-w-3xl mx-auto text-center">
-              <h2 className={cn("text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 opacity-0 animate-fade-in-up")} onAnimationEnd={() => setShowTestimonial(true)}>
-                Unlock Your <span className="gradient-text">Best Self</span>, Instantly.
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-                <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that get YOU. Fast." delay="0.2s"/>
-                <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." delay="0.4s"/>
-                <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, quick." delay="0.6s" />
-              </div>
+        {/* Features/Benefits Section */}
+        <section id="features" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className={cn("text-2xl sm:text-3xl font-bold mb-2 opacity-0 animate-fade-in-up")}>
+              Your Personal AI Wellness Coach
+            </h2>
+            <p className={cn("text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto opacity-0 animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
+              GroZen makes wellness easy and fun. Get what you need to feel amazing, all in one app.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              <FeatureCard icon={<Target />} title="Custom AI Plans" description="Workouts, meals & mindfulness, just for you." delay="0.3s"/>
+              <FeatureCard icon={<Smile />} title="Instant Mood Boosts" description="Track your mood, get smart feedback & feel better." delay="0.5s"/>
+              <FeatureCard icon={<BarChart3 />} title="See Real Progress" description="Log daily wins & watch your transformation." delay="0.7s" />
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* Testimonial Section Simplified */}
-        {showTestimonial && (
-            <section id="testimonial" className={cn("py-10 sm:py-12 px-4 sm:px-6 bg-background opacity-0 animate-fade-in-up")} onAnimationEnd={() => setShowFinalCTA(true)}>
-            <div className="max-w-xl mx-auto text-center">
-                <Image
-                src="https://placehold.co/60x60.png"
-                alt="Happy GroZen User (Example)"
-                width={56}
-                height={56}
-                className="rounded-full mx-auto mb-3 neumorphic-sm border-2 border-primary/30 transition-transform duration-300 hover:scale-110"
-                data-ai-hint="teenager avatar happy"
-                />
-                <blockquote className="text-sm sm:text-md italic text-muted-foreground">
-                &ldquo;GroZen is a total game-changer. Felt the glow up in like, 2 days! So much fun too!&rdquo; (Example)
-                </blockquote>
-                <p className="mt-2 text-xs font-semibold text-primary">- Alex P. (Example User)</p>
-            </div>
-            </section>
-        )}
-
-        {/* Final CTA Section Simplified */}
-        {showFinalCTA && (
-            <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-card opacity-0 animate-fade-in-up")}>
-            <div className="max-w-lg mx-auto text-center">
-                <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
-                <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-                Ready for <span className="gradient-text">Your Glow Up</span>?
-                </h2>
-                <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-                Stop scrolling, start shining. Your best self is one click away. <strong className="text-primary font-semibold">And yes, it's 100% FREE!</strong>
-                </p>
-                <Button
-                onClick={() => openSignupModalWithEmail()}
-                variant="neumorphic-primary"
-                size="xl"
-                className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:animate-button-hover"
-                >
-                Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results. It's Completely FREE Right Now!</p>
-            </div>
-            </section>
-        )}
+        {/* Final CTA Section */}
+        <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-background opacity-0 animate-fade-in-up")} style={{animationDelay: '0.5s'}}>
+          <div className="max-w-lg mx-auto text-center">
+            <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
+              Ready to <span className="gradient-text">Glow Up</span>?
+            </h2>
+            <p className="text-muted-foreground mb-8 text-sm sm:text-base">
+              Stop waiting, start shining. Your best self is one click away. <strong className="text-primary font-semibold">And yes, it's totally FREE!</strong>
+            </p>
+            <Button
+              onClick={() => openSignupModalWithEmail()}
+              variant="neumorphic-primary"
+              size="xl"
+              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:animate-button-hover"
+            >
+              Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results.</p>
+          </div>
+        </section>
       </main>
 
       <MinimalExitIntentPopup
@@ -849,6 +808,4 @@ const AddictionLandingPage: React.FC = () => {
   );
 };
 
-export default AddictionLandingPage;
-
-    
+export default LandingPage;
