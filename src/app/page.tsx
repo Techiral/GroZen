@@ -1,4 +1,5 @@
 
+      
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, ChangeEvent } from 'react';
@@ -178,7 +179,6 @@ const MinimalSignupModal: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-
   const resetAvatarState = useCallback(() => {
     setUploadedImageFile(null);
     setUploadedImagePreview(null);
@@ -198,8 +198,8 @@ const MinimalSignupModal: React.FC<{
         opacity: 1,
         scale: 1,
         translateY: 0,
-        duration: 400, // Slightly longer for main modal
-        easing: 'easeOutExpo', // A bit more expressive easing
+        duration: 400, 
+        easing: 'easeOutExpo', 
       });
     }
   }, [isOpen]);
@@ -599,7 +599,7 @@ const MinimalSignupModal: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && resetModalAndClose()}>
-      <DialogContent ref={dialogContentRef} className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
+      <DialogContent ref={dialogContentRef} className="neumorphic max-w-sm mx-auto p-5 sm:p-6 overflow-hidden">
         <DialogHeader className="mb-2 sm:mb-3">
           <div className="mx-auto mb-2">
             <Logo size="text-lg" />
@@ -626,8 +626,8 @@ const MinimalSignupModal: React.FC<{
 
 // --- Main Landing Page Component ---
 const FeatureCard: React.FC<{icon: React.ReactNode, title: string, description: string, delay: string}> = ({icon, title, description, delay}) => (
-  <div className={cn("flex flex-col items-center text-center p-4 neumorphic-sm rounded-lg opacity-0 animate-fade-in-up")} style={{animationDelay: delay}}>
-    <div className="p-3 bg-primary/10 rounded-full text-primary mb-3">
+  <div className={cn("flex flex-col items-center text-center p-4 neumorphic-sm rounded-lg opacity-0 animate-fade-in-up group transform transition-all duration-300 hover:scale-105 hover:shadow-xl")} style={{animationDelay: delay}}>
+    <div className="p-3 bg-primary/10 rounded-full text-primary mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:animate-pulse">
       {React.cloneElement(icon as React.ReactElement, { className: "h-7 w-7" })}
     </div>
     <h3 className="text-md sm:text-lg font-semibold mb-1">{title}</h3>
@@ -646,9 +646,13 @@ const LandingPage: React.FC = () => {
   const [initialModalEmail, setInitialModalEmail] = useState('');
   const [heroElementsVisible, setHeroElementsVisible] = useState(false);
 
+  const parallaxBg1Ref = useRef<HTMLDivElement>(null);
+  const parallaxBg2Ref = useRef<HTMLDivElement>(null);
+
+
   useEffect(() => {
     setIsClient(true);
-    const timeoutId = setTimeout(() => setHeroElementsVisible(true), 100); // Short delay for entry animation trigger
+    const timeoutId = setTimeout(() => setHeroElementsVisible(true), 100); 
 
     const handleMouseLeave = (e: MouseEvent) => {
       if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
@@ -656,11 +660,34 @@ const LandingPage: React.FC = () => {
         localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
       }
     };
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      if (parallaxBg1Ref.current) {
+        anime({
+          targets: parallaxBg1Ref.current,
+          translateY: scrollY * 0.2, // Slower speed
+          easing: 'linear',
+          duration: 50 // Make it very responsive to scroll
+        });
+      }
+      if (parallaxBg2Ref.current) {
+        anime({
+          targets: parallaxBg2Ref.current,
+          translateY: scrollY * 0.4, // Slightly faster than bg1
+          easing: 'linear',
+          duration: 50
+        });
+      }
+    };
+    
     if (typeof window !== "undefined") {
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
+        window.addEventListener('scroll', handleScroll);
         return () => {
           clearTimeout(timeoutId);
           document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
+          window.removeEventListener('scroll', handleScroll);
         };
     }
      return () => clearTimeout(timeoutId);
@@ -720,14 +747,22 @@ const LandingPage: React.FC = () => {
     <>
       <main className="min-h-screen bg-background text-foreground">
         {/* Hero Section */}
-        <section className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden">
+        <section className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden" style={{ perspective: '1500px' }}>
           <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.05) 0%, transparent 35%), radial-gradient(circle at 80% 75%, hsl(var(--accent) / 0.04) 0%, transparent 30%)',
-            }}
+            ref={parallaxBg1Ref}
+            className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] sm:w-[40vw] sm:h-[40vw] bg-gradient-to-br from-primary/5 via-primary/0 to-primary/0 rounded-full opacity-50"
             aria-hidden="true"
+            style={{filter: 'blur(60px)'}}
+            data-ai-hint="abstract gradient"
           />
+          <div
+            ref={parallaxBg2Ref}
+            className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] sm:w-[50vw] sm:h-[50vw] bg-gradient-to-tl from-accent/5 via-accent/0 to-accent/0 rounded-full opacity-40"
+            aria-hidden="true"
+            style={{filter: 'blur(80px)'}}
+            data-ai-hint="abstract gradient"
+          />
+          
           <div className={cn("relative z-10 flex flex-col items-center", heroElementsVisible ? 'animate-fade-in-up' : 'opacity-0')}>
             <div className="mb-4 sm:mb-6">
               <Logo size="text-3xl sm:text-4xl" />
@@ -743,7 +778,7 @@ const LandingPage: React.FC = () => {
               onClick={() => openSignupModalWithEmail()}
               variant="neumorphic-primary"
               size="xl"
-              className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press hover:animate-button-hover"
+              className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press hover:scale-105 hover:shadow-xl hover:bg-primary/80 transform transition-all duration-300"
             >
               Start Your Free Plan <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
             </Button>
@@ -756,16 +791,16 @@ const LandingPage: React.FC = () => {
         {/* Features/Benefits Section */}
         <section id="features" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className={cn("text-2xl sm:text-3xl font-bold mb-2 opacity-0 animate-fade-in-up")}>
+            <h2 className={cn("text-2xl sm:text-3xl font-bold mb-2 opacity-0 animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
               Your Personal AI Wellness Coach
             </h2>
-            <p className={cn("text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto opacity-0 animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
+            <p className={cn("text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto opacity-0 animate-fade-in-up")} style={{animationDelay: '0.4s'}}>
               GroZen makes wellness easy and fun. Get what you need to feel amazing, all in one app.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              <FeatureCard icon={<Target />} title="Custom AI Plans" description="Workouts, meals & mindfulness, just for you." delay="0.3s"/>
-              <FeatureCard icon={<Smile />} title="Instant Mood Boosts" description="Track your mood, get smart feedback & feel better." delay="0.5s"/>
-              <FeatureCard icon={<BarChart3 />} title="See Real Progress" description="Log daily wins & watch your transformation." delay="0.7s" />
+              <FeatureCard icon={<Target />} title="Custom AI Plans" description="Workouts, meals & mindfulness, just for you." delay="0.6s"/>
+              <FeatureCard icon={<Smile />} title="Instant Mood Boosts" description="Track your mood, get smart feedback & feel better." delay="0.8s"/>
+              <FeatureCard icon={<BarChart3 />} title="See Real Progress" description="Log daily wins & watch your transformation." delay="1.0s" />
             </div>
           </div>
         </section>
@@ -784,7 +819,7 @@ const LandingPage: React.FC = () => {
               onClick={() => openSignupModalWithEmail()}
               variant="neumorphic-primary"
               size="xl"
-              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:animate-button-hover"
+              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:scale-105 hover:shadow-xl hover:bg-primary/80 transform transition-all duration-300"
             >
               Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
             </Button>
@@ -809,3 +844,5 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+
+    
