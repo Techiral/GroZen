@@ -28,7 +28,7 @@ const MinimalExitIntentPopup: React.FC<{
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast(); // Moved toast hook here
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
@@ -54,7 +54,6 @@ const MinimalExitIntentPopup: React.FC<{
     try {
       await onEmailSubmit(email);
       setEmail('');
-      // onClose(); // Parent will handle closing if signup modal opens
     } catch (error) {
       // Error toast handled by parent or onEmailSubmit
     } finally {
@@ -630,7 +629,6 @@ const MinimalSignupModal: React.FC<{
   );
 };
 
-
 const discoveryStepsContent = [
   {
     icon: <Atom className="h-10 w-10 sm:h-12 sm:w-12" />,
@@ -662,12 +660,12 @@ const LandingPage: React.FC = () => {
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
   
-  const [currentDiscoveryStep, setCurrentDiscoveryStep] = useState(0);
   const [showDiscovery, setShowDiscovery] = useState(false);
+  const [currentDiscoveryStep, setCurrentDiscoveryStep] = useState(0);
 
   const heroContentRef = useRef<HTMLDivElement>(null);
   const discoveryContainerRef = useRef<HTMLDivElement>(null);
-  const discoveryStepContentRef = useRef<HTMLDivElement>(null); // Single ref for current step's content area
+  const discoveryStepContentRef = useRef<HTMLDivElement>(null); 
   const progressBarFillRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -728,7 +726,7 @@ const LandingPage: React.FC = () => {
   };
 
  const startDiscovery = () => {
-    if (heroContentRef.current && discoveryContainerRef.current) {
+    if (heroContentRef.current) {
       anime({
         targets: heroContentRef.current,
         opacity: [1, 0],
@@ -741,9 +739,11 @@ const LandingPage: React.FC = () => {
         },
         complete: () => {
           setShowDiscovery(true);
-          // discoveryContainerRef will be animated by its own useEffect or a common one for showDiscovery
         }
       });
+    } else {
+      // Fallback if heroContentRef is not available for some reason
+      setShowDiscovery(true);
     }
     setCurrentDiscoveryStep(0);
   };
@@ -765,6 +765,11 @@ const LandingPage: React.FC = () => {
           }
         }
       });
+    } else if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
+        // Fallback if ref is not ready, directly change step
+        setCurrentDiscoveryStep(prev => prev + 1);
+    } else {
+        openSignupModalWithEmail(initialModalEmail);
     }
   };
 
@@ -784,25 +789,26 @@ const LandingPage: React.FC = () => {
   }, [isClient, showDiscovery]);
 
 
-  // Animation for Discovery Path container and individual steps
+  // Animation for Discovery Path container
   useEffect(() => {
-    if (showDiscovery) {
-      if (discoveryContainerRef.current) {
-        // Animate discovery container in if it's just become visible
-        if (anime.get(discoveryContainerRef.current, 'opacity', 'px') === 0) { // Check if it's hidden
-            anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 30, scale: 0.95 });
-            anime({
-                targets: discoveryContainerRef.current,
-                opacity: 1,
-                translateY: 0,
-                scale: 1,
-                duration: 600,
-                easing: 'easeOutExpo',
-            });
-        }
-      }
-      
-      // Animate current step content in
+    if (showDiscovery && discoveryContainerRef.current) {
+      anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 30, scale: 0.95 });
+      anime({
+          targets: discoveryContainerRef.current,
+          opacity: 1,
+          translateY: 0,
+          scale: 1,
+          duration: 600,
+          easing: 'easeOutExpo',
+      });
+    } else if (!showDiscovery && discoveryContainerRef.current) {
+        anime.set(discoveryContainerRef.current, { opacity: 0 });
+    }
+  }, [showDiscovery, isClient]);
+
+  // Animation for Discovery Step Content and Progress Bar
+  useEffect(() => {
+    if (showDiscovery) { 
       if (discoveryStepContentRef.current) {
         anime.set(discoveryStepContentRef.current, { opacity: 0, scale: 0.9, translateY: 20 });
         anime({
@@ -816,7 +822,6 @@ const LandingPage: React.FC = () => {
         });
       }
 
-      // Update progress bar
       if (progressBarFillRef.current) {
         const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
         anime({
@@ -826,9 +831,6 @@ const LandingPage: React.FC = () => {
           easing: 'easeInOutQuad',
         });
       }
-    } else if (discoveryContainerRef.current) {
-         // Ensure discovery container is hidden if showDiscovery is false
-        anime.set(discoveryContainerRef.current, { opacity: 0 });
     }
   }, [currentDiscoveryStep, showDiscovery, isClient]);
 
@@ -883,7 +885,7 @@ const LandingPage: React.FC = () => {
           <section
             ref={discoveryContainerRef}
             className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center" 
-            style={{ perspective: '1000px', opacity: 0 }} // Initial opacity 0 for container, anime will fade it in
+            style={{ perspective: '1000px' }} 
           >
             <div className="w-full max-w-lg mx-auto text-center">
               <div className="w-full bg-muted rounded-full h-2.5 mb-6 sm:mb-10 neumorphic-inset-sm overflow-hidden">
@@ -937,4 +939,3 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-
