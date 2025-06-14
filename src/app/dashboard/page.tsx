@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -16,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SocialShareCard from '@/components/social-share-card';
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X } from 'lucide-react';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle } from 'lucide-react';
 import type { MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -78,7 +79,6 @@ const DashboardContent: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Handle client-side mounting
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -188,24 +188,21 @@ const DashboardContent: React.FC = () => {
     }
   };
 
-  // Prepare chart data from mood logs
   const chartData: ChartMoodLog[] = moodLogs
     .filter(log => moodToValue[log.mood] !== undefined)
-    .slice(0, 30) // Last 30 entries
+    .slice(0, 30)
     .map(log => ({
       date: format(parseISO(log.date), 'MMM d'),
       moodValue: moodToValue[log.mood],
       moodEmoji: log.mood,
       fullDate: log.date,
     }))
-    .reverse(); // Reverse to show chronological order
+    .reverse();
 
-  // Get mood logs for social share (first and most recent with selfies)
   const moodLogsWithSelfies = moodLogs.filter(log => log.selfieDataUri);
   const beforeLog = moodLogsWithSelfies.length > 1 ? moodLogsWithSelfies[moodLogsWithSelfies.length - 1] : null;
   const afterLog = moodLogsWithSelfies.length > 0 ? moodLogsWithSelfies[0] : null;
 
-  // Group grocery items by category
   const groupedGroceryItems = groceryList?.items.reduce((acc, item) => {
     const category = item.category || 'Other';
     if (!acc[category]) acc[category] = [];
@@ -213,7 +210,6 @@ const DashboardContent: React.FC = () => {
     return acc;
   }, {} as Record<string, GroceryItem[]>) || {};
 
-  // Calculate challenge progress
   const challengeProgress = userActiveChallenge 
     ? Math.round((userActiveChallenge.daysCompleted / CURRENT_CHALLENGE.durationDays) * 100)
     : 0;
@@ -221,7 +217,6 @@ const DashboardContent: React.FC = () => {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const hasLoggedToday = userActiveChallenge?.completedDates.includes(todayStr) || false;
 
-  // Don't render until mounted to avoid hydration issues
   if (!isMounted || isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isOnboardedState && !isLoadingAuth)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -313,21 +308,34 @@ const DashboardContent: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* Welcome Card */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
-              <CardTitle className="text-sm sm:text-base">
-                Welcome back, {currentUserProfile?.displayName || 'GroZen User'}! 👋
-              </CardTitle>
-              <CardDescription className="text-2xs sm:text-xs">
-                Ready to continue your wellness journey today?
-              </CardDescription>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {currentUserProfile?.avatarUrl ? (
+                  <Image 
+                    src={currentUserProfile.avatarUrl} 
+                    alt="User avatar" 
+                    width={40} 
+                    height={40} 
+                    className="rounded-full neumorphic-sm object-cover h-8 w-8 sm:h-10 sm:w-10"
+                    data-ai-hint="user avatar"
+                  />
+                ) : (
+                  <UserCircle className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+                )}
+                <div>
+                  <CardTitle className="text-sm sm:text-base">
+                    Welcome back, {currentUserProfile?.displayName || 'GroZen User'}! 👋
+                  </CardTitle>
+                  <CardDescription className="text-2xs sm:text-xs">
+                    Ready to continue your wellness journey today?
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
           </Card>
 
-          {/* Challenge Progress */}
           {userActiveChallenge ? (
             <Card className="neumorphic">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
@@ -393,7 +401,6 @@ const DashboardContent: React.FC = () => {
             </Card>
           )}
 
-          {/* Wellness Plan Tabs */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
@@ -469,7 +476,6 @@ const DashboardContent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Mood Chart */}
           {chartData.length > 0 && (
             <Card className="neumorphic">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
@@ -532,9 +538,7 @@ const DashboardContent: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column - Sidebar */}
         <div className="space-y-4 sm:space-y-6">
-          {/* Mood Log */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
@@ -734,7 +738,6 @@ const DashboardContent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Grocery List */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
@@ -798,7 +801,6 @@ const DashboardContent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Social Share */}
           {beforeLog && afterLog && (
             <SocialShareCard beforeLog={beforeLog} afterLog={afterLog} />
           )}
@@ -808,7 +810,6 @@ const DashboardContent: React.FC = () => {
   );
 };
 
-// Main Dashboard component with error boundary
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
 
@@ -828,3 +829,5 @@ export default function DashboardPage() {
 
   return <DashboardContent />;
 }
+
+    

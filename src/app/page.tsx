@@ -49,7 +49,7 @@ const AnimatedText: React.FC<{ text: string; delay?: number; className?: string;
     return () => clearTimeout(initialTimeout);
   }, [text, delay, charDelay, onComplete]);
 
-  return <CustomTag className={className}>{visibleText}{visibleText.length === text.length ? '' : <span className="inline-block w-0.5 h-[1em] bg-primary animate-ping-slow ml-0.5 opacity-70"></span>}</CustomTag>;
+  return <CustomTag className={className}>{visibleText}{visibleText.length === text.length ? '' : <span className="inline-block w-0.5 h-[1em] bg-primary animate-ping ml-0.5 opacity-70"></span>}</CustomTag>;
 };
 
 
@@ -159,7 +159,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
           </Button>
         )}
       </div>
-      <Progress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-primary transition-all duration-300" />
+      <Progress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary transition-all duration-300" />
     </div>
   );
 };
@@ -181,10 +181,9 @@ const MinimalSignupModal: React.FC<{
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // For avatar upload
   const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
-  const [selectedAvatar, setSelectedAvatar] = useState<string | undefined>(undefined); // This will store the validated Data URI
+  const [selectedAvatar, setSelectedAvatar] = useState<string | undefined>(undefined);
   const [photoValidationStatus, setPhotoValidationStatus] = useState<'idle' | 'uploading' | 'validating' | 'validated' | 'error'>('idle');
   const [photoValidationError, setPhotoValidationError] = useState<string>('');
 
@@ -203,7 +202,7 @@ const MinimalSignupModal: React.FC<{
     setPhotoValidationStatus('idle');
     setPhotoValidationError('');
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset file input
+      fileInputRef.current.value = "";
     }
   }, []);
 
@@ -300,7 +299,7 @@ const MinimalSignupModal: React.FC<{
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 2 * 1024 * 1024) {
         setPhotoValidationError("Max file size is 2MB. Please choose a smaller image.");
         setPhotoValidationStatus('error');
         setUploadedImageFile(null);
@@ -363,7 +362,7 @@ const MinimalSignupModal: React.FC<{
     }
   };
 
-  const validateStep0 = async () => { // Email
+  const validateStep0 = async () => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look quite right." });
       return false;
@@ -372,7 +371,7 @@ const MinimalSignupModal: React.FC<{
     return true;
   };
 
-  const validateStep1 = async () => { // Username
+  const validateStep1 = async () => {
     if (usernameStatus === 'checking') {
         toast({variant: "default", title: "Hold on...", description: "Checking if this awesome name is free..."});
         return false;
@@ -385,7 +384,7 @@ const MinimalSignupModal: React.FC<{
     return false;
   };
 
-  const validateStep2 = async () => { // Password
+  const validateStep2 = async () => {
     if (password.length < 6) {
       toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs to be at least 6 characters." });
       return false;
@@ -394,7 +393,7 @@ const MinimalSignupModal: React.FC<{
     return true;
   };
 
-  const validateStep3AndProceed = async () => { // Avatar validation step
+  const validateStep3AndProceed = async () => {
     if (photoValidationStatus === 'validated' && selectedAvatar && typeof selectedAvatar === 'string' && selectedAvatar.trim() !== "") {
       setCurrentStep(4);
       return true;
@@ -416,18 +415,17 @@ const MinimalSignupModal: React.FC<{
         setIsCompleting(false);
         return;
     }
-    // Strengthened check for selectedAvatar
+    
     if (!selectedAvatar || typeof selectedAvatar !== 'string' || selectedAvatar.trim() === "") {
       toast({
         variant: "destructive",
         title: "Avatar Required",
-        description: "A validated profile photo is essential. Please go back, upload your photo, and ensure it's validated.",
+        description: "A validated profile photo is essential. Please go back, upload your photo, ensure it's validated, and make sure it's correctly processed.",
       });
       setIsCompleting(false);
-      return; // Stop execution if avatar is not a valid string
+      return; 
     }
 
-    // If we reach here, selectedAvatar is a non-empty string.
     const success = await signupWithDetails(email, password, username, selectedAvatar);
     setIsCompleting(false);
     if (success) {
@@ -436,13 +434,11 @@ const MinimalSignupModal: React.FC<{
         description: "You're officially in! Get ready to unleash your awesome.",
         duration: 6000,
       });
-      // Router push to onboarding/dashboard will be handled by PlanProvider's useEffect
     }
-    // Error toasts are handled within signupWithDetails
   };
 
   const stepsConfig = [
-    { // Step 0: Email
+    { 
       title: "Your Email to Start the Magic",
       content: (
         <div className="space-y-2">
@@ -455,7 +451,7 @@ const MinimalSignupModal: React.FC<{
       ),
       onNext: validateStep0
     },
-    { // Step 1: Username
+    { 
       title: "Create Your GroZen Alias",
       content: (
         <div className="space-y-2">
@@ -486,7 +482,7 @@ const MinimalSignupModal: React.FC<{
       onNext: validateStep1,
       onPrev: () => setCurrentStep(0)
     },
-    { // Step 2: Password
+    { 
       title: "Secure Your Glow Up Zone",
       content: (
         <div className="space-y-2">
@@ -521,7 +517,7 @@ const MinimalSignupModal: React.FC<{
       onNext: validateStep2,
       onPrev: () => setCurrentStep(1)
     },
-    { // Step 3: Avatar Upload & Validation
+    { 
       title: "Upload Your Profile Photo",
       content: (
         <div className="space-y-3">
@@ -539,7 +535,7 @@ const MinimalSignupModal: React.FC<{
           />
           {uploadedImagePreview && (
             <div className="mt-3 space-y-2 text-center">
-              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className="rounded-lg mx-auto neumorphic-sm object-cover ring-2 ring-transparent peer-data-[status=validated]:ring-green-500" data-ai-hint="user avatar preview" />
+              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className={cn("rounded-lg mx-auto neumorphic-sm object-cover ring-2", photoValidationStatus === 'validated' ? "ring-green-500" : "ring-transparent")} data-ai-hint="user avatar preview" />
               {photoValidationStatus !== 'validated' && (
                 <Button
                   onClick={handleValidatePhoto}
@@ -572,7 +568,7 @@ const MinimalSignupModal: React.FC<{
       onPrev: () => setCurrentStep(2),
       nextDisabled: photoValidationStatus !== 'validated' || !selectedAvatar
     },
-    { // Step 4: Final Confirmation
+    { 
       title: "You're All Set!",
       content: (
         <div className="text-center space-y-3">
@@ -647,10 +643,11 @@ const AddictionLandingPage: React.FC = () => {
   const [showHeroCTA, setShowHeroCTA] = useState(false);
   const [showSocialProof, setShowSocialProof] = useState(false);
   const [showFreebie, setShowFreebie] = useState(false);
-
+  
   const [showWhyGrozen, setShowWhyGrozen] = useState(false);
   const [showTestimonial, setShowTestimonial] = useState(false);
   const [showFinalCTA, setShowFinalCTA] = useState(false);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -716,8 +713,8 @@ const AddictionLandingPage: React.FC = () => {
     );
   }
 
-  const BenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string, show: boolean, delay: string}> = ({icon, title, description, show, delay}) => (
-    <div className={cn("flex flex-col items-center space-y-1 text-center opacity-0", show && "animate-fade-in-up")} style={{animationDelay: delay}}>
+ const BenefitItem: React.FC<{icon: React.ReactNode, title: string, description: string, delay: string}> = ({icon, title, description, delay}) => (
+    <div className={cn("flex flex-col items-center space-y-1 text-center opacity-0 animate-fade-in-up")} style={{animationDelay: delay}}>
       <div className="p-2.5 bg-card rounded-full neumorphic-sm text-primary mb-1.5 transition-all duration-300 ease-out hover:scale-110 hover:shadow-lg hover:text-accent">
         {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6 sm:h-7 sm:w-7" })}
       </div>
@@ -753,7 +750,7 @@ const AddictionLandingPage: React.FC = () => {
               </p>
             )}
             {showHeroCTA && (
-              <div className={cn("opacity-0", showHeroCTA && "animate-fade-in-up")} style={{animationDelay: '0.4s'}} onAnimationEnd={() => setShowSocialProof(true)}>
+              <div className={cn("opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.4s'}} onAnimationEnd={() => setShowSocialProof(true)}>
                 <Button
                   onClick={() => openSignupModalWithEmail()}
                   variant="neumorphic-primary"
@@ -765,36 +762,36 @@ const AddictionLandingPage: React.FC = () => {
               </div>
             )}
             {showSocialProof && (
-              <div className={cn("text-xs text-muted-foreground flex items-center opacity-0", showSocialProof && "animate-fade-in-up")} style={{animationDelay: '0.6s'}} onAnimationEnd={() => setShowFreebie(true)}>
+              <div className={cn("text-xs text-muted-foreground flex items-center opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.6s'}} onAnimationEnd={() => setShowFreebie(true)}>
                 <BadgeCheck className="h-4 w-4 mr-1.5 text-green-400 animate-bounce-slow" />
                 10,000+ Teens Glowing Up With GroZen!
               </div>
             )}
              {showFreebie && (
-                <p className={cn("text-xs text-muted-foreground mt-2 opacity-0", showFreebie && "animate-fade-in-up")} style={{animationDelay: '0.7s'}} onAnimationEnd={() => setShowWhyGrozen(true)}>It's Completely FREE Right Now!</p>
+                <p className={cn("text-xs text-muted-foreground mt-2 opacity-0", "animate-fade-in-up")} style={{animationDelay: '0.7s'}} onAnimationEnd={() => setShowWhyGrozen(true)}>It's Completely FREE Right Now!</p>
              )}
           </div>
         </section>
 
-        {/* Why GroZen Section */}
+        {/* Why GroZen Section Simplified */}
         {showWhyGrozen && (
           <section id="why-grozen" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
             <div className="max-w-3xl mx-auto text-center">
-              <h2 className={cn("text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 opacity-0", showWhyGrozen && "animate-fade-in-up")} style={{animationDelay: '0s'}} onAnimationEnd={() => setShowTestimonial(true)}>
+              <h2 className={cn("text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 opacity-0 animate-fade-in-up")} onAnimationEnd={() => setShowTestimonial(true)}>
                 Unlock Your <span className="gradient-text">Best Self</span>, Instantly.
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-                <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that get YOU. Fast." show={showWhyGrozen} delay="0.2s"/>
-                <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." show={showWhyGrozen} delay="0.4s"/>
-                <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, quick." show={showWhyGrozen} delay="0.6s" />
+                <BenefitItem icon={<Atom />} title="AI-Personalized Plans" description="Plans that get YOU. Fast." delay="0.2s"/>
+                <BenefitItem icon={<Brain />} title="Daily Confidence Boost" description="Feel better, instantly." delay="0.4s"/>
+                <BenefitItem icon={<Zap />} title="Quick Wins, Real Results" description="See progress, quick." delay="0.6s" />
               </div>
             </div>
           </section>
         )}
 
-        {/* Testimonial Section */}
+        {/* Testimonial Section Simplified */}
         {showTestimonial && (
-            <section id="testimonial" className={cn("py-10 sm:py-12 px-4 sm:px-6 bg-background opacity-0", showTestimonial && "animate-fade-in-up")} style={{animationDelay: '0.2s'}} onAnimationEnd={() => setShowFinalCTA(true)}>
+            <section id="testimonial" className={cn("py-10 sm:py-12 px-4 sm:px-6 bg-background opacity-0 animate-fade-in-up")} onAnimationEnd={() => setShowFinalCTA(true)}>
             <div className="max-w-xl mx-auto text-center">
                 <Image
                 src="https://placehold.co/60x60.png"
@@ -812,9 +809,9 @@ const AddictionLandingPage: React.FC = () => {
             </section>
         )}
 
-        {/* Final CTA Section */}
+        {/* Final CTA Section Simplified */}
         {showFinalCTA && (
-            <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-card opacity-0", showFinalCTA && "animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
+            <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-card opacity-0 animate-fade-in-up")}>
             <div className="max-w-lg mx-auto text-center">
                 <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
                 <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
@@ -853,3 +850,5 @@ const AddictionLandingPage: React.FC = () => {
 };
 
 export default AddictionLandingPage;
+
+    
