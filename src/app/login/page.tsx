@@ -10,8 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import Logo from '@/components/logo';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from "@/hooks/use-toast";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" data-ai-hint="google logo">
@@ -26,15 +28,19 @@ const GoogleIcon = () => (
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithEmail, signInWithGoogle, currentUser, isLoadingAuth } = usePlan();
+  const { loginWithEmail, signInWithGoogle, currentUser, isLoadingAuth, sendPasswordReset } = usePlan();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isLoadingAuth && currentUser) {
-      router.replace('/'); 
+      router.replace('/');
     }
   }, [currentUser, isLoadingAuth, router]);
 
@@ -52,7 +58,22 @@ export default function LoginPage() {
     await signInWithGoogle();
     setIsGoogleSubmitting(false);
   };
-  
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      toast({ variant: "destructive", title: "Email Required", description: "Please enter your email address." });
+      return;
+    }
+    setIsSendingReset(true);
+    const success = await sendPasswordReset(resetEmail);
+    setIsSendingReset(false);
+    if (success) {
+      setIsResetDialogOpen(false);
+      setResetEmail(''); // Clear the email field after successful send
+    }
+  };
+
   if (isLoadingAuth || (!isLoadingAuth && currentUser)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -106,16 +127,55 @@ export default function LoginPage() {
               Login with Email
             </Button>
           </form>
-          
+
+          <div className="mt-2 text-center">
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="link" className="text-2xs sm:text-xs text-primary p-0 h-auto hover:underline">
+                  Forgot Password?
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-sm sm:text-base">Reset Your Password</DialogTitle>
+                  <DialogDescription className="text-2xs sm:text-xs">
+                    Enter your email address and we&apos;ll send you a link to reset your password.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handlePasswordReset} className="space-y-3 sm:space-y-3.5 pt-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="reset-email" className="text-2xs sm:text-xs">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      className="h-8 sm:h-9 text-xs sm:text-sm"
+                      disabled={isSendingReset}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" variant="neumorphic-primary" className="w-full text-xs sm:text-sm h-8 sm:h-9" disabled={isSendingReset}>
+                      {isSendingReset ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Mail className="mr-1.5 h-3 w-3" />}
+                      Send Reset Link
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           <div className="my-3 sm:my-3.5 flex items-center w-full">
             <Separator className="flex-1" />
             <span className="px-2 text-2xs sm:text-xs text-muted-foreground">OR</span>
             <Separator className="flex-1" />
           </div>
 
-          <Button 
-            variant="outline" 
-            className="w-full text-xs sm:text-sm h-8 sm:h-9 neumorphic-button" 
+          <Button
+            variant="outline"
+            className="w-full text-xs sm:text-sm h-8 sm:h-9 neumorphic-button"
             onClick={handleGoogleSignIn}
             disabled={isSubmitting || isLoadingAuth || isGoogleSubmitting}
           >
@@ -133,4 +193,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

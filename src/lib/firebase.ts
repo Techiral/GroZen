@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Added GoogleAuthProvider, signInWithPopup
+import { getAuth, type Auth, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth'; // Added sendPasswordResetEmail
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -32,6 +32,6 @@ if (!getApps().length) {
 }
 
 auth = getAuth(app);
-db = getFirestore(app); 
+db = getFirestore(app);
 
-export { app, auth, db, GoogleAuthProvider, signInWithPopup }; // Exported GoogleAuthProvider and signInWithPopup
+export { app, auth, db, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail }; // Exported sendPasswordResetEmail
