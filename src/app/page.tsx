@@ -8,7 +8,7 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
+import { Progress as ShadProgress } from '@/components/ui/progress'; // Renamed to avoid conflict
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target, ShoppingCart, Users } from 'lucide-react';
 import Image from 'next/image';
@@ -33,7 +33,7 @@ const MinimalExitIntentPopup: React.FC<{
 
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -20 });
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
       anime({
         targets: dialogContentRef.current,
         opacity: 1,
@@ -142,7 +142,7 @@ const SignupStep: React.FC<{ title: string; children: React.ReactNode; onNext?: 
           </Button>
         )}
       </div>
-      <Progress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary transition-all duration-300" />
+      <ShadProgress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary transition-all duration-300" />
     </div>
   );
 };
@@ -197,8 +197,8 @@ const MinimalSignupModal: React.FC<{
         opacity: 1,
         scale: 1,
         translateY: 0,
-        duration: 400, 
-        easing: 'easeOutExpo', 
+        duration: 300, 
+        easing: 'easeOutQuad', 
       });
     }
   }, [isOpen]);
@@ -493,7 +493,7 @@ const MinimalSignupModal: React.FC<{
           </div>
           {password.length > 0 && (
             <div className="space-y-1 pt-1">
-              <Progress
+              <ShadProgress
                 value={passwordStrength}
                 className={cn(
                   "h-1.5 flex-1 transition-all duration-300",
@@ -622,18 +622,29 @@ const MinimalSignupModal: React.FC<{
   );
 };
 
+// --- Discovery Path Definition ---
+const discoveryStepsContent = [
+  {
+    icon: <Atom className="h-10 w-10 sm:h-12 sm:w-12" />,
+    title: "Your AI Blueprint",
+    description: "GroZen's AI crafts a unique wellness plan—fitness, food, and focus—all personalized just for YOU after a few quick insights.",
+    ctaText: "Next: Vibe Checks!",
+  },
+  {
+    icon: <Smile className="h-10 w-10 sm:h-12 sm:w-12" />,
+    title: "Vibe Checks & Wins",
+    description: "Log your mood, snap a selfie, and get instant, supportive AI feedback. Visualize your progress and celebrate every win!",
+    ctaText: "Next: Fun Challenges!",
+  },
+  {
+    icon: <Award className="h-10 w-10 sm:h-12 sm:w-12" />,
+    title: "Challenges & Habits",
+    description: "Join exciting challenges, build healthy habits, and see how you stack up on the leaderboard. Wellness made fun!",
+    ctaText: "Claim Your Free Plan!",
+  },
+];
 
 // --- Main Landing Page Component ---
-const FeatureCard: React.FC<{icon: React.ReactNode, title: string, description: string, delay: string}> = ({icon, title, description, delay}) => (
-  <div className={cn("flex flex-col items-center text-center p-4 neumorphic-sm rounded-lg opacity-0 animate-fade-in-up group transform transition-all duration-300 hover:scale-105 hover:shadow-xl")} style={{animationDelay: delay}}>
-    <div className="p-3 bg-primary/10 rounded-full text-primary mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:animate-pulse">
-      {React.cloneElement(icon as React.ReactElement, { className: "h-7 w-7" })}
-    </div>
-    <h3 className="text-md sm:text-lg font-semibold mb-1">{title}</h3>
-    <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
-  </div>
-);
-
 const LandingPage: React.FC = () => {
   const { currentUser, isLoadingAuth, isOnboardedState } = usePlan();
   const router = useRouter();
@@ -643,54 +654,32 @@ const LandingPage: React.FC = () => {
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
-  const [heroElementsVisible, setHeroElementsVisible] = useState(false);
+  
+  const [currentDiscoveryStep, setCurrentDiscoveryStep] = useState(0);
+  const [showDiscovery, setShowDiscovery] = useState(false);
 
-  const parallaxBg1Ref = useRef<HTMLDivElement>(null);
-  const parallaxBg2Ref = useRef<HTMLDivElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
+  const discoveryContainerRef = useRef<HTMLDivElement>(null);
+  const stepContentRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const progressBarFillRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
     setIsClient(true);
-    const timeoutId = setTimeout(() => setHeroElementsVisible(true), 100); 
-
     const handleMouseLeave = (e: MouseEvent) => {
-      if (!isSignupModalOpen && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
+      if (!isSignupModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
-      }
-    };
-
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      if (parallaxBg1Ref.current) {
-        anime({
-          targets: parallaxBg1Ref.current,
-          translateY: scrollY * 0.2, 
-          easing: 'linear',
-          duration: 50 
-        });
-      }
-      if (parallaxBg2Ref.current) {
-        anime({
-          targets: parallaxBg2Ref.current,
-          translateY: scrollY * 0.4, 
-          easing: 'linear',
-          duration: 50
-        });
       }
     };
     
     if (typeof window !== "undefined") {
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
-        window.addEventListener('scroll', handleScroll);
         return () => {
-          clearTimeout(timeoutId);
           document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
-          window.removeEventListener('scroll', handleScroll);
         };
     }
-     return () => clearTimeout(timeoutId);
-  }, [isSignupModalOpen]);
+  }, [isSignupModalOpen, showDiscovery]);
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -732,7 +721,106 @@ const LandingPage: React.FC = () => {
     setIsSignupModalOpen(true);
   };
 
-  if (!isClient || isLoadingAuth) {
+  const startDiscovery = () => {
+    if (heroContentRef.current && discoveryContainerRef.current) {
+      const tl = anime.timeline({
+        easing: 'easeOutExpo',
+        duration: 600
+      });
+      tl.add({
+        targets: heroContentRef.current,
+        opacity: 0,
+        translateY: -30,
+        scale: 0.95,
+        pointerEvents: 'none',
+        complete: () => {
+          setShowDiscovery(true);
+        }
+      })
+      .add({
+        targets: discoveryContainerRef.current,
+        opacity: [0, 1],
+        translateY: [30, 0],
+        scale: [0.95, 1],
+      }, '-=300');
+    }
+    setCurrentDiscoveryStep(0);
+  };
+
+  const handleNextDiscoveryStep = () => {
+    const currentStepRef = stepContentRefs.current[currentDiscoveryStep];
+
+    if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
+      if (currentStepRef) {
+        anime({
+          targets: currentStepRef,
+          opacity: 0,
+          scale: 0.9,
+          translateY: -20,
+          duration: 350,
+          easing: 'easeInExpo',
+          complete: () => {
+            setCurrentDiscoveryStep(prev => prev + 1);
+          }
+        });
+      } else {
+        setCurrentDiscoveryStep(prev => prev + 1);
+      }
+    } else {
+      openSignupModalWithEmail(initialModalEmail);
+    }
+  };
+
+  useEffect(() => {
+    if (isClient && heroContentRef.current && !showDiscovery) {
+      anime.set(heroContentRef.current, { opacity: 0, translateY: 20 });
+      anime({
+        targets: heroContentRef.current,
+        opacity: 1,
+        translateY: 0,
+        duration: 800,
+        delay: 200,
+        easing: 'easeOutQuad',
+      });
+    }
+  }, [isClient, showDiscovery]);
+
+  useEffect(() => {
+    if (showDiscovery) {
+      stepContentRefs.current.forEach((ref, index) => {
+        if (ref) {
+          anime.set(ref, { opacity: 0, scale: 0.95, translateY: 20, pointerEvents: 'none' });
+        }
+      });
+
+      const currentStepElement = stepContentRefs.current[currentDiscoveryStep];
+      if (currentStepElement) {
+        anime.set(currentStepElement, { pointerEvents: 'auto' });
+        anime({
+          targets: currentStepElement,
+          opacity: [0, 1],
+          scale: [0.95, 1],
+          translateY: [20, 0],
+          duration: 500,
+          easing: 'easeOutExpo',
+          delay: 100,
+        });
+      }
+
+      if (progressBarFillRef.current) {
+        const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
+        anime({
+          targets: progressBarFillRef.current,
+          width: `${progressPercentage}%`,
+          duration: 400,
+          easing: 'easeInOutQuad',
+        });
+      }
+    }
+  }, [currentDiscoveryStep, showDiscovery, isClient]);
+
+
+  if (!isClient || isLoadingAuth && !currentUser ) { // Show loader if not client or if loading auth and no user yet
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -744,90 +832,80 @@ const LandingPage: React.FC = () => {
 
   return (
     <>
-      <main className="min-h-screen bg-background text-foreground">
-        {/* Hero Section */}
-        <section className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative edge-to-edge overflow-hidden" style={{ perspective: '1500px' }}>
-          <div
-            ref={parallaxBg1Ref}
-            className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] sm:w-[40vw] sm:h-[40vw] bg-gradient-to-br from-primary/5 via-primary/0 to-primary/0 rounded-full opacity-50"
-            aria-hidden="true"
-            style={{filter: 'blur(60px)'}}
-            data-ai-hint="abstract gradient"
-          />
-          <div
-            ref={parallaxBg2Ref}
-            className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] sm:w-[50vw] sm:h-[50vw] bg-gradient-to-tl from-accent/5 via-accent/0 to-accent/0 rounded-full opacity-40"
-            aria-hidden="true"
-            style={{filter: 'blur(80px)'}}
-            data-ai-hint="abstract gradient"
-          />
-          
-          <div className={cn("relative z-10 flex flex-col items-center", heroElementsVisible ? 'animate-fade-in-up' : 'opacity-0')}>
-            <div className="mb-4 sm:mb-6">
-              <Logo size="text-3xl sm:text-4xl" />
+      <main className="min-h-screen bg-background text-foreground overflow-x-hidden">
+        {!showDiscovery && (
+          <section
+            ref={heroContentRef}
+            className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative opacity-0" // Initial opacity 0
+            style={{ perspective: '1000px' }}
+          >
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="mb-4 sm:mb-6">
+                <Logo size="text-3xl sm:text-4xl md:text-5xl" />
+              </div>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-3 sm:mb-4 leading-tight">
+                Unlock Your <span className="gradient-text">GroZen Power!</span>
+              </h1>
+              <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-xl mb-6 sm:mb-8">
+                Discover your personalized AI wellness journey. It's fun, fast, and <strong className="text-primary font-semibold">100% Free.</strong>
+              </p>
+              <Button
+                onClick={startDiscovery}
+                variant="neumorphic-primary"
+                size="xl"
+                className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 hover:scale-105 hover:shadow-xl active:animate-button-press"
+              >
+                Begin Your Journey <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse-slow" />
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                No card. No catch. Just results.
+              </p>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-3 sm:mb-4 leading-tight">
-              AI Wellness for Teens: <br className="hidden sm:block" />
-              <span className="gradient-text">Simple, Fast, Free.</span>
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-xl mb-6 sm:mb-8">
-              Unlock your best self with GroZen. Get personalized AI plans for fitness, mood, and habits. <strong className="text-primary font-semibold">It's 100% Free.</strong>
-            </p>
-            <Button
-              onClick={() => openSignupModalWithEmail()}
-              variant="neumorphic-primary"
-              size="xl"
-              className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press hover:scale-105 hover:shadow-xl hover:bg-primary/80 transform transition-all duration-300"
-            >
-              Start Your Free Plan <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse" />
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Join thousands of teens transforming their lives!
-            </p>
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* Features/Benefits Section */}
-        <section id="features" className="py-12 sm:py-16 px-4 sm:px-6 bg-card">
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className={cn("text-2xl sm:text-3xl font-bold mb-2 opacity-0 animate-fade-in-up")} style={{animationDelay: '0.2s'}}>
-              Your Personal AI Wellness Coach
-            </h2>
-            <p className={cn("text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto opacity-0 animate-fade-in-up")} style={{animationDelay: '0.4s'}}>
-              GroZen makes wellness easy and fun. Get what you need to feel amazing, all in one app.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
-              <FeatureCard icon={<Target />} title="Custom AI Plans" description="Workouts, meals & mindfulness, just for you." delay="0.6s"/>
-              <FeatureCard icon={<Smile />} title="Instant Mood Boosts" description="Track your mood, get smart feedback & feel better." delay="0.8s"/>
-              <FeatureCard icon={<BarChart3 />} title="See Real Progress" description="Log daily wins & watch your transformation." delay="1.0s" />
-              <FeatureCard icon={<ShoppingCart />} title="Smart Grocery Lists" description="AI generates shopping lists from your meal plan." delay="1.2s" />
-              <FeatureCard icon={<Award />} title="Engaging Challenges" description="Join fun challenges & build healthy habits." delay="1.4s" />
-              <FeatureCard icon={<Users />} title="Community Leaderboard" description="Motivate and get motivated by others." delay="1.6s" />
+        {showDiscovery && (
+          <section
+            ref={discoveryContainerRef}
+            className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center opacity-0" // Initial opacity 0
+            style={{ perspective: '1000px' }}
+          >
+            <div className="w-full max-w-lg mx-auto text-center">
+              <div className="w-full bg-muted rounded-full h-2.5 mb-6 sm:mb-10 neumorphic-inset-sm overflow-hidden">
+                <div ref={progressBarFillRef} className="bg-gradient-to-r from-primary via-accent to-primary/70 h-2.5 rounded-full" style={{ width: '0%' }}></div>
+              </div>
+
+              <div className="relative min-h-[280px] sm:min-h-[320px] mb-6 sm:mb-10">
+                {discoveryStepsContent.map((step, index) => (
+                  <div
+                    key={index}
+                    ref={el => stepContentRefs.current[index] = el}
+                    className={cn(
+                      "absolute inset-0 flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4 opacity-0", // initial opacity 0
+                    )}
+                  >
+                    <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 animate-pulse-slow">
+                      {step.icon}
+                    </div>
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">{step.title}</h2>
+                    <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">{step.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                onClick={handleNextDiscoveryStep}
+                variant="neumorphic-primary"
+                size="lg"
+                className="w-full max-w-xs text-base sm:text-lg group py-2.5 hover:scale-105 active:animate-button-press"
+              >
+                {discoveryStepsContent[currentDiscoveryStep].ctaText}
+                {currentDiscoveryStep < discoveryStepsContent.length - 1 && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
+                {currentDiscoveryStep === discoveryStepsContent.length - 1 && <Sparkles className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />}
+              </Button>
             </div>
-          </div>
-        </section>
-
-        {/* Final CTA Section */}
-        <section id="final-cta" className={cn("py-16 sm:py-20 px-4 sm:px-6 bg-background opacity-0 animate-fade-in-up")} style={{animationDelay: '0.5s'}}>
-          <div className="max-w-lg mx-auto text-center">
-            <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-4 animate-ping-slow" />
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-              Ready to <span className="gradient-text">Glow Up</span>?
-            </h2>
-            <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-              Stop waiting, start shining. Your best self is one click away. <strong className="text-primary font-semibold">And yes, it's totally FREE!</strong>
-            </p>
-            <Button
-              onClick={() => openSignupModalWithEmail()}
-              variant="neumorphic-primary"
-              size="xl"
-              className="w-full max-w-xs sm:max-w-sm mx-auto text-base sm:text-lg group py-3 active:animate-button-press hover:scale-105 hover:shadow-xl hover:bg-primary/80 transform transition-all duration-300"
-            >
-              Join GroZen Free Now <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <p className="text-xs text-muted-foreground mt-4">No card. No catch. Just results.</p>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
       <MinimalExitIntentPopup
@@ -846,3 +924,5 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+
+    
