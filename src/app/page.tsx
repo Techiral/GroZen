@@ -8,9 +8,9 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress as ShadProgress } from '@/components/ui/progress'; // Renamed to avoid conflict
+import { Progress as ShadProgress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target, ShoppingCart, Users } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, BadgeCheck, Atom, Brain, Palette, RadioTower, MessageCircle, Award, Check, AlertTriangle, UploadCloud, BarChart3, Smile, Target, ShoppingCart, Users, PaletteIcon, Rocket, BrainIcon } from 'lucide-react';
 import Image from 'next/image';
 import anime from 'animejs';
 import { cn } from '@/lib/utils';
@@ -722,30 +722,25 @@ const LandingPage: React.FC = () => {
   };
 
   const startDiscovery = () => {
-    if (heroContentRef.current && discoveryContainerRef.current) {
-      const tl = anime.timeline({
-        easing: 'easeOutExpo',
-        duration: 600
-      });
-      tl.add({
+    if (heroContentRef.current) { // Removed discoveryContainerRef check as it's not needed for hero animation out
+      anime({ // Animate hero out
         targets: heroContentRef.current,
         opacity: 0,
         translateY: -30,
         scale: 0.95,
-        pointerEvents: 'none',
+        duration: 400,
+        easing: 'easeInExpo',
         complete: () => {
-          setShowDiscovery(true);
+          if (heroContentRef.current) anime.set(heroContentRef.current, { pointerEvents: 'none' });
+          setShowDiscovery(true); // Set state to show discovery path
         }
-      })
-      .add({
-        targets: discoveryContainerRef.current,
-        opacity: [0, 1],
-        translateY: [30, 0],
-        scale: [0.95, 1],
-      }, '-=300');
+      });
+    } else {
+      setShowDiscovery(true); // Fallback if hero ref isn't ready
     }
     setCurrentDiscoveryStep(0);
   };
+
 
   const handleNextDiscoveryStep = () => {
     const currentStepRef = stepContentRefs.current[currentDiscoveryStep];
@@ -759,53 +754,78 @@ const LandingPage: React.FC = () => {
           translateY: -20,
           duration: 350,
           easing: 'easeInExpo',
+          begin: () => { if(currentStepRef) currentStepRef.style.pointerEvents = 'none'; },
           complete: () => {
             setCurrentDiscoveryStep(prev => prev + 1);
           }
         });
       } else {
+         // If ref is somehow null, just advance state
         setCurrentDiscoveryStep(prev => prev + 1);
       }
     } else {
+      // Last step, open signup modal
       openSignupModalWithEmail(initialModalEmail);
     }
   };
 
+  // Effect for Hero Content Animation In
   useEffect(() => {
     if (isClient && heroContentRef.current && !showDiscovery) {
-      anime.set(heroContentRef.current, { opacity: 0, translateY: 20 });
+      anime.set(heroContentRef.current, { opacity: 0, translateY: 20, scale: 0.98 });
       anime({
         targets: heroContentRef.current,
         opacity: 1,
         translateY: 0,
+        scale: 1,
         duration: 800,
-        delay: 200,
+        delay: 100,
         easing: 'easeOutQuad',
       });
+    } else if (heroContentRef.current && showDiscovery) {
+      // Ensure hero is hidden if discovery is shown
+      anime.set(heroContentRef.current, { opacity: 0, pointerEvents: 'none' });
     }
   }, [isClient, showDiscovery]);
 
+  // Effect for Discovery Path Container Animation In
   useEffect(() => {
-    if (showDiscovery) {
+    if (showDiscovery && discoveryContainerRef.current && isClient) {
+      anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 30, scale: 0.95 });
+      anime({
+        targets: discoveryContainerRef.current,
+        opacity: 1,
+        translateY: 0,
+        scale: 1,
+        duration: 600,
+        easing: 'easeOutExpo',
+      });
+    }
+  }, [showDiscovery, isClient]);
+
+  // Effect for Discovery Step Content & Progress Bar Animation
+ useEffect(() => {
+    if (showDiscovery && isClient) {
       stepContentRefs.current.forEach((ref, index) => {
         if (ref) {
-          anime.set(ref, { opacity: 0, scale: 0.95, translateY: 20, pointerEvents: 'none' });
+          if (index === currentDiscoveryStep) {
+            anime.set(ref, { opacity: 0, scale: 0.9, translateY: 20, pointerEvents: 'none' });
+            anime({
+              targets: ref,
+              opacity: 1,
+              scale: 1,
+              translateY: 0,
+              duration: 500,
+              easing: 'easeOutExpo',
+              delay: 150,
+              begin: () => { ref.style.pointerEvents = 'auto'; }
+            });
+          } else {
+            // Ensure other steps are hidden and non-interactive
+             anime.set(ref, { opacity: 0, scale: 0.9, translateY: -20, pointerEvents: 'none' });
+          }
         }
       });
-
-      const currentStepElement = stepContentRefs.current[currentDiscoveryStep];
-      if (currentStepElement) {
-        anime.set(currentStepElement, { pointerEvents: 'auto' });
-        anime({
-          targets: currentStepElement,
-          opacity: [0, 1],
-          scale: [0.95, 1],
-          translateY: [20, 0],
-          duration: 500,
-          easing: 'easeOutExpo',
-          delay: 100,
-        });
-      }
 
       if (progressBarFillRef.current) {
         const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
@@ -820,7 +840,7 @@ const LandingPage: React.FC = () => {
   }, [currentDiscoveryStep, showDiscovery, isClient]);
 
 
-  if (!isClient || isLoadingAuth && !currentUser ) { // Show loader if not client or if loading auth and no user yet
+  if (!isClient || (isLoadingAuth && !currentUser) ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <Logo size="text-3xl" />
@@ -836,7 +856,7 @@ const LandingPage: React.FC = () => {
         {!showDiscovery && (
           <section
             ref={heroContentRef}
-            className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative opacity-0" // Initial opacity 0
+            className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative"
             style={{ perspective: '1000px' }}
           >
             <div className="relative z-10 flex flex-col items-center">
@@ -853,7 +873,7 @@ const LandingPage: React.FC = () => {
                 onClick={startDiscovery}
                 variant="neumorphic-primary"
                 size="xl"
-                className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 hover:scale-105 hover:shadow-xl active:animate-button-press"
+                className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 hover:scale-105 hover:shadow-xl active:animate-button-press transform transition-all duration-300"
               >
                 Begin Your Journey <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse-slow" />
               </Button>
@@ -867,7 +887,7 @@ const LandingPage: React.FC = () => {
         {showDiscovery && (
           <section
             ref={discoveryContainerRef}
-            className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center opacity-0" // Initial opacity 0
+            className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center"
             style={{ perspective: '1000px' }}
           >
             <div className="w-full max-w-lg mx-auto text-center">
@@ -881,7 +901,7 @@ const LandingPage: React.FC = () => {
                     key={index}
                     ref={el => stepContentRefs.current[index] = el}
                     className={cn(
-                      "absolute inset-0 flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4 opacity-0", // initial opacity 0
+                      "absolute inset-0 flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4",
                     )}
                   >
                     <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 animate-pulse-slow">
@@ -897,7 +917,7 @@ const LandingPage: React.FC = () => {
                 onClick={handleNextDiscoveryStep}
                 variant="neumorphic-primary"
                 size="lg"
-                className="w-full max-w-xs text-base sm:text-lg group py-2.5 hover:scale-105 active:animate-button-press"
+                className="w-full max-w-xs text-base sm:text-lg group py-2.5 hover:scale-105 active:animate-button-press transform transition-all duration-300"
               >
                 {discoveryStepsContent[currentDiscoveryStep].ctaText}
                 {currentDiscoveryStep < discoveryStepsContent.length - 1 && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
@@ -924,5 +944,3 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-
-    
