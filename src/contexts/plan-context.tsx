@@ -123,7 +123,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUserProfile(null);
 
       if (user) {
-        const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID;
+        const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'QNSRsQsMqRRuS4288vtlBYT1a7E2'; // Example default
         if (adminUid && user.uid === adminUid) {
           setIsAdminUser(true);
         }
@@ -206,20 +206,31 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setMoodLogs(fetchedMoodLogs);
 
           } else {
+            // This block runs IF THE USER IS AUTHENTICATED but NO Firestore doc exists for them.
+            // This typically happens right after Google Sign-In for a NEW user, or if
+            // Email/Pass signup completed but Firestore doc creation failed somehow.
+            console.log(`User ${user.uid} authenticated, but no Firestore document found. Creating one.`);
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
-            const initialAvatarUrl = user.photoURL || undefined; // Google might provide this
+            const initialAvatarUrl = user.photoURL || undefined; 
 
             setCurrentUserProfile({ displayName: initialProfileName, email: user.email || '', avatarUrl: initialAvatarUrl });
-            await setDoc(doc(db, "users", user.uid), {
+            
+            // Prepare a basic user document to ensure one exists.
+            // This basic doc might be overwritten by `signupWithDetails` if that flow is used.
+            const basicUserDocPayload = {
               email: user.email || null,
               displayName: initialProfileName,
-              // avatarUrl will be set via signupWithDetails if they go through that flow,
-              // or could remain Google's photoURL if they only ever used Google sign-in
-              // and we don't force our avatar upload post-Google sign-in.
-              avatarUrl: initialAvatarUrl,
+              avatarUrl: initialAvatarUrl, // This might be from Google or undefined
               createdAt: serverTimestamp(),
-            }, { merge: true });
-             _setOnboardingData(defaultOnboardingData);
+              onboardingData: null,
+              wellnessPlan: null,
+              currentGroceryList: null,
+              activeChallengeProgress: null,
+            };
+            await setDoc(doc(db, "users", user.uid), basicUserDocPayload, { merge: true });
+            console.log(`Basic Firestore document created for new user ${user.uid}.`);
+
+            _setOnboardingData(defaultOnboardingData);
             _setWellnessPlan(null);
             _setIsOnboardedState(false);
             _setGroceryList(null);
@@ -227,13 +238,14 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setUserActiveChallenge(null);
           }
         } catch (error) {
-          console.error("Error fetching user data from Firestore:", error);
+          console.error("Error in onAuthStateChanged fetching/creating user data from Firestore:", error);
           toast({ variant: "destructive", title: "Error Loading Data", description: "Could not load your saved data." });
-          clearPlanAndData(true, false);
+          clearPlanAndData(true, false); // Clear all local state on error
         } finally {
           setIsLoadingAuth(false);
         }
       } else {
+        // User is null (logged out)
         setIsLoadingAuth(false);
       }
     });
@@ -245,11 +257,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Signup Successful", description: "Welcome to GroZen! Please complete your onboarding or profile setup." });
-      // onAuthStateChanged handles basic doc creation. Full profile setup via signupWithDetails.
+      // onAuthStateChanged will handle initial doc creation if needed, and further onboarding steps.
+      toast({ title: "Signup Successful", description: "Welcome to GroZen! Please complete your profile setup." });
       return userCredential.user;
     } catch (error: any) {
-      console.error("Signup error", error);
+      console.error("Signup error (signupWithEmail):", error);
       toast({ variant: "destructive", title: "Signup Failed", description: error.message || "Could not create account."});
       setIsLoadingAuth(false);
       return null;
@@ -258,56 +270,93 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signupWithDetails = async (emailVal: string, passwordVal: string, usernameVal: string, avatarDataUri: string): Promise<boolean> => {
     setIsLoadingAuth(true);
+    let user: User | null = null;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, emailVal, passwordVal);
-      const user = userCredential.user;
+      console.log("Attempting signupWithDetails for email:", emailVal, "username:", usernameVal);
 
+      // Step 1: Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, emailVal, passwordVal);
+      user = userCredential.user;
+      console.log("User created with UID:", user.uid);
+
+      // Step 2: Update Firebase Auth profile (displayName)
+      // Note: photoURL in Firebase Auth is usually for actual URLs, not Data URIs.
+      // We are storing the Data URI in Firestore's `avatarUrl` field.
       await updateProfile(user, {
         displayName: usernameVal.trim(),
-        // photoURL: avatarDataUri // Firebase Auth photoURL often expects a URL, not Data URI.
-                                // For simplicity, we'll store Data URI in Firestore's avatarUrl only.
       });
+      console.log("Firebase Auth profile updated with displayName:", usernameVal.trim());
 
-      const usernameDocRef = doc(db, "usernames", usernameVal.trim().toLowerCase());
-      await setDoc(usernameDocRef, {
-        userId: user.uid,
-        email: user.email
-      });
+      // Step 3: Create username document for availability checking
+      const trimmedUsername = usernameVal.trim().toLowerCase();
+      const usernameDocRef = doc(db, "usernames", trimmedUsername);
+      const usernameData = {
+        userId: user.uid, // This is request.resource.data.userId in rules
+        email: user.email, // For reference
+      };
+      console.log("Attempting to set username document:", `/usernames/${trimmedUsername}`, "with data:", usernameData);
+      console.log("Authenticated user UID for rule check (request.auth.uid):", user.uid);
+      await setDoc(usernameDocRef, usernameData);
+      console.log("Username document created successfully.");
 
-      const userDocRef = doc(db, "users", user.uid);
+      // Step 4: Create/Update main user document in Firestore
+      const userDocRef = doc(db, "users", user.uid); // Document ID is user.uid
       const userDocPayload = {
         email: user.email,
         displayName: usernameVal.trim(),
-        avatarUrl: avatarDataUri, // This is where the validated Data URI string is stored
+        avatarUrl: avatarDataUri, // This should be a valid Data URI string
         createdAt: serverTimestamp(),
         onboardingData: null,
         wellnessPlan: null,
         currentGroceryList: null,
         activeChallengeProgress: null,
       };
+      console.log("Attempting to set user document:", `/users/${user.uid}`, "with payload:", userDocPayload);
+      console.log("Authenticated user UID for rule check (request.auth.uid):", user.uid, "Document ID for rule check (userIdFromPath):", user.uid);
+      await setDoc(userDocRef, userDocPayload, { merge: true }); // Use merge:true to be safe if a basic doc was already created by onAuthStateChanged
+      console.log("User document created/merged successfully.");
 
-      await setDoc(userDocRef, userDocPayload, { merge: true });
-
+      // Update local state (onAuthStateChanged will also run and might fine-tune this)
       setCurrentUserProfile({
         displayName: usernameVal.trim(),
         email: user.email || '',
         avatarUrl: avatarDataUri
       });
-      _setIsOnboardedState(false);
-      // setIsLoadingAuth(false); // This will be set by onAuthStateChanged
+      _setIsOnboardedState(false); // New user, needs onboarding
+
+      // setIsLoadingAuth(false); // onAuthStateChanged will set this
+      toast({ title: "Signup Complete!", description: "Welcome to GroZen!" });
       return true;
+
     } catch (error: any) {
-      console.error("Detailed Signup error", error);
+      console.error("Detailed Signup error (signupWithDetails):", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      // Attempt to clean up Firebase Auth user if Firestore writes failed
+      if (user && (error.message.includes("permission") || error.message.includes("Firestore"))) {
+        try {
+          console.warn("Firestore write failed, attempting to delete created Firebase Auth user:", user.uid);
+          await user.delete();
+          console.log("Firebase Auth user deleted due to Firestore error during signup.");
+        } catch (deleteError: any) {
+          console.error("Failed to delete Firebase Auth user after signup failure:", deleteError);
+          toast({ variant: "destructive", title: "Critical Signup Error", description: "Account created but profile setup failed. Please contact support." });
+        }
+      }
+
       const commonErrorMessages: {[key: string]: string} = {
         'auth/email-already-in-use': "This email address is already in use. Try logging in or use a different email.",
-        'firestore/permission-denied': "Could not save user details. Please check permissions or try again."
+        'firestore/permission-denied': "Could not save your details. Please check app permissions or try again.",
+        'FirebaseError: Missing or insufficient permissions.': "A permission error occurred while saving your profile. Please ensure the app has the necessary permissions.",
       };
-      const description = commonErrorMessages[error.code] || error.message || "An unexpected error occurred during signup.";
+      const description = commonErrorMessages[error.code] || commonErrorMessages[error.message] || error.message || "An unexpected error occurred during signup.";
 
       toast({
         variant: "destructive",
         title: "Signup Failed",
-        description: description
+        description: description,
+        duration: 7000,
       });
       setIsLoadingAuth(false);
       return false;
@@ -319,6 +368,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       toast({ title: "Login Successful", description: "Welcome back!" });
+      // onAuthStateChanged will handle loading user data
       return userCredential.user;
     } catch (error: any) {
       console.error("Login error", error);
@@ -349,7 +399,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login');
+      router.push('/login'); // onAuthStateChanged will also clear local state
     } catch (error: any) {
       console.error("Logout error", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not log out." });
@@ -399,18 +449,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setErrorPlan(null);
     try {
       const userDocRef = doc(db, "users", currentUser.uid);
+      // Ensure onboarding data is saved if it changed or wasn't saved before.
       if (JSON.stringify(data) !== JSON.stringify(_onboardingData)) {
         await setDoc(userDocRef, { onboardingData: data, updatedAt: serverTimestamp() }, { merge: true });
         _setOnboardingData(data);
-        _setIsOnboardedState(true);
+        _setIsOnboardedState(true); // Mark as onboarded since we have the data
       }
       const input: GenerateWellnessPlanInput = data;
       const result = await aiGenerateWellnessPlan(input);
       const parsedPlanCandidate = JSON.parse(result.plan);
 
+      // Validate structure of parsed plan
       if (
         parsedPlanCandidate && Array.isArray(parsedPlanCandidate.meals) && parsedPlanCandidate.meals.length > 0 &&
-        parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string') &&
+        parsedPlanCandidate.meals.every((m: any) => typeof m.day === 'string' && typeof m.breakfast === 'string') && // Basic check
         Array.isArray(parsedPlanCandidate.exercise) && Array.isArray(parsedPlanCandidate.mindfulness)
       ) {
         const planToSet = parsedPlanCandidate as WellnessPlan;
@@ -424,7 +476,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error("Failed to generate plan:", err);
       _setErrorPlan(err.message);
       toast({ variant: "destructive", title: "Error Generating Plan", description: err.message });
-      _setWellnessPlan(null);
+      _setWellnessPlan(null); // Clear potentially bad plan
     } finally {
       _setIsLoadingPlan(false);
     }
@@ -440,6 +492,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const newLogData = { mood, notes, selfieDataUri, aiFeedback: aiFeedbackText, createdAt: serverTimestamp(), userId: currentUser.uid };
     try {
       const docRef = await addDoc(collection(db, "users", currentUser.uid, "moodLogs"), newLogData);
+      // Optimistically update UI then sort
       _setMoodLogs(prev => [{ ...newLogData, id: docRef.id, date: new Date().toISOString(), createdAt: new Date() } as MoodLog, ...prev]
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       toast({ title: "Mood Logged", description: aiFeedbackText ? `GroZen: ${aiFeedbackText}` : "Recorded."});
@@ -469,8 +522,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const input: GenerateGroceryListInput = { meals: currentPlan.meals as Meal[] };
       const result: GenerateGroceryListOutput = await aiGenerateGroceryList(input);
       const newGroceryList: GroceryList = {
-        id: _groceryList?.id || crypto.randomUUID(),
-        items: result.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })),
+        id: _groceryList?.id || crypto.randomUUID(), // Reuse ID if exists or generate new
+        items: result.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })), // Ensure all items have an ID
         generatedDate: new Date().toISOString(),
       };
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: newGroceryList, updatedAt: serverTimestamp() }, { merge: true });
@@ -489,12 +542,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!currentUser || !_groceryList) return;
     const updatedItems = _groceryList.items.filter(item => item.id !== itemIdToDelete);
     const updatedGroceryList = { ..._groceryList, items: updatedItems };
-    _setGroceryList(updatedGroceryList);
+    _setGroceryList(updatedGroceryList); // Optimistic update
     try {
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList);
+      _setGroceryList(_groceryList); // Revert on error
       toast({ variant: "destructive", title: "Update Error" });
     }
   };
@@ -558,12 +611,24 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const fetchLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
-    if (!currentUser) return [];
+    if (!currentUser) return []; // Basic check, rules will enforce further.
     try {
-      const q = query(collection(db, "users"), where("activeChallengeProgress.challengeId", "==", CURRENT_CHALLENGE.id), orderBy("activeChallengeProgress.daysCompleted", "desc"), limit(10));
+      // Query needs to be allowed by Firestore rules.
+      // Assumes 'activeChallengeProgress.challengeId' and 'activeChallengeProgress.daysCompleted' fields exist.
+      const q = query(
+        collection(db, "users"), 
+        where("activeChallengeProgress.challengeId", "==", CURRENT_CHALLENGE.id), 
+        orderBy("activeChallengeProgress.daysCompleted", "desc"), 
+        limit(10)
+      );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, email: d.data().email, displayName: d.data().displayName, daysCompleted: d.data().activeChallengeProgress.daysCompleted } as LeaderboardEntry));
-    } catch (e) { console.error(e); return []; }
+      return snap.docs.map(d => ({ 
+        id: d.id, 
+        email: d.data().email, 
+        displayName: d.data().displayName, 
+        daysCompleted: d.data().activeChallengeProgress.daysCompleted 
+      } as LeaderboardEntry));
+    } catch (e) { console.error("Error fetching leaderboard data:", e); return []; }
   };
 
   const isPlanAvailable = !!_wellnessPlan?.meals?.length;
