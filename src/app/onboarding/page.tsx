@@ -182,7 +182,7 @@ export default function OnboardingPage() {
                           className="flex flex-col space-y-1 sm:space-y-1.5"
                         >
                           {['low', 'medium', 'high'].map(value => (
-                            <FormItem key={value} className="flex items-center space-x-2 p-1.5 sm:p-2 neumorphic-sm hover:neumorphic-inset-sm">
+                            <FormItem key={value} className="flex items-center space-x-2 p-1.5 sm:p-2 rounded-md">
                               <FormControl>
                                 <RadioGroupItem value={value} />
                               </FormControl>
@@ -241,4 +241,3 @@ export default function OnboardingPage() {
     </main>
   );
 }
-
