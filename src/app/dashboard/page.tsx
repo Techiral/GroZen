@@ -171,7 +171,7 @@ const DashboardContent: React.FC = () => {
     try {
       const feedback = await addMoodLog(selectedMood, moodNotes || undefined, selfieDataUri);
       if (feedback) {
-        setAiFeedbackToDisplay(feedback);
+        setAiFeedbackToDisplay(feedback as string);
       }
       setSelectedMood('');
       setMoodNotes('');
@@ -881,4 +881,3 @@ export default function DashboardPage() {
 
   return <DashboardContent />;
 }
-```
