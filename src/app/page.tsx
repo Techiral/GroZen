@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress as ShadProgress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, PaletteIcon, Rocket, Brain as BrainIcon, Atom, Smile, Award, Users, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, PaletteIcon, Rocket, Brain as BrainIcon, Atom, Smile, Award, Users, AlertTriangle, LogIn } from 'lucide-react';
 import Image from 'next/image';
 import anime from 'animejs';
 import { cn } from '@/lib/utils';
@@ -162,7 +162,8 @@ const MinimalSignupModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   initialEmail?: string;
-}> = ({ isOpen, onClose, initialEmail = '' }) => {
+  onSwitchToLogin: () => void;
+}> = ({ isOpen, onClose, initialEmail = '', onSwitchToLogin }) => {
   const { signupWithDetails, currentUser } = usePlan();
   const router = useRouter();
   const { toast } = useToast();
@@ -624,10 +625,189 @@ const MinimalSignupModal: React.FC<{
         >
           {stepsConfig[currentStep].content}
         </SignupStep>
+        <div className="text-center mt-4">
+          <button
+            onClick={onSwitchToLogin}
+            className="text-xs text-primary hover:underline"
+          >
+            Already have an account? Login
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
 };
+
+const MinimalLoginModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSwitchToSignup: () => void;
+}> = ({ isOpen, onClose, onSwitchToSignup }) => {
+  const { loginWithEmail, sendPasswordReset, currentUser } = usePlan();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
+
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && dialogContentRef.current) {
+      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
+      anime({
+        targets: dialogContentRef.current,
+        opacity: 1,
+        scale: 1,
+        translateY: 0,
+        duration: 350,
+        easing: 'easeOutQuad',
+      });
+    }
+  }, [isOpen]);
+  
+  useEffect(() => {
+    if (currentUser && isOpen) {
+      router.push('/dashboard'); // Or onboarding if not completed
+      onClose();
+    }
+  }, [currentUser, router, isOpen, onClose]);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      toast({ variant: "destructive", title: "Oops!", description: "Email and password are required." });
+      return;
+    }
+    setIsLoggingIn(true);
+    const success = await loginWithEmail(email, password);
+    setIsLoggingIn(false);
+    if (success) {
+      // Navigation is handled by PlanContext's onAuthStateChanged
+      onClose();
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPasswordEmail.trim()) {
+      toast({ variant: "destructive", title: "Email Required", description: "Please enter your email." });
+      return;
+    }
+    setIsSendingReset(true);
+    const success = await sendPasswordReset(forgotPasswordEmail);
+    setIsSendingReset(false);
+    if (success) {
+      setIsForgotPasswordOpen(false);
+      setForgotPasswordEmail('');
+    }
+  };
+
+  const resetModalAndClose = () => {
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+    setIsLoggingIn(false);
+    setForgotPasswordEmail('');
+    setIsForgotPasswordOpen(false);
+    setIsSendingReset(false);
+    onClose();
+  };
+
+
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && resetModalAndClose()}>
+        <DialogContent ref={dialogContentRef} className="neumorphic max-w-sm mx-auto p-5 sm:p-6">
+          <DialogHeader className="mb-3">
+            <div className="mx-auto mb-2">
+              <Logo size="text-lg" />
+            </div>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-center">Welcome Back to GroZen!</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="login-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input id="login-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11 neumorphic-inset text-sm" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="login-password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="Your Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10 h-11 neumorphic-inset text-sm" />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 hover:bg-transparent active:bg-transparent" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
+                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-primary" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-primary" />}
+                </Button>
+              </div>
+            </div>
+            <Button type="submit" className="w-full neumorphic-button-primary h-11 text-sm" disabled={isLoggingIn}>
+              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login Securely"}
+              {!isLoggingIn && <LogIn className="ml-2 h-4 w-4" />}
+            </Button>
+          </form>
+          <div className="text-center mt-4 space-y-2">
+            <button
+              onClick={() => setIsForgotPasswordOpen(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              Forgot Password?
+            </button>
+            <p className="text-xs text-muted-foreground">
+              New to GroZen?{' '}
+              <button
+                onClick={onSwitchToSignup}
+                className="font-semibold text-primary hover:underline"
+              >
+                Create an Account
+              </button>
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogContent className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your email and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="forgot-password-email">Email</Label>
+              <Input
+                id="forgot-password-email"
+                type="email"
+                placeholder="you@example.com"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                disabled={isSendingReset}
+                className="h-10 neumorphic-inset text-sm"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsForgotPasswordOpen(false)} className="neumorphic-button h-10 text-sm">Cancel</Button>
+              <Button type="submit" className="neumorphic-button-primary h-10 text-sm" disabled={isSendingReset}>
+                {isSendingReset ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 
 const discoveryStepsContent = [
   {
@@ -646,7 +826,7 @@ const discoveryStepsContent = [
     icon: <Award className="h-10 w-10 sm:h-12 sm:w-12" />,
     title: "Challenges & Habits",
     description: "Join exciting challenges, build healthy habits, and see how you stack up on the leaderboard. Wellness made fun!",
-    ctaText: "Claim Your Free Plan!",
+    ctaText: "Claim Your Free Plan & Sign Up",
   },
 ];
 
@@ -658,6 +838,7 @@ const LandingPage: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
   const [showExitIntent, setShowExitIntent] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [initialModalEmail, setInitialModalEmail] = useState('');
   
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -667,11 +848,13 @@ const LandingPage: React.FC = () => {
   const discoveryContainerRef = useRef<HTMLDivElement>(null);
   const discoveryStepContentRef = useRef<HTMLDivElement>(null); 
   const progressBarFillRef = useRef<HTMLDivElement>(null);
+  const parallaxBg1Ref = useRef<HTMLDivElement>(null);
+  const parallaxBg2Ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
-      if (!isSignupModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
+      if (!isSignupModalOpen && !isLoginModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
         setShowExitIntent(true);
         localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
       }
@@ -679,11 +862,22 @@ const LandingPage: React.FC = () => {
     
     if (typeof window !== "undefined") { 
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
+
+        const handleScroll = () => {
+          if (parallaxBg1Ref.current && parallaxBg2Ref.current) {
+            const scrollY = window.scrollY;
+            anime({ targets: parallaxBg1Ref.current, translateY: scrollY * 0.2, easing: 'linear', duration: 50 });
+            anime({ targets: parallaxBg2Ref.current, translateY: scrollY * 0.1, easing: 'linear', duration: 50 });
+          }
+        };
+        window.addEventListener('scroll', handleScroll);
+        
         return () => {
           document.documentElement.removeEventListener('mouseleave', handleMouseLeave);
+          window.removeEventListener('scroll', handleScroll);
         };
     }
-  }, [isSignupModalOpen, showDiscovery]); 
+  }, [isSignupModalOpen, isLoginModalOpen, showDiscovery]); 
 
   useEffect(() => {
     if (isClient && !isLoadingAuth) {
@@ -720,12 +914,18 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const openSignupModalWithEmail = (email?: string) => {
+  const openSignupModal = (email?: string) => {
     setInitialModalEmail(email || '');
     setIsSignupModalOpen(true);
+    setIsLoginModalOpen(false);
   };
 
- const startDiscovery = () => {
+  const openLoginModal = () => {
+    setIsLoginModalOpen(true);
+    setIsSignupModalOpen(false);
+  };
+
+  const startDiscovery = () => {
     if (heroContentRef.current) {
       anime({
         targets: heroContentRef.current,
@@ -742,8 +942,7 @@ const LandingPage: React.FC = () => {
         }
       });
     } else {
-      // Fallback if heroContentRef is not available for some reason
-      setShowDiscovery(true);
+       setShowDiscovery(true);
     }
     setCurrentDiscoveryStep(0);
   };
@@ -761,26 +960,23 @@ const LandingPage: React.FC = () => {
           if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
             setCurrentDiscoveryStep(prev => prev + 1);
           } else {
-            openSignupModalWithEmail(initialModalEmail);
+            openSignupModal(initialModalEmail);
           }
         }
       });
     } else if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
-        // Fallback if ref is not ready, directly change step
         setCurrentDiscoveryStep(prev => prev + 1);
     } else {
-        openSignupModalWithEmail(initialModalEmail);
+        openSignupModal(initialModalEmail);
     }
   };
 
-  // Initial animation for Hero Content
   useEffect(() => {
     if (isClient && heroContentRef.current && !showDiscovery) {
-      anime.set(heroContentRef.current, { opacity: 0, translateY: 20 });
       anime({
         targets: heroContentRef.current,
-        opacity: 1,
-        translateY: 0,
+        opacity: [0,1],
+        translateY: [20,0],
         duration: 600,
         delay: 100,
         easing: 'easeOutQuad',
@@ -789,7 +985,6 @@ const LandingPage: React.FC = () => {
   }, [isClient, showDiscovery]);
 
 
-  // Animation for Discovery Path container
   useEffect(() => {
     if (showDiscovery && discoveryContainerRef.current) {
       anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 30, scale: 0.95 });
@@ -806,7 +1001,6 @@ const LandingPage: React.FC = () => {
     }
   }, [showDiscovery, isClient]);
 
-  // Animation for Discovery Step Content and Progress Bar
   useEffect(() => {
     if (showDiscovery) { 
       if (discoveryStepContentRef.current) {
@@ -856,6 +1050,9 @@ const LandingPage: React.FC = () => {
             className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative"
             style={{ perspective: '1000px' }} 
           >
+            <div ref={parallaxBg1Ref} className="absolute -top-20 -left-20 w-72 h-72 bg-primary/5 rounded-full animate-pulse-bg opacity-50 " data-ai-hint="abstract shape"></div>
+            <div ref={parallaxBg2Ref} className="absolute -bottom-20 -right-20 w-60 h-60 bg-accent/5 rounded-full animate-pulse-bg opacity-50 " data-ai-hint="abstract shape"></div>
+
             <div className="relative z-10 flex flex-col items-center">
               <div className="mb-4 sm:mb-6">
                 <Logo size="text-3xl sm:text-4xl md:text-5xl" />
@@ -895,8 +1092,8 @@ const LandingPage: React.FC = () => {
               <div ref={discoveryStepContentRef} className="relative min-h-[280px] sm:min-h-[320px] mb-6 sm:mb-10">
                 {currentStepData && (
                   <div className="flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4">
-                    <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 animate-pulse-slow">
-                      {currentStepData.icon}
+                    <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 animate-pulse-slow group">
+                       {React.cloneElement(currentStepData.icon, { className: cn(currentStepData.icon.props.className, "group-hover:scale-110 transition-transform")})}
                     </div>
                     <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
                       {currentStepData.title}
@@ -918,6 +1115,14 @@ const LandingPage: React.FC = () => {
                 {currentDiscoveryStep < discoveryStepsContent.length - 1 && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
                 {currentDiscoveryStep === discoveryStepsContent.length - 1 && <Sparkles className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />}
               </Button>
+              
+              {currentDiscoveryStep === discoveryStepsContent.length - 1 && (
+                <p className="mt-4 text-xs">
+                  <button onClick={openLoginModal} className="text-primary hover:underline">
+                    Already have an account? Login
+                  </button>
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -933,6 +1138,18 @@ const LandingPage: React.FC = () => {
         isOpen={isSignupModalOpen}
         onClose={() => setIsSignupModalOpen(false)}
         initialEmail={initialModalEmail}
+        onSwitchToLogin={() => {
+          setIsSignupModalOpen(false);
+          setIsLoginModalOpen(true);
+        }}
+      />
+      <MinimalLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onSwitchToSignup={() => {
+          setIsLoginModalOpen(false);
+          setIsSignupModalOpen(true);
+        }}
       />
     </>
   );
