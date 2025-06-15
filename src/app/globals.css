@@ -60,78 +60,75 @@
 
 @layer base {
   :root {
-    /* Teen-focused Theme: Vibrant, Modern, Dark */
-    --background: 240 10% 4%; /* Very Dark Blue/Almost Black */
-    --foreground: 210 40% 98%; /* Off-White / Very Light Cool Gray */
+    /* Original Minimalist Dark Theme - Black, White, Light Gray */
+    --background: 0 0% 0%; /* Deep Black #000000 */
+    --foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --card: 240 10% 8%; /* Darker shade of background */
-    --card-foreground: 210 40% 96%;
+    --card: 0 0% 7%; /* Dark Gray, near black, for card backgrounds */
+    --card-foreground: 0 0% 95%; /* Off-White for card text */
 
-    --popover: 240 10% 7%; 
-    --popover-foreground: 210 40% 96%;
+    --popover: 0 0% 4%; /* Slightly darker than card for popovers */
+    --popover-foreground: 0 0% 95%;
 
-    /* Primary: Energetic Blue/Teal */
-    --primary-hue: 195; /* Cyan-Blue */
-    --primary-saturation: 75%;
-    --primary-lightness: 50%;
-    --primary: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
-    --primary-darker: var(--primary-hue) var(--primary-saturation) calc(var(--primary-lightness) - 8%); /* Made slightly darker for press */
-    --primary-foreground: 200 50% 98%; /* Ensuring high contrast on primary */
+    /* Primary: Pure White (for text, borders, highlights on dark neumorphic elements) */
+    --primary-hue: 0;
+    --primary-saturation: 0%;
+    --primary-lightness: 100%;
+    --primary: var(--primary-hue) var(--primary-saturation) var(--primary-lightness); /* #FFFFFF */
+    --primary-darker: 0 0% 90%; /* A slightly darker white/light gray for pressed states if needed */
+    --primary-foreground: 0 0% 0%; /* Black text on primary buttons (if primary buttons are white) */
 
-    /* Secondary: Muted for less emphasis */
-    --secondary: 240 8% 15%; 
-    --secondary-foreground: 210 30% 80%;
+    --secondary: 0 0% 10%; /* Dark gray for secondary elements */
+    --secondary-foreground: 0 0% 80%; /* Lighter gray for text on secondary elements */
 
-    --muted: 240 5% 12%;
-    --muted-foreground: 210 20% 65%;
+    --muted: 0 0% 15%; /* Darker gray for muted elements */
+    --muted-foreground: 0 0% 60%; /* Lighter gray for muted text */
 
-    /* Accent: Vibrant & Contrasting (e.g., Electric Pink/Orange) */
-    --accent-hue: 330; /* Vivid Pink/Magenta */
-    --accent-saturation: 80%;
-    --accent-lightness: 58%;
+    /* Accent: Light Gray */
+    --accent-hue: 0;
+    --accent-saturation: 0%;
+    --accent-lightness: 82.7%; /* Light Gray #D3D3D3 */
     --accent: var(--accent-hue) var(--accent-saturation) var(--accent-lightness);
-    --accent-foreground: 0 0% 100%; /* White on accent */
+    --accent-foreground: 0 0% 13%; /* Dark Gray/Black text on accent elements for contrast */
 
-    --destructive: 0 72% 51%; /* Bright Red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%; /* Bright Red for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* White text on destructive */
 
-    --border: 240 5% 20%; 
-    --input: 240 5% 10%;
-    --ring: var(--accent-hue) var(--accent-saturation) var(--accent-lightness); /* Ring uses accent color */
+    --border: 0 0% 12%; /* Dark gray border */
+    --input: 0 0% 10%; /* Dark gray input background */
+    --ring: var(--accent-hue) var(--accent-saturation) var(--accent-lightness); /* Ring uses accent color (Light Gray) */
 
-    --radius: 0.6rem; /* Slightly more rounded */
+    --radius: 0.5rem;
 
-    /* Neumorphic specific variables - Softer, accent-tinged shadows */
-    --neumorphic-bg: hsl(var(--card));
-    --shadow-strength-light: 0.04; /* Slightly increased light shadow strength for pop */
-    --shadow-strength-dark: 0.35;   /* Slightly increased dark shadow strength */
+    /* Neumorphic specific variables - adjusted for dark theme */
+    --neumorphic-bg: hsl(var(--card)); /* Card background */
+
+    /* Shadows for dark theme: light shadow is highlight, dark shadow creates depth */
+    --shadow-strength-light: 0.08; /* Highlight intensity */
+    --shadow-strength-dark: 0.4;  /* Depth shadow intensity */
     
-    /* Softer, more blended shadows with accent hint */
     --neumorphic-shadow-light:
-      2px 2px 5px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 15%), calc(var(--shadow-strength-light) * 0.7)), /* Softer accent shadow */
-      -2px -2px 5px hsla(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) + 10%), calc(var(--shadow-strength-light) * 0.6)), /* Softer primary shadow */
-      -2px -2px 8px rgba(0, 0, 0, var(--shadow-strength-dark)); /* Main dark shadow for depth */
+      -2px -2px 5px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 5%), var(--shadow-strength-light)), /* Lighter highlight */
+      2px 2px 5px rgba(0, 0, 0, var(--shadow-strength-dark)); /* Darker shadow */
     
     --neumorphic-shadow-light-inset:
       inset 2px 2px 5px rgba(0, 0, 0, var(--shadow-strength-dark)),
-      inset -1px -1px 3px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 20%), calc(var(--shadow-strength-light) * 0.6)),
-      inset -2px -2px 4px hsla(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) + 15%), calc(var(--shadow-strength-light) * 0.5));
+      inset -2px -2px 5px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 5%), var(--shadow-strength-light));
 
-    --neumorphic-shadow-primary: /* For primary buttons, more pronounced */
-      3px 3px 7px hsla(var(--accent-hue), var(--accent-saturation), var(--accent-lightness), calc(var(--shadow-strength-light) * 0.8)),
-      -3px -3px 7px hsla(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) + 5%), calc(var(--shadow-strength-light) * 0.7)),
-      -3px -3px 10px rgba(0, 0, 0, calc(var(--shadow-strength-dark) + 0.1));
+    --neumorphic-shadow-primary: /* For primary buttons (often light gray on dark bg) */
+      -3px -3px 6px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 8%), calc(var(--shadow-strength-light) * 1.1)),
+      3px 3px 6px rgba(0, 0, 0, calc(var(--shadow-strength-dark) * 1.1));
       
     --neumorphic-shadow-primary-inset:
-      inset 3px 3px 7px rgba(0, 0, 0, calc(var(--shadow-strength-dark) + 0.1)),
-      inset -2px -2px 5px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 15%), calc(var(--shadow-strength-light) * 0.7)),
-      inset -3px -3px 6px hsla(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) + 10%), calc(var(--shadow-strength-light) * 0.6));
+      inset 3px 3px 6px rgba(0, 0, 0, calc(var(--shadow-strength-dark) * 1.1)),
+      inset -3px -3px 6px hsla(var(--accent-hue), var(--accent-saturation), calc(var(--accent-lightness) + 8%), calc(var(--shadow-strength-light) * 1.1));
 
-    --chart-1: 195 85% 55%; /* Brighter Blue */
-    --chart-2: 260 85% 65%; /* Vibrant Purple */
-    --chart-3: 330 80% 60%; /* Vivid Pink */
-    --chart-4: 45 100% 55%; /* Bright Yellow/Gold */
-    --chart-5: 160 70% 50%; /* Tealish Green */
+    /* Chart colors that work on a dark background */
+    --chart-1: hsl(var(--primary)); /* White */
+    --chart-2: hsl(var(--accent)); /* Light Gray */
+    --chart-3: 200 70% 70%; /* Light Blue */
+    --chart-4: 50 70% 70%;  /* Light Yellow */
+    --chart-5: 330 70% 75%; /* Light Pink */
 
     --sidebar-background: hsl(var(--background));
     --sidebar-foreground: hsl(var(--foreground));
@@ -163,7 +160,7 @@
   .text-3xs { @apply text-[0.625rem] leading-tight; }
   .text-2xs { @apply text-[0.7rem] leading-tight; }
 
-  h1 { @apply text-lg sm:text-xl md:text-2xl; } /* Default sizes adjusted for hierarchy */
+  h1 { @apply text-lg sm:text-xl md:text-2xl; }
   h2 { @apply text-base sm:text-lg md:text-xl; }
   h3 { @apply text-sm sm:text-base md:text-lg; }
 
@@ -191,7 +188,7 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    @apply outline-2 outline-offset-2 outline-accent;
+    @apply outline-2 outline-offset-2 outline-accent; /* Light gray outline */
   }
 }
 
@@ -220,8 +217,8 @@
   }
 
   .neumorphic-button {
-    background-color: hsl(var(--card));
-    color: hsl(var(--card-foreground));
+    background-color: hsl(var(--card)); /* Dark card background */
+    color: hsl(var(--primary)); /* White text */
     box-shadow: var(--neumorphic-shadow-light);
     border: 1px solid hsl(var(--border) / 0.5);
     @apply rounded-lg font-semibold transition-all duration-200 active:shadow-[var(--neumorphic-shadow-light-inset)] active:scale-[0.97] hover:opacity-90 hover:brightness-110;
@@ -229,18 +226,16 @@
   }
 
   .neumorphic-button-primary {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background-color: hsl(var(--accent)); /* Light Gray background */
+    color: hsl(var(--accent-foreground)); /* Black text */
     box-shadow: var(--neumorphic-shadow-primary);
-    border: 1px solid hsl(var(--primary) / 0.6);
-    @apply rounded-lg font-bold transition-all duration-200 active:scale-[0.96] hover:brightness-110;
-    /* animation: button-hover-glow 1.5s ease-in-out infinite alternate; */ /* Optional, uncomment if desired */
+    border: 1px solid hsl(var(--accent) / 0.6);
+    @apply rounded-lg font-bold transition-all duration-200 active:scale-[0.96] hover:brightness-105;
     @apply text-2xs px-2 py-1 h-7 sm:text-xs sm:px-2.5 sm:py-1.5 sm:h-8; 
   }
   .neumorphic-button-primary:active {
-    box-shadow: var(--neumorphic-shadow-primary-inset); /* Simpler active state for primary */
-    background-color: hsl(var(--primary-darker));
-    /* animation: button-press-accent 0.2s ease-out forwards; */ /* Removed to simplify, shadow change is enough */
+    box-shadow: var(--neumorphic-shadow-primary-inset);
+    background-color: hsl(var(--accent-hue) var(--accent-saturation) calc(var(--accent-lightness) - 5%)); /* Slightly darker gray */
   }
 
 
@@ -248,10 +243,11 @@
     @apply text-lg px-8 py-4 h-16;
   }
 
+  /* Gradient text will use primary (White) and accent (Light Gray) */
   .gradient-text {
     @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary;
-    background-size: 250% auto; 
-    animation: gradient-flow 3s ease-in-out infinite alternate;
+    background-size: 200% auto; 
+    animation: gradient-flow 4s ease-in-out infinite alternate;
   }
 
   .edge-to-edge {
@@ -288,6 +284,8 @@
   }
 
   .progress-bar-fill {
+    /* Ensure progress bar fill uses primary (White) or accent (Light Gray) */
+    background-image: linear-gradient(to right, hsl(var(--accent)), hsl(var(--primary)));
     transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
   }
 }
