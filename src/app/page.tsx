@@ -673,7 +673,7 @@ const MinimalLoginModal: React.FC<{
   
   useEffect(() => {
     if (currentUser && isOpen) {
-      router.push('/dashboard'); // Or onboarding if not completed
+      router.push('/dashboard'); 
       onClose();
     }
   }, [currentUser, router, isOpen, onClose]);
@@ -688,7 +688,6 @@ const MinimalLoginModal: React.FC<{
     const success = await loginWithEmail(email, password);
     setIsLoggingIn(false);
     if (success) {
-      // Navigation is handled by PlanContext's onAuthStateChanged
       onClose();
     }
   };
@@ -851,6 +850,7 @@ const LandingPage: React.FC = () => {
   const parallaxBg1Ref = useRef<HTMLDivElement>(null);
   const parallaxBg2Ref = useRef<HTMLDivElement>(null);
 
+
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
@@ -907,7 +907,7 @@ const LandingPage: React.FC = () => {
       });
       if (showExitIntent) setShowExitIntent(false); 
       setInitialModalEmail(email.trim()); 
-      setIsSignupModalOpen(true); 
+      openSignupModal(email.trim());
     } catch (error) {
       console.error("Error saving early access email:", error);
       toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
@@ -939,12 +939,13 @@ const LandingPage: React.FC = () => {
         },
         complete: () => {
           setShowDiscovery(true);
+          setCurrentDiscoveryStep(0); 
         }
       });
     } else {
        setShowDiscovery(true);
+       setCurrentDiscoveryStep(0);
     }
-    setCurrentDiscoveryStep(0);
   };
 
   const handleNextDiscoveryStep = () => {
@@ -973,6 +974,7 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     if (isClient && heroContentRef.current && !showDiscovery) {
+      anime.set(heroContentRef.current, { opacity: 0, translateY: 20 });
       anime({
         targets: heroContentRef.current,
         opacity: [0,1],
@@ -1002,29 +1004,26 @@ const LandingPage: React.FC = () => {
   }, [showDiscovery, isClient]);
 
   useEffect(() => {
-    if (showDiscovery) { 
-      if (discoveryStepContentRef.current) {
-        anime.set(discoveryStepContentRef.current, { opacity: 0, scale: 0.9, translateY: 20 });
-        anime({
-          targets: discoveryStepContentRef.current,
-          opacity: 1,
-          scale: 1,
-          translateY: 0,
-          duration: 500,
-          easing: 'easeOutExpo',
-          delay: 50, 
-        });
-      }
-
-      if (progressBarFillRef.current) {
-        const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
-        anime({
-          targets: progressBarFillRef.current,
-          width: `${progressPercentage}%`,
-          duration: 400,
-          easing: 'easeInOutQuad',
-        });
-      }
+    if (showDiscovery && discoveryStepContentRef.current) {
+      anime.set(discoveryStepContentRef.current, { opacity: 0, scale: 0.9, translateY: 20 });
+      anime({
+        targets: discoveryStepContentRef.current,
+        opacity: 1,
+        scale: 1,
+        translateY: 0,
+        duration: 500,
+        easing: 'easeOutExpo',
+        delay: 50, 
+      });
+    }
+    if (showDiscovery && progressBarFillRef.current) {
+      const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
+      anime({
+        targets: progressBarFillRef.current,
+        width: `${progressPercentage}%`,
+        duration: 400,
+        easing: 'easeInOutQuad',
+      });
     }
   }, [currentDiscoveryStep, showDiscovery, isClient]);
 
@@ -1078,7 +1077,7 @@ const LandingPage: React.FC = () => {
           </section>
         )}
 
-        {showDiscovery && (
+        {showDiscovery && currentStepData && (
           <section
             ref={discoveryContainerRef}
             className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center" 
@@ -1090,7 +1089,6 @@ const LandingPage: React.FC = () => {
               </div>
               
               <div ref={discoveryStepContentRef} className="relative min-h-[280px] sm:min-h-[320px] mb-6 sm:mb-10">
-                {currentStepData && (
                   <div className="flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4">
                     <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 animate-pulse-slow group">
                        {React.cloneElement(currentStepData.icon, { className: cn(currentStepData.icon.props.className, "group-hover:scale-110 transition-transform")})}
@@ -1102,7 +1100,6 @@ const LandingPage: React.FC = () => {
                       {currentStepData.description}
                     </p>
                   </div>
-                )}
               </div>
 
               <Button
@@ -1111,7 +1108,7 @@ const LandingPage: React.FC = () => {
                 size="lg"
                 className="w-full max-w-xs text-base sm:text-lg group py-2.5 hover:scale-105 active:animate-button-press transform transition-all duration-300"
               >
-                {currentStepData?.ctaText || "Next"}
+                {currentStepData.ctaText}
                 {currentDiscoveryStep < discoveryStepsContent.length - 1 && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
                 {currentDiscoveryStep === discoveryStepsContent.length - 1 && <Sparkles className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />}
               </Button>
@@ -1156,3 +1153,4 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+
