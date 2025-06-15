@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, PaletteIcon, Rocket, Brain as BrainIcon, Atom, Smile, Award, Users, AlertTriangle, LogIn } from 'lucide-react';
+import { Loader2, Zap, Sparkles, ArrowRight, CheckCircle, Gift, X, Mail, User, Lock, Image as ImageIcon, Eye, EyeOff, ThumbsUp, Palette, Rocket, Brain as BrainIcon, Atom, Smile, Award, Users, AlertTriangle, LogIn, PartyPopper, Gamepad2, Star } from 'lucide-react';
 import Image from 'next/image';
 import anime from 'animejs';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { validateHumanFace, type ValidateHumanFaceOutput } from '@/ai/flows/validate-human-face';
-
 
 const MinimalExitIntentPopup: React.FC<{
   isOpen: boolean;
@@ -32,14 +31,13 @@ const MinimalExitIntentPopup: React.FC<{
 
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
       anime({
         targets: dialogContentRef.current,
-        opacity: 1,
-        scale: 1,
-        translateY: 0,
-        duration: 300,
-        easing: 'easeOutQuad',
+        opacity: [0, 1],
+        scale: [0.9, 1],
+        translateY: [-20, 0],
+        duration: 400,
+        easing: 'easeOutQuint',
       });
     }
   }, [isOpen]);
@@ -47,7 +45,7 @@ const MinimalExitIntentPopup: React.FC<{
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast({ variant: "destructive", title: "Hold Up!", description: "Please enter a valid email address." });
+      toast({ variant: "destructive", title: "Yo!", description: "Gotta be a real email, fam." });
       return;
     }
     setIsSubmitting(true);
@@ -55,7 +53,7 @@ const MinimalExitIntentPopup: React.FC<{
       await onEmailSubmit(email);
       setEmail('');
     } catch (error) {
-      // Error toast handled by parent or onEmailSubmit
+      // Error toast handled by parent
     } finally {
       setIsSubmitting(false);
     }
@@ -67,16 +65,16 @@ const MinimalExitIntentPopup: React.FC<{
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent ref={dialogContentRef} className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
         <DialogHeader className="text-center">
-          <Gift className="h-8 w-8 text-primary mx-auto mb-2 animate-bounce" />
-          <DialogTitle className="text-lg sm:text-xl font-bold">Wait! Free AI Plan ✨</DialogTitle>
+          <Gift className="h-10 w-10 text-accent mx-auto mb-2 animate-bounce-slow" />
+          <DialogTitle className="text-lg sm:text-xl font-bold text-primary">Whoa! Free AI Plan! 🎉</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Get a sneak peek. Instant value, 100% free.
+            Sneak peek? Instant value, 100% free. Don't miss out!
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 mt-3">
           <Input
             type="email"
-            placeholder="Your Email for FREE Plan"
+            placeholder="Your Email for the Freebie"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="h-10 text-sm neumorphic-inset focus:animate-input-pulse"
@@ -85,11 +83,11 @@ const MinimalExitIntentPopup: React.FC<{
           />
           <Button
             type="submit"
-            className="w-full neumorphic-button-primary text-sm py-2.5 h-10 active:animate-button-press"
+            className="w-full neumorphic-button-primary text-sm py-2.5 h-10"
             disabled={isSubmitting}
             size="lg"
           >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Claim FREE Plan"}
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gimme My Free Plan!"}
             <Sparkles className="ml-2 h-4 w-4" />
           </Button>
         </form>
@@ -111,7 +109,7 @@ const SignupStep: React.FC<{
   prevText?: string;
   completeText?: string;
   nextDisabled?: boolean;
-}> = ({ title, children, onNext, onPrev, onComplete, currentStep, totalSteps, isCompleting, nextText = "Next", prevText = "Back", completeText = "Glow Up!", nextDisabled = false }) => {
+}> = ({ title, children, onNext, onPrev, onComplete, currentStep, totalSteps, isCompleting, nextText = "Next Level", prevText = "Go Back", completeText = "Start My GroZen!", nextDisabled = false }) => {
   const [isLoadingNext, setIsLoadingNext] = useState(false);
 
   const handleNext = async () => {
@@ -135,25 +133,25 @@ const SignupStep: React.FC<{
       <div>{children}</div>
       <div className="flex flex-col sm:flex-row gap-2 pt-2">
         {onPrev && currentStep > 0 && (
-          <Button variant="outline" onClick={onPrev} className="neumorphic-button flex-1 h-10 sm:h-11 text-sm active:animate-button-press">
+          <Button variant="outline" onClick={onPrev} className="neumorphic-button flex-1 h-10 sm:h-11 text-sm">
             {prevText}
           </Button>
         )}
         {currentStep === 0 && !onPrev && <div className="sm:flex-1 hidden sm:block"></div>}
         {onNext && currentStep < totalSteps - 1 && (
-          <Button onClick={handleNext} className="neumorphic-button-primary flex-1 h-10 sm:h-11 text-sm active:animate-button-press" disabled={isLoadingNext || nextDisabled}>
+          <Button onClick={handleNext} className="neumorphic-button-primary flex-1 h-10 sm:h-11 text-sm group" disabled={isLoadingNext || nextDisabled}>
             {isLoadingNext ? <Loader2 className="h-4 w-4 animate-spin" /> : nextText}
-            {!isLoadingNext && <ArrowRight className="ml-2 h-4 w-4" />}
+            {!isLoadingNext && <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />}
           </Button>
         )}
         {onComplete && currentStep === totalSteps - 1 && (
-          <Button onClick={handleComplete} className="neumorphic-button-primary flex-1 h-10 sm:h-11 text-sm active:animate-button-press" disabled={isCompleting}>
+          <Button onClick={handleComplete} className="neumorphic-button-primary flex-1 h-10 sm:h-11 text-sm group" disabled={isCompleting}>
             {isCompleting ? <Loader2 className="h-4 w-4 animate-spin" /> : completeText}
-            {!isCompleting && <Sparkles className="ml-2 h-4 w-4 animate-ping-slow" />}
+            {!isCompleting && <PartyPopper className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />}
           </Button>
         )}
       </div>
-      <ShadProgress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary transition-all duration-300" />
+      <ShadProgress value={((currentStep + 1) / totalSteps) * 100} className="h-2 mt-3 sm:mt-4 bg-gradient-to-r from-accent to-primary/80 transition-all duration-300 progress-bar-fill" />
     </div>
   );
 };
@@ -189,7 +187,7 @@ const MinimalSignupModal: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-  const resetAvatarState = useCallback(() => {
+   const resetAvatarState = useCallback(() => {
     setUploadedImageFile(null);
     setUploadedImagePreview(null);
     setSelectedAvatar(undefined);
@@ -202,14 +200,13 @@ const MinimalSignupModal: React.FC<{
   
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
-      anime({
+       anime({
         targets: dialogContentRef.current,
-        opacity: 1,
-        scale: 1,
-        translateY: 0,
-        duration: 350, 
-        easing: 'easeOutQuad', 
+        opacity: [0, 1],
+        scale: [0.95, 1],
+        translateY: [20, 0],
+        duration: 400,
+        easing: 'easeOutQuint', 
       });
     }
   }, [isOpen]);
@@ -239,7 +236,7 @@ const MinimalSignupModal: React.FC<{
   const checkUsernameAvailability = useCallback(async (name: string): Promise<boolean> => {
     if (!name.trim() || name.trim().length < 3) {
       setUsernameStatus('idle');
-      setUsernameError('Must be 3+ cool characters.');
+      setUsernameError('Needs 3+ cool characters, yo.');
       return false;
     }
     setUsernameStatus('checking');
@@ -250,7 +247,7 @@ const MinimalSignupModal: React.FC<{
       const docSnap = await getDoc(usernameDocRef);
       if (docSnap.exists()) {
         setUsernameStatus('taken');
-        setUsernameError('Bummer, that name is snatched!');
+        setUsernameError('Oof, that name is taken. Try another?');
         return false;
       } else {
         setUsernameStatus('available');
@@ -260,7 +257,7 @@ const MinimalSignupModal: React.FC<{
     } catch (error) {
       console.error("Error checking username:", error);
       setUsernameStatus('idle');
-      setUsernameError('Oops! Network glitch. Try again.');
+      setUsernameError('Network hiccup! Try that again.');
       return false;
     }
   }, []);
@@ -285,13 +282,13 @@ const MinimalSignupModal: React.FC<{
   const evaluatePasswordStrength = (pass: string) => {
     let strength = 0;
     let msg = "";
-    if (pass.length < 6) { msg = "Too short!"; strength = 10; }
-    else if (pass.length < 8) { msg = "Getting there..."; strength = 40; }
-    else { msg = "Nice!"; strength = 60; }
+    if (pass.length < 6) { msg = "Kinda weak sauce..."; strength = 10; }
+    else if (pass.length < 8) { msg = "Better!"; strength = 40; }
+    else { msg = "Nice one!"; strength = 60; }
 
     if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) { strength += 20; if (strength > 60) msg = "Solid!"; }
     if (/[0-9]/.test(pass)) { strength += 10; if (strength > 70) msg = "Strong!";}
-    if (/[^A-Za-z0-9]/.test(pass)) { strength += 10; if (strength > 80) msg = "Super Strong! 💪";}
+    if (/[^A-Za-z0-9]/.test(pass)) { strength += 10; if (strength > 80) msg = "Fort Knox! 💪";}
 
     setPasswordStrength(Math.min(100, strength));
     setPasswordMessage(msg);
@@ -307,7 +304,7 @@ const MinimalSignupModal: React.FC<{
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { 
-        setPhotoValidationError("Max file size is 2MB. Please choose a smaller image.");
+        setPhotoValidationError("Pic's too big (max 2MB). Try a smaller one!");
         setPhotoValidationStatus('error');
         setUploadedImageFile(null);
         setUploadedImagePreview(null);
@@ -323,7 +320,7 @@ const MinimalSignupModal: React.FC<{
             setPhotoValidationError('');
             setSelectedAvatar(undefined); 
         } else {
-            setPhotoValidationError("Could not read the selected file. Please try another image.");
+            setPhotoValidationError("Can't read that pic. Try another?");
             setPhotoValidationStatus('error');
             setUploadedImageFile(null);
             setUploadedImagePreview(null);
@@ -331,7 +328,7 @@ const MinimalSignupModal: React.FC<{
         }
       };
       reader.onerror = () => {
-        setPhotoValidationError("Error reading file. Please try another image.");
+        setPhotoValidationError("Error with that pic. Choose another one?");
         setPhotoValidationStatus('error');
         setUploadedImageFile(null);
         setUploadedImagePreview(null);
@@ -343,7 +340,7 @@ const MinimalSignupModal: React.FC<{
 
   const handleValidatePhoto = async () => {
     if (!uploadedImagePreview || typeof uploadedImagePreview !== 'string' || uploadedImagePreview.trim() === "") {
-      setPhotoValidationError("Please select or upload a valid image first.");
+      setPhotoValidationError("Gotta upload a pic first!");
       setPhotoValidationStatus('error');
       setSelectedAvatar(undefined); 
       return;
@@ -355,23 +352,23 @@ const MinimalSignupModal: React.FC<{
       if (result.isHumanFace) {
         setSelectedAvatar(uploadedImagePreview); 
         setPhotoValidationStatus('validated');
-        toast({ title: "Face Detected! 👍", description: "Looks good! You can proceed." });
+        toast({ title: "Lookin' Good! 😎", description: "Face detected! You're set." });
       } else {
         setPhotoValidationStatus('error');
-        setPhotoValidationError(result.reason || "This doesn't look like a human face. Please upload a clear photo of your face.");
+        setPhotoValidationError(result.reason || "AI says: Not a human face. Try a clear pic of YOU!");
         setSelectedAvatar(undefined); 
       }
     } catch (error) {
       console.error("Error validating photo:", error);
       setPhotoValidationStatus('error');
-      setPhotoValidationError("Validation failed. Please try again or use a different photo.");
+      setPhotoValidationError("AI's having a moment. Try again or a diff photo.");
       setSelectedAvatar(undefined); 
     }
   };
 
   const validateStep0 = async () => { 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast({ variant: "destructive", title: "Hmm...", description: "That email doesn't look quite right." });
+      toast({ variant: "destructive", title: "Hmm...", description: "That email looks a bit off." });
       return false;
     }
     setCurrentStep(1);
@@ -380,7 +377,7 @@ const MinimalSignupModal: React.FC<{
 
   const validateStep1 = async () => { 
     if (usernameStatus === 'checking') {
-        toast({variant: "default", title: "Hold on...", description: "Checking if this awesome name is free..."});
+        toast({variant: "default", title: "Hang tight...", description: "Checking if this epic name is free..."});
         return false; 
     }
     const isAvailable = await checkUsernameAvailability(username); 
@@ -393,7 +390,7 @@ const MinimalSignupModal: React.FC<{
 
   const validateStep2 = async () => { 
     if (password.length < 6) {
-      toast({ variant: "destructive", title: "Weak Sauce!", description: "Password needs to be at least 6 characters." });
+      toast({ variant: "destructive", title: "Hold Up!", description: "Password needs 6+ characters to be strong!" });
       return false;
     }
     setCurrentStep(3);
@@ -405,28 +402,24 @@ const MinimalSignupModal: React.FC<{
       setCurrentStep(4); 
       return true;
     }
-    toast({ variant: "destructive", title: "Photo Required", description: "Please upload and validate your face photo to continue." });
+    toast({ variant: "destructive", title: "Selfie Time!", description: "Gotta upload & validate your pic to move on!" });
     return false;
   };
 
   const handleCompleteSignup = async () => {
     setIsCompleting(true);
     if (!selectedAvatar || typeof selectedAvatar !== 'string' || selectedAvatar.trim() === "") {
-      toast({
-        variant: "destructive",
-        title: "Avatar Required",
-        description: "A validated profile photo is essential. Please ensure it's uploaded and validated.",
-      });
+      toast({ variant: "destructive", title: "Avatar MIA!", description: "Your validated pic is a must!"});
       setIsCompleting(false);
       return; 
     }
      if (!email || !username || !password ) { 
-      toast({ variant: "destructive", title: "Missing Info", description: "Email, username, or password missing." });
+      toast({ variant: "destructive", title: "Missing Bits!", description: "Email, username, or password missing." });
       setIsCompleting(false);
       return;
     }
     if (usernameStatus !== 'available') { 
-        toast({ variant: "destructive", title: "Username Issue", description: "Please pick an available username first." });
+        toast({ variant: "destructive", title: "Username Snag!", description: "Pick an available username first." });
         setIsCompleting(false);
         return;
     }
@@ -435,8 +428,8 @@ const MinimalSignupModal: React.FC<{
     setIsCompleting(false);
     if (success) {
       toast({
-        title: "WELCOME TO GROZEN! 🎉",
-        description: "You're officially in! Get ready to unleash your awesome.",
+        title: "WELCOME TO GROZEN! 🎉🚀",
+        description: "You're in! Get ready to unleash your awesome.",
         duration: 6000,
       });
     }
@@ -444,7 +437,7 @@ const MinimalSignupModal: React.FC<{
 
   const stepsConfig = [
     { 
-      title: "Your Email to Start",
+      title: "Your Email to Kick Things Off",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-email" className="text-muted-foreground sr-only">Email Address</Label>
@@ -457,7 +450,7 @@ const MinimalSignupModal: React.FC<{
       onNext: validateStep0
     },
     { 
-      title: "Create Your GroZen Username",
+      title: "Choose Your Epic GroZen Name",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-username" className="text-muted-foreground sr-only">Username</Label>
@@ -466,21 +459,21 @@ const MinimalSignupModal: React.FC<{
             <Input
               id="signup-username"
               type="text"
-              placeholder="YourUniqueName (letters, numbers, _)"
+              placeholder="YourAwesomeName (letters, numbers, _)"
               value={username}
               onChange={handleUsernameChange}
               className={cn(
                 "pl-10 h-11 neumorphic-inset text-sm focus:animate-input-pulse",
-                usernameStatus === 'available' && "border-green-500 animate-pulse-green", 
-                usernameStatus === 'taken' && "border-red-500 animate-pulse-red"
+                usernameStatus === 'available' && "border-green-500/70 animate-pulse-green", 
+                usernameStatus === 'taken' && "border-red-500/70 animate-pulse-red"
               )}
             />
             {usernameStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
-            {usernameStatus === 'available' && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />}
-            {usernameStatus === 'taken' && <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-red-500" />}
+            {usernameStatus === 'available' && <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-400" />}
+            {usernameStatus === 'taken' && <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-red-400" />}
           </div>
-          {usernameError && <p className="text-xs text-red-500 text-center pt-1 h-4">{usernameError}</p>}
-          {usernameStatus === 'available' && <p className="text-xs text-green-500 text-center pt-1 h-4">Sweet, it's yours! ✨</p>}
+          {usernameError && <p className="text-xs text-red-400 text-center pt-1 h-4">{usernameError}</p>}
+          {usernameStatus === 'available' && <p className="text-xs text-green-400 text-center pt-1 h-4">Sweet, it's yours! ✨</p>}
           {!usernameError && usernameStatus !== 'available' && usernameStatus !== 'checking' && <div className="h-4 pt-1"></div>}
         </div>
       ),
@@ -489,13 +482,13 @@ const MinimalSignupModal: React.FC<{
       nextDisabled: usernameStatus !== 'available'
     },
     { 
-      title: "Secure Your Account",
+      title: "Create a Super Password",
       content: (
         <div className="space-y-2">
           <Label htmlFor="signup-password" className="text-muted-foreground sr-only">Password</Label>
           <div className="relative">
              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-             <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Make it strong!" value={password} onChange={handlePasswordChange} className="pl-10 pr-10 h-11 neumorphic-inset text-sm focus:animate-input-pulse" />
+             <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Make it uncrackable!" value={password} onChange={handlePasswordChange} className="pl-10 pr-10 h-11 neumorphic-inset text-sm focus:animate-input-pulse" />
              <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 hover:bg-transparent active:bg-transparent" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
                {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-primary" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-primary" />}
              </Button>
@@ -505,7 +498,7 @@ const MinimalSignupModal: React.FC<{
               <ShadProgress
                 value={passwordStrength}
                 className={cn(
-                  "h-1.5 flex-1 transition-all duration-300",
+                  "h-1.5 flex-1 transition-all duration-300 progress-bar-fill",
                   passwordStrength < 30 ? "[&>div]:bg-red-500" :
                   passwordStrength < 60 ? "[&>div]:bg-yellow-500" :
                   passwordStrength < 80 ? "[&>div]:bg-green-400" :
@@ -513,7 +506,7 @@ const MinimalSignupModal: React.FC<{
                 )}
               />
               <p className="text-xs text-muted-foreground text-center h-4">
-                {passwordMessage || (password.length > 0 && "Keep typing...")}
+                {passwordMessage || (password.length > 0 && "Keep going...")}
               </p>
             </div>
           )}
@@ -524,11 +517,11 @@ const MinimalSignupModal: React.FC<{
       onPrev: () => setCurrentStep(1)
     },
     { 
-      title: "Upload Your Profile Photo",
+      title: "Show Us Your Awesome Face!",
       content: (
         <div className="space-y-3">
           <p className="text-center text-muted-foreground text-xs">
-            A clear photo of your face is required. No cartoons, objects, or heavily obscured faces please.
+            Clear face pic required! No cartoons, pets, or hiding. AI will check it! 😉
           </p>
           <Input
             id="avatar-upload"
@@ -541,7 +534,7 @@ const MinimalSignupModal: React.FC<{
           />
           {uploadedImagePreview && (
             <div className="mt-3 space-y-2 text-center">
-              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className={cn("rounded-lg mx-auto neumorphic-sm object-cover ring-2", photoValidationStatus === 'validated' ? "ring-green-500" : "ring-transparent")} data-ai-hint="user avatar preview" />
+              <Image src={uploadedImagePreview} alt="Avatar preview" width={100} height={100} className={cn("rounded-lg mx-auto neumorphic-sm object-cover ring-2", photoValidationStatus === 'validated' ? "ring-green-400" : "ring-transparent")} data-ai-hint="user avatar preview" />
               {photoValidationStatus !== 'validated' && ( 
                 <Button
                   onClick={handleValidatePhoto}
@@ -549,14 +542,14 @@ const MinimalSignupModal: React.FC<{
                   disabled={photoValidationStatus === 'validating' || photoValidationStatus === 'uploading' || !uploadedImagePreview}
                 >
                   {photoValidationStatus === 'validating' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
-                  Validate Photo
+                  AI Face Check!
                 </Button>
               )}
             </div>
           )}
-          {photoValidationStatus === 'validating' && <p className="text-xs text-primary text-center flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" />Validating with AI...</p>}
-          {photoValidationStatus === 'validated' && <p className="text-xs text-green-500 text-center flex items-center justify-center"><ThumbsUp className="h-4 w-4 mr-2" />Face Detected! Looks Great.</p>}
-          {photoValidationError && <p className="text-xs text-red-500 text-center pt-1">{photoValidationError}</p>}
+          {photoValidationStatus === 'validating' && <p className="text-xs text-primary text-center flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" />AI is checking your pic...</p>}
+          {photoValidationStatus === 'validated' && <p className="text-xs text-green-400 text-center flex items-center justify-center"><ThumbsUp className="h-4 w-4 mr-2" />Awesome! Face verified.</p>}
+          {photoValidationError && <p className="text-xs text-red-400 text-center pt-1">{photoValidationError}</p>}
           { (uploadedImagePreview || photoValidationError) && ( 
             <Button
                 variant="outline"
@@ -565,7 +558,7 @@ const MinimalSignupModal: React.FC<{
                 className="neumorphic-button text-xs h-8 w-full sm:w-auto mt-2"
                 disabled={photoValidationStatus === 'validating'} 
             >
-                <X className="mr-2 h-3 w-3" /> Clear Photo / Try Another
+                <X className="mr-2 h-3 w-3" /> Clear Pic / Try Another
             </Button>
           )}
         </div>
@@ -575,13 +568,13 @@ const MinimalSignupModal: React.FC<{
       nextDisabled: photoValidationStatus !== 'validated' || !selectedAvatar 
     },
     { 
-      title: "You're All Set!",
+      title: "You're All Set to Rock!",
       content: (
         <div className="text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto animate-bounce-slow" />
-          <p>Your GroZen profile is ready!</p>
+          <PartyPopper className="h-14 w-14 text-accent mx-auto animate-bounce-slow" />
+          <p className="text-lg font-semibold text-primary">Your GroZen Profile is Ready!</p>
           {selectedAvatar && <Image src={selectedAvatar} alt="Your selected avatar" width={80} height={80} className="rounded-full mx-auto neumorphic-sm object-cover ring-4 ring-primary/50 shadow-2xl" data-ai-hint="user avatar" />}
-          <p className="text-xs text-muted-foreground">Click "Glow Up!" to start your journey.</p>
+          <p className="text-xs text-muted-foreground">Hit "Start My GroZen!" to begin your wellness adventure.</p>
         </div>
       ),
       onComplete: handleCompleteSignup, 
@@ -611,7 +604,7 @@ const MinimalSignupModal: React.FC<{
           <div className="mx-auto mb-2">
             <Logo size="text-lg" />
           </div>
-          <DialogTitle className="text-xl sm:text-2xl font-bold text-center">Join GroZen - Quick & Free!</DialogTitle>
+          <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-primary">Join GroZen - It's Quick & Free! ⚡</DialogTitle>
         </DialogHeader>
         <SignupStep
           title={stepsConfig[currentStep].title}
@@ -622,15 +615,16 @@ const MinimalSignupModal: React.FC<{
           onComplete={stepsConfig[currentStep].onComplete}
           isCompleting={isCompleting}
           nextDisabled={stepsConfig[currentStep].nextDisabled}
+          completeText="Start My GroZen! 🚀"
         >
           {stepsConfig[currentStep].content}
         </SignupStep>
         <div className="text-center mt-4">
           <button
             onClick={onSwitchToLogin}
-            className="text-xs text-primary hover:underline"
+            className="text-xs text-primary hover:underline hover:text-accent"
           >
-            Already have an account? Login
+            Already got an account? Login Here!
           </button>
         </div>
       </DialogContent>
@@ -659,14 +653,13 @@ const MinimalLoginModal: React.FC<{
 
   useEffect(() => {
     if (isOpen && dialogContentRef.current) {
-      anime.set(dialogContentRef.current, { opacity: 0, scale: 0.9, translateY: -10 });
       anime({
         targets: dialogContentRef.current,
-        opacity: 1,
-        scale: 1,
-        translateY: 0,
-        duration: 350,
-        easing: 'easeOutQuad',
+        opacity: [0, 1],
+        scale: [0.95, 1],
+        translateY: [20, 0],
+        duration: 400,
+        easing: 'easeOutQuint',
       });
     }
   }, [isOpen]);
@@ -681,7 +674,7 @@ const MinimalLoginModal: React.FC<{
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      toast({ variant: "destructive", title: "Oops!", description: "Email and password are required." });
+      toast({ variant: "destructive", title: "Hold Up!", description: "Email and password, please!" });
       return;
     }
     setIsLoggingIn(true);
@@ -695,7 +688,7 @@ const MinimalLoginModal: React.FC<{
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotPasswordEmail.trim()) {
-      toast({ variant: "destructive", title: "Email Required", description: "Please enter your email." });
+      toast({ variant: "destructive", title: "Email?", description: "Need your email for the reset link." });
       return;
     }
     setIsSendingReset(true);
@@ -727,45 +720,45 @@ const MinimalLoginModal: React.FC<{
             <div className="mx-auto mb-2">
               <Logo size="text-lg" />
             </div>
-            <DialogTitle className="text-xl sm:text-2xl font-bold text-center">Welcome Back to GroZen!</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-primary">Welcome Back to GroZen! 👋</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="login-email">Email</Label>
+              <Label htmlFor="login-email" className="text-xs">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input id="login-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11 neumorphic-inset text-sm" />
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="login-password">Password</Label>
+              <Label htmlFor="login-password text-xs">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="Your Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10 h-11 neumorphic-inset text-sm" />
+                <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="Your Secret Code" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10 h-11 neumorphic-inset text-sm" />
                 <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 hover:bg-transparent active:bg-transparent" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
                   {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-primary" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-primary" />}
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full neumorphic-button-primary h-11 text-sm" disabled={isLoggingIn}>
-              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login Securely"}
-              {!isLoggingIn && <LogIn className="ml-2 h-4 w-4" />}
+            <Button type="submit" className="w-full neumorphic-button-primary h-11 text-sm group" disabled={isLoggingIn}>
+              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login & Let's Go!"}
+              {!isLoggingIn && <LogIn className="ml-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />}
             </Button>
           </form>
           <div className="text-center mt-4 space-y-2">
             <button
               onClick={() => setIsForgotPasswordOpen(true)}
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-primary hover:underline hover:text-accent"
             >
-              Forgot Password?
+              Forgot Password? No sweat!
             </button>
             <p className="text-xs text-muted-foreground">
               New to GroZen?{' '}
               <button
                 onClick={onSwitchToSignup}
-                className="font-semibold text-primary hover:underline"
+                className="font-semibold text-primary hover:underline hover:text-accent"
               >
-                Create an Account
+                Sign Up - It's Free!
               </button>
             </p>
           </div>
@@ -776,14 +769,14 @@ const MinimalLoginModal: React.FC<{
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
         <DialogContent className="neumorphic max-w-xs mx-auto p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-            <DialogDescription>
-              Enter your email and we'll send you a link to reset your password.
+            <DialogTitle className="text-primary">Reset Password</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs">
+              Enter your email, we'll send a reset link. Easy peasy.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 pt-2">
             <div>
-              <Label htmlFor="forgot-password-email">Email</Label>
+              <Label htmlFor="forgot-password-email" className="text-xs">Email</Label>
               <Input
                 id="forgot-password-email"
                 type="email"
@@ -811,21 +804,21 @@ const MinimalLoginModal: React.FC<{
 const discoveryStepsContent = [
   {
     icon: <Atom className="h-10 w-10 sm:h-12 sm:w-12" />,
-    title: "Your AI Blueprint",
-    description: "GroZen's AI crafts a unique wellness plan—fitness, food, and focus—all personalized just for YOU after a few quick insights.",
-    ctaText: "Next: Vibe Checks!",
+    title: "Your Secret Weapon: AI Coach 🤖",
+    description: "GroZen's AI crafts a unique wellness plan—fitness, food, and focus—all personalized for YOU. No more guessing!",
+    ctaText: "Next Quest!",
   },
   {
     icon: <Smile className="h-10 w-10 sm:h-12 sm:w-12" />,
-    title: "Vibe Checks & Wins",
-    description: "Log your mood, snap a selfie, and get instant, supportive AI feedback. Visualize your progress and celebrate every win!",
-    ctaText: "Next: Fun Challenges!",
+    title: "Unlock Good Vibes Only 😊",
+    description: "Log your mood, snap a selfie (optional!), and get instant, supportive AI feedback. Watch your progress and celebrate every win!",
+    ctaText: "Let's Go!",
   },
   {
     icon: <Award className="h-10 w-10 sm:h-12 sm:w-12" />,
-    title: "Challenges & Habits",
-    description: "Join exciting challenges, build healthy habits, and see how you stack up on the leaderboard. Wellness made fun!",
-    ctaText: "Claim Your Free Plan & Sign Up",
+    title: "Crush Goals & Share Wins 🏆",
+    description: "Join fun challenges, build healthy habits, and see how you stack up on the leaderboard. Wellness just got a major fun upgrade!",
+    ctaText: "Reveal My GroZen Plan!",
   },
 ];
 
@@ -854,9 +847,9 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
     const handleMouseLeave = (e: MouseEvent) => {
-      if (!isSignupModalOpen && !isLoginModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v5')) {
+      if (!isSignupModalOpen && !isLoginModalOpen && !showDiscovery && e.clientY <= 10 && !localStorage.getItem('grozen_exit_intent_shown_minimal_v6')) { // Incremented version
         setShowExitIntent(true);
-        localStorage.setItem('grozen_exit_intent_shown_minimal_v5', 'true');
+        localStorage.setItem('grozen_exit_intent_shown_minimal_v6', 'true');
       }
     };
     
@@ -866,8 +859,8 @@ const LandingPage: React.FC = () => {
         const handleScroll = () => {
           if (parallaxBg1Ref.current && parallaxBg2Ref.current) {
             const scrollY = window.scrollY;
-            anime({ targets: parallaxBg1Ref.current, translateY: scrollY * 0.2, easing: 'linear', duration: 50 });
-            anime({ targets: parallaxBg2Ref.current, translateY: scrollY * 0.1, easing: 'linear', duration: 50 });
+            anime({ targets: parallaxBg1Ref.current, translateY: scrollY * 0.15, easing: 'linear', duration: 0 });
+            anime({ targets: parallaxBg2Ref.current, translateY: scrollY * 0.08, easing: 'linear', duration: 0 });
           }
         };
         window.addEventListener('scroll', handleScroll);
@@ -897,12 +890,12 @@ const LandingPage: React.FC = () => {
     try {
       await addDoc(collection(db, "earlyAccessSignups"), {
         email: email.trim(),
-        source: 'exit_intent_minimal_v5', 
+        source: 'exit_intent_minimal_v6', 
         createdAt: serverTimestamp()
       });
       toast({
-        title: "Awesome! ✨",
-        description: "Your free AI mini-plan is on its way! Now, let's create your account.",
+        title: "Sweet! ✨",
+        description: "Your free AI mini-plan is coming! Now, let's get your account set up.",
         duration: 4000
       });
       if (showExitIntent) setShowExitIntent(false); 
@@ -910,7 +903,7 @@ const LandingPage: React.FC = () => {
       openSignupModal(email.trim());
     } catch (error) {
       console.error("Error saving early access email:", error);
-      toast({ variant: "destructive", title: "Oh No!", description: "Could not save your email. Please try again." });
+      toast({ variant: "destructive", title: "Oh Snap!", description: "Couldn't save your email. Try again?" });
     }
   };
 
@@ -925,35 +918,35 @@ const LandingPage: React.FC = () => {
     setIsSignupModalOpen(false);
   };
 
-  const startDiscovery = () => {
+ const startDiscovery = () => {
     if (heroContentRef.current) {
       anime({
         targets: heroContentRef.current,
         opacity: [1, 0],
-        translateY: [0, -30],
-        scale: [1, 0.95],
-        duration: 400,
+        translateY: [0, -50],
+        scale: [1, 0.9],
+        duration: 500,
         easing: 'easeInExpo',
         begin: () => {
           if (heroContentRef.current) heroContentRef.current.style.pointerEvents = 'none';
         },
         complete: () => {
           setShowDiscovery(true);
-          setCurrentDiscoveryStep(0); 
+          // The useEffect for showDiscovery will handle discoveryContainerRef animation
         }
       });
     } else {
-       setShowDiscovery(true);
-       setCurrentDiscoveryStep(0);
+       setShowDiscovery(true); // Fallback if ref is not available (should not happen ideally)
     }
   };
+
 
   const handleNextDiscoveryStep = () => {
     if (discoveryStepContentRef.current) {
       anime({ 
         targets: discoveryStepContentRef.current,
         opacity: 0,
-        scale: 0.9,
+        scale: 0.95,
         translateY: -20,
         duration: 350,
         easing: 'easeInExpo',
@@ -961,27 +954,24 @@ const LandingPage: React.FC = () => {
           if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
             setCurrentDiscoveryStep(prev => prev + 1);
           } else {
-            openSignupModal(initialModalEmail);
+            // This case should ideally not be hit if the button changes on the last step
+            openSignupModal(initialModalEmail); 
           }
         }
       });
-    } else if (currentDiscoveryStep < discoveryStepsContent.length - 1) {
-        setCurrentDiscoveryStep(prev => prev + 1);
-    } else {
-        openSignupModal(initialModalEmail);
     }
   };
 
   useEffect(() => {
     if (isClient && heroContentRef.current && !showDiscovery) {
-      anime.set(heroContentRef.current, { opacity: 0, translateY: 20 });
+      anime.set(heroContentRef.current, { opacity: 0, translateY: 30 });
       anime({
         targets: heroContentRef.current,
         opacity: [0,1],
-        translateY: [20,0],
-        duration: 600,
+        translateY: [30,0],
+        duration: 700,
         delay: 100,
-        easing: 'easeOutQuad',
+        easing: 'easeOutQuint',
       });
     }
   }, [isClient, showDiscovery]);
@@ -989,7 +979,7 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     if (showDiscovery && discoveryContainerRef.current) {
-      anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 30, scale: 0.95 });
+      anime.set(discoveryContainerRef.current, { opacity: 0, translateY: 50, scale: 0.9 });
       anime({
           targets: discoveryContainerRef.current,
           opacity: 1,
@@ -998,31 +988,29 @@ const LandingPage: React.FC = () => {
           duration: 600,
           easing: 'easeOutExpo',
       });
-    } else if (!showDiscovery && discoveryContainerRef.current) {
-        anime.set(discoveryContainerRef.current, { opacity: 0 });
     }
   }, [showDiscovery, isClient]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (showDiscovery && discoveryStepContentRef.current) {
-      anime.set(discoveryStepContentRef.current, { opacity: 0, scale: 0.9, translateY: 20 });
+      discoveryStepContentRef.current.style.opacity = '0'; 
       anime({
         targets: discoveryStepContentRef.current,
-        opacity: 1,
-        scale: 1,
-        translateY: 0,
+        opacity: [0,1],
+        scale: [0.9, 1],
+        translateY: [20, 0],
         duration: 500,
         easing: 'easeOutExpo',
-        delay: 50, 
+        delay: 100, 
       });
     }
     if (showDiscovery && progressBarFillRef.current) {
       const progressPercentage = ((currentDiscoveryStep + 1) / discoveryStepsContent.length) * 100;
       anime({
         targets: progressBarFillRef.current,
-        width: `${progressPercentage}%`,
-        duration: 400,
-        easing: 'easeInOutQuad',
+        width: [`${((currentDiscoveryStep) / discoveryStepsContent.length) * 100}%`, `${progressPercentage}%`],
+        duration: 600,
+        easing: 'easeInOutQuint',
       });
     }
   }, [currentDiscoveryStep, showDiscovery, isClient]);
@@ -1037,8 +1025,9 @@ const LandingPage: React.FC = () => {
       </div>
     );
   }
+  
+  const currentStepData = showDiscovery ? discoveryStepsContent[currentDiscoveryStep] : null;
 
-  const currentStepData = discoveryStepsContent[currentDiscoveryStep];
 
   return (
     <>
@@ -1047,31 +1036,30 @@ const LandingPage: React.FC = () => {
           <section
             ref={heroContentRef}
             className="min-h-[80vh] sm:min-h-screen flex flex-col items-center justify-center text-center p-4 sm:p-6 relative"
-            style={{ perspective: '1000px' }} 
           >
-            <div ref={parallaxBg1Ref} className="absolute -top-20 -left-20 w-72 h-72 bg-primary/5 rounded-full animate-pulse-bg opacity-50 " data-ai-hint="abstract shape"></div>
-            <div ref={parallaxBg2Ref} className="absolute -bottom-20 -right-20 w-60 h-60 bg-accent/5 rounded-full animate-pulse-bg opacity-50 " data-ai-hint="abstract shape"></div>
+            <div ref={parallaxBg1Ref} className="absolute -top-1/4 -left-1/4 w-3/4 h-3/4 max-w-xl max-h-xl bg-gradient-to-br from-primary/5 via-accent/5 to-transparent rounded-full animate-pulse-bg-soft opacity-60 filter blur-2xl" data-ai-hint="abstract shape gradient"></div>
+            <div ref={parallaxBg2Ref} className="absolute -bottom-1/4 -right-1/4 w-2/3 h-2/3 max-w-lg max-h-lg bg-gradient-to-tl from-accent/5 via-primary/5 to-transparent rounded-full animate-pulse-bg-soft opacity-50 filter blur-xl" data-ai-hint="abstract shape gradient"></div>
 
             <div className="relative z-10 flex flex-col items-center">
               <div className="mb-4 sm:mb-6">
                 <Logo size="text-3xl sm:text-4xl md:text-5xl" />
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-3 sm:mb-4 leading-tight">
-                Unlock Your <span className="gradient-text">GroZen Power!</span>
+                GroZen: Level Up Your <span className="gradient-text">Vibe!</span> ✨
               </h1>
               <p className="text-base sm:text-lg text-muted-foreground max-w-md sm:max-w-xl mb-6 sm:mb-8">
-                Discover your personalized AI wellness journey. It's fun, fast, and <strong className="text-primary font-semibold">100% Free.</strong>
+                Your Free AI Wellness Quest! AI plans for fitness, mood & focus. Smash goals, feel awesome.
               </p>
               <Button
                 onClick={startDiscovery}
                 variant="neumorphic-primary"
                 size="xl"
-                className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 hover:scale-105 hover:shadow-xl active:animate-button-press transform transition-all duration-300"
+                className="w-full max-w-xs text-base sm:text-lg group py-3 mb-3 active:animate-button-press-accent hover:shadow-2xl hover:shadow-primary/30"
               >
-                Begin Your Journey <Zap className="ml-2 h-5 w-5 group-hover:animate-pulse-slow" />
+                Start Your Adventure! <Gamepad2 className="ml-2 h-5 w-5 group-hover:animate-pulse-slow" />
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                No card. No catch. Just results.
+                100% Free. No Catch. Just Awesome.
               </p>
             </div>
           </section>
@@ -1081,19 +1069,18 @@ const LandingPage: React.FC = () => {
           <section
             ref={discoveryContainerRef}
             className="py-10 sm:py-16 px-4 sm:px-6 flex flex-col items-center min-h-[80vh] justify-center" 
-            style={{ perspective: '1000px' }} 
           >
             <div className="w-full max-w-lg mx-auto text-center">
               <div className="w-full bg-muted rounded-full h-2.5 mb-6 sm:mb-10 neumorphic-inset-sm overflow-hidden">
-                <div ref={progressBarFillRef} className="bg-gradient-to-r from-primary via-accent to-primary/70 h-2.5 rounded-full" style={{ width: '0%' }}></div>
+                <div ref={progressBarFillRef} className="bg-gradient-to-r from-primary via-accent to-primary/70 h-2.5 rounded-full progress-bar-fill" style={{ width: '0%' }}></div>
               </div>
               
               <div ref={discoveryStepContentRef} className="relative min-h-[280px] sm:min-h-[320px] mb-6 sm:mb-10">
                   <div className="flex flex-col items-center justify-start p-2 space-y-3 sm:space-y-4">
-                    <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 animate-pulse-slow group">
-                       {React.cloneElement(currentStepData.icon, { className: cn(currentStepData.icon.props.className, "group-hover:scale-110 transition-transform")})}
+                    <div className="p-3 sm:p-4 bg-primary/10 rounded-full text-primary mb-2 sm:mb-3 group icon-pop-in">
+                       {React.cloneElement(currentStepData.icon, { className: cn(currentStepData.icon.props.className, "group-hover:scale-110 transition-transform text-accent")})}
                     </div>
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary">
                       {currentStepData.title}
                     </h2>
                     <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
@@ -1102,23 +1089,34 @@ const LandingPage: React.FC = () => {
                   </div>
               </div>
 
-              <Button
-                onClick={handleNextDiscoveryStep}
-                variant="neumorphic-primary"
-                size="lg"
-                className="w-full max-w-xs text-base sm:text-lg group py-2.5 hover:scale-105 active:animate-button-press transform transition-all duration-300"
-              >
-                {currentStepData.ctaText}
-                {currentDiscoveryStep < discoveryStepsContent.length - 1 && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
-                {currentDiscoveryStep === discoveryStepsContent.length - 1 && <Sparkles className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />}
-              </Button>
-              
-              {currentDiscoveryStep === discoveryStepsContent.length - 1 && (
-                <p className="mt-4 text-xs">
-                  <button onClick={openLoginModal} className="text-primary hover:underline">
-                    Already have an account? Login
-                  </button>
-                </p>
+              {currentDiscoveryStep < discoveryStepsContent.length - 1 ? (
+                  <Button
+                    onClick={handleNextDiscoveryStep}
+                    variant="neumorphic-primary"
+                    size="lg"
+                    className="w-full max-w-xs text-base sm:text-lg group py-2.5 active:animate-button-press-accent hover:shadow-lg hover:shadow-primary/20"
+                  >
+                    {currentStepData.ctaText}
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <Button
+                    onClick={() => openSignupModal(initialModalEmail)}
+                    variant="neumorphic-primary"
+                    size="lg"
+                    className="w-full max-w-xs text-base sm:text-lg group py-2.5 active:animate-button-press-accent hover:shadow-lg hover:shadow-primary/20"
+                  >
+                    {currentStepData.ctaText}
+                    <Sparkles className="ml-2 h-5 w-5 group-hover:animate-ping-slow" />
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Already a GroZen Legend?{' '}
+                    <button onClick={openLoginModal} className="font-semibold text-primary hover:underline hover:text-accent">
+                      Login Here!
+                    </button>
+                  </p>
+                </div>
               )}
             </div>
           </section>
@@ -1153,4 +1151,3 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-

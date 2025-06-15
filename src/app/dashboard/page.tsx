@@ -17,12 +17,13 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SocialShareCard from '@/components/social-share-card';
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle } from 'lucide-react';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp } from 'lucide-react';
 import type { MoodLog, GroceryItem, ChartMoodLog } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
+import anime from 'animejs';
 
 // Mood emoji to numeric value mapping for chart
 const moodToValue: { [key: string]: number } = {
@@ -74,6 +75,8 @@ const DashboardContent: React.FC = () => {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [aiFeedbackToDisplay, setAiFeedbackToDisplay] = useState<string | null>(null);
+  const aiFeedbackCardRef = useRef<HTMLDivElement>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -100,6 +103,24 @@ const DashboardContent: React.FC = () => {
       setNewDisplayName(currentUserProfile.displayName);
     }
   }, [currentUserProfile]);
+
+  // Animate AI Feedback Card
+  useEffect(() => {
+    if (aiFeedbackToDisplay && aiFeedbackCardRef.current) {
+      anime({
+        targets: aiFeedbackCardRef.current,
+        opacity: [0, 1],
+        translateY: [20, 0],
+        scale: [0.95, 1],
+        duration: 500,
+        easing: 'easeOutExpo',
+      });
+      // Auto-hide after a delay
+      const timer = setTimeout(() => setAiFeedbackToDisplay(null), 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [aiFeedbackToDisplay]);
+
 
   const startCamera = useCallback(async () => {
     try {
@@ -148,7 +169,10 @@ const DashboardContent: React.FC = () => {
     
     setIsSubmittingMood(true);
     try {
-      await addMoodLog(selectedMood, moodNotes || undefined, selfieDataUri);
+      const feedback = await addMoodLog(selectedMood, moodNotes || undefined, selfieDataUri);
+      if (feedback) {
+        setAiFeedbackToDisplay(feedback);
+      }
       setSelectedMood('');
       setMoodNotes('');
       setSelfieDataUri(undefined);
@@ -231,9 +255,9 @@ const DashboardContent: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-xl sm:text-2xl" />
-        <p className="mt-3 text-sm sm:text-base">No wellness plan found. Please complete your onboarding first.</p>
-        <Button onClick={() => router.push('/onboarding')} className="mt-3 neumorphic-button text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9">
-          Complete Onboarding
+        <p className="mt-3 text-sm sm:text-base">No wellness plan found. Let's get you set up!</p>
+        <Button onClick={() => router.push('/onboarding')} className="mt-3 neumorphic-button-primary text-xs sm:text-sm px-3 py-1.5 h-8 sm:h-9">
+          Create My Free Plan!
         </Button>
       </div>
     );
@@ -241,6 +265,28 @@ const DashboardContent: React.FC = () => {
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
+      {/* AI Feedback Overlay */}
+      {aiFeedbackToDisplay && (
+        <div 
+          ref={aiFeedbackCardRef}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 neumorphic p-4 max-w-xs w-full rounded-lg shadow-xl bg-card border border-primary/50"
+          style={{ opacity: 0 }} // Initial state for animation
+        >
+          <button 
+            onClick={() => setAiFeedbackToDisplay(null)} 
+            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+            aria-label="Close feedback"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-5 w-5 text-accent" />
+            <CardTitle className="text-sm font-semibold text-primary">GroZen Insight!</CardTitle>
+          </div>
+          <CardDescription className="text-xs text-card-foreground">{aiFeedbackToDisplay}</CardDescription>
+        </div>
+      )}
+
       <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Logo size="text-xl sm:text-2xl" />
@@ -250,23 +296,23 @@ const DashboardContent: React.FC = () => {
           <Button 
             variant="outline" 
             onClick={() => router.push('/leaderboard')} 
-            className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
+            className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8 group"
             aria-label="View Leaderboard"
           >
-            <Trophy className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
+            <Trophy className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 group-hover:text-accent transition-colors" /> Leaderboard
           </Button>
           
           <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Settings">
-                <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              <Button variant="outline" className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8 group" aria-label="Settings">
+                <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
               </Button>
             </DialogTrigger>
             <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
               <DialogHeader>
-                <DialogTitle className="text-sm sm:text-base">Settings</DialogTitle>
+                <DialogTitle className="text-sm sm:text-base text-primary">Settings</DialogTitle>
                 <DialogDescription className="text-2xs sm:text-xs">
-                  Update your profile information.
+                  Pimp your profile.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 sm:space-y-4">
@@ -276,7 +322,7 @@ const DashboardContent: React.FC = () => {
                     id="displayName"
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
-                    placeholder="Enter your display name"
+                    placeholder="Your Epic Name"
                     className="text-xs sm:text-sm h-8 sm:h-9"
                   />
                 </div>
@@ -286,8 +332,8 @@ const DashboardContent: React.FC = () => {
                     disabled={isUpdatingName || !newDisplayName.trim() || newDisplayName.trim() === currentUserProfile?.displayName}
                     className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 flex-1"
                   >
-                    {isUpdatingName ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : null}
-                    Update
+                    {isUpdatingName ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <CheckCircle className="mr-1 h-3 w-3" />}
+                    Save Name
                   </Button>
                   <Button 
                     variant="outline" 
@@ -301,15 +347,15 @@ const DashboardContent: React.FC = () => {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
-            <LogOut className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
+          <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-2xs sm:text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 h-7 sm:h-8 group" aria-label="Logout">
+            <LogOut className="mr-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 group-hover:text-red-500 transition-colors" /> Logout
           </Button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          <Card className="neumorphic">
+          <Card className="neumorphic hover:shadow-primary/20 transition-shadow duration-300">
             <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="flex items-center gap-2 sm:gap-3">
                 {currentUserProfile?.avatarUrl ? (
@@ -325,11 +371,11 @@ const DashboardContent: React.FC = () => {
                   <UserCircle className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                 )}
                 <div>
-                  <CardTitle className="text-sm sm:text-base">
-                    Welcome back, {currentUserProfile?.displayName || 'GroZen User'}! 👋
+                  <CardTitle className="text-sm sm:text-base text-primary">
+                    Hey {currentUserProfile?.displayName || 'GroZen User'}! Let's Rock Today! 👋
                   </CardTitle>
                   <CardDescription className="text-2xs sm:text-xs">
-                    Ready to continue your wellness journey today?
+                    Ready to smash those wellness goals? 🚀
                   </CardDescription>
                 </div>
               </div>
@@ -337,35 +383,35 @@ const DashboardContent: React.FC = () => {
           </Card>
 
           {userActiveChallenge ? (
-            <Card className="neumorphic">
+            <Card className="neumorphic hover:shadow-accent/20 transition-shadow duration-300">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
-                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> {CURRENT_CHALLENGE.title}
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base text-accent">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {CURRENT_CHALLENGE.title}
                 </CardTitle>
                 <CardDescription className="text-2xs sm:text-xs">
-                  {userActiveChallenge.daysCompleted} of {CURRENT_CHALLENGE.durationDays} days completed
+                  {userActiveChallenge.daysCompleted} of {CURRENT_CHALLENGE.durationDays} days CRUSHED!
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
                 <div className="space-y-2 sm:space-y-2.5">
-                  <Progress value={challengeProgress} className="h-2 sm:h-2.5" />
+                  <Progress value={challengeProgress} className="h-2 sm:h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-primary" />
                   <div className="flex justify-between items-center">
-                    <span className="text-2xs sm:text-xs text-muted-foreground">{challengeProgress}% Complete</span>
+                    <span className="text-2xs sm:text-xs text-muted-foreground">{challengeProgress}% Complete! Keep Going!</span>
                     <Button
                       onClick={logChallengeDay}
                       disabled={hasLoggedToday || isLoadingUserChallenge}
                       variant={hasLoggedToday ? "outline" : "neumorphic-primary"}
-                      className="text-3xs px-2 py-0.5 h-6 sm:text-2xs sm:px-2.5 sm:py-1 sm:h-7"
+                      className="text-3xs px-2 py-0.5 h-6 sm:text-2xs sm:px-2.5 sm:py-1 sm:h-7 group"
                     >
                       {isLoadingUserChallenge ? (
                         <Loader2 className="h-2.5 w-2.5 animate-spin" />
                       ) : hasLoggedToday ? (
                         <>
-                          <CheckCircle className="mr-0.5 h-2.5 w-2.5" /> Logged
+                          <ThumbsUp className="mr-0.5 h-2.5 w-2.5 text-green-400" /> Nailed It!
                         </>
                       ) : (
                         <>
-                          <Plus className="mr-0.5 h-2.5 w-2.5" /> Log Today
+                          <Plus className="mr-0.5 h-2.5 w-2.5 group-hover:rotate-90 transition-transform" /> Log Today's Win!
                         </>
                       )}
                     </Button>
@@ -374,26 +420,26 @@ const DashboardContent: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            <Card className="neumorphic">
+             <Card className="neumorphic hover:shadow-accent/20 transition-shadow duration-300">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
-                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Join the Challenge!
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base text-accent">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Join the Current Challenge!
                 </CardTitle>
                 <CardDescription className="text-2xs sm:text-xs">
-                  {CURRENT_CHALLENGE.description}
+                  {CURRENT_CHALLENGE.description} Ready to level up?
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
                 <Button
                   onClick={joinCurrentChallenge}
                   disabled={isLoadingUserChallenge}
-                  className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                  className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 group"
                 >
                   {isLoadingUserChallenge ? (
                     <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
                   ) : (
                     <>
-                      <Plus className="mr-1 h-2.5 w-2.5" /> Join Challenge
+                      <PartyPopper className="mr-1 h-3 w-3 group-hover:scale-110 transition-transform" /> Join Challenge Now!
                     </>
                   )}
                 </Button>
@@ -403,20 +449,20 @@ const DashboardContent: React.FC = () => {
 
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-              <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
-                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Your Wellness Plan
+              <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base text-primary">
+                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Your GroZen Blueprint
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
               <Tabs defaultValue="meals" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 h-8 sm:h-9">
-                  <TabsTrigger value="meals" className="text-3xs sm:text-2xs">
+                  <TabsTrigger value="meals" className="text-3xs sm:text-2xs data-[state=active]:text-primary data-[state=active]:shadow-accent/30">
                     <Utensils className="mr-0.5 h-2.5 w-2.5" /> Meals
                   </TabsTrigger>
-                  <TabsTrigger value="exercise" className="text-3xs sm:text-2xs">
+                  <TabsTrigger value="exercise" className="text-3xs sm:text-2xs data-[state=active]:text-primary data-[state=active]:shadow-accent/30">
                     <Dumbbell className="mr-0.5 h-2.5 w-2.5" /> Exercise
                   </TabsTrigger>
-                  <TabsTrigger value="mindfulness" className="text-3xs sm:text-2xs">
+                  <TabsTrigger value="mindfulness" className="text-3xs sm:text-2xs data-[state=active]:text-primary data-[state=active]:shadow-accent/30">
                     <Brain className="mr-0.5 h-2.5 w-2.5" /> Mind
                   </TabsTrigger>
                 </TabsList>
@@ -425,8 +471,8 @@ const DashboardContent: React.FC = () => {
                   <ScrollArea className="w-full whitespace-nowrap rounded-md">
                     <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                       {wellnessPlan?.meals.map((meal, index) => (
-                        <ItemCard key={`meal-${index}`} className="bg-card">
-                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <ItemCard key={`meal-${index}`} className="bg-card hover:scale-105 transition-transform duration-200">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center text-accent">
                             <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {meal.day}
                           </h5>
                           <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
@@ -438,13 +484,13 @@ const DashboardContent: React.FC = () => {
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
                 </TabsContent>
-
-                <TabsContent value="exercise" className="mt-2 sm:mt-2.5">
+                {/* Exercise and Mindfulness TabsContent similar structure */}
+                 <TabsContent value="exercise" className="mt-2 sm:mt-2.5">
                   <ScrollArea className="w-full whitespace-nowrap rounded-md">
                     <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                       {wellnessPlan?.exercise.map((ex, index) => (
-                        <ItemCard key={`ex-${index}`} className="bg-card">
-                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <ItemCard key={`ex-${index}`} className="bg-card hover:scale-105 transition-transform duration-200">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center text-accent">
                             <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {ex.day}
                           </h5>
                           <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
@@ -460,8 +506,8 @@ const DashboardContent: React.FC = () => {
                   <ScrollArea className="w-full whitespace-nowrap rounded-md">
                     <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
                       {wellnessPlan?.mindfulness.map((mind, index) => (
-                        <ItemCard key={`mind-${index}`} className="bg-card">
-                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center">
+                        <ItemCard key={`mind-${index}`} className="bg-card hover:scale-105 transition-transform duration-200">
+                          <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center text-accent">
                             <CalendarDays className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {mind.day}
                           </h5>
                           <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
@@ -479,11 +525,11 @@ const DashboardContent: React.FC = () => {
           {chartData.length > 0 && (
             <Card className="neumorphic">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base">
-                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Mood Trends
+                <CardTitle className="flex items-center gap-1 sm:gap-1.5 text-sm sm:text-base text-primary">
+                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Mood Meter
                 </CardTitle>
                 <CardDescription className="text-2xs sm:text-xs">
-                  Your mood over the last {chartData.length} entries
+                  Your vibe check over the last {chartData.length} entries!
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
@@ -512,7 +558,7 @@ const DashboardContent: React.FC = () => {
                             const data = payload[0].payload as ChartMoodLog;
                             return (
                               <div className="neumorphic-sm p-2 border border-border/50 bg-background">
-                                <p className="text-2xs sm:text-xs font-medium">{label}</p>
+                                <p className="text-2xs sm:text-xs font-medium text-primary">{label}</p>
                                 <p className="text-2xs sm:text-xs">
                                   Mood: <span className="text-base">{data.moodEmoji}</span>
                                 </p>
@@ -521,14 +567,15 @@ const DashboardContent: React.FC = () => {
                           }
                           return null;
                         }}
+                        cursor={{ fill: 'hsl(var(--accent) / 0.1)' }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="moodValue" 
                         stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
-                        activeDot={{ r: 4, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                        strokeWidth={2.5}
+                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 5, stroke: "hsl(var(--accent))", strokeWidth: 2, fill: "hsl(var(--accent))" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -542,35 +589,40 @@ const DashboardContent: React.FC = () => {
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
-                <span className="flex items-center gap-1 sm:gap-1.5">
-                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Mood Log
+                <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
+                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Vibe Check!
                 </span>
                 <Dialog open={isMoodDialogOpen} onOpenChange={setIsMoodDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7">
-                      <Plus className="h-2.5 w-2.5" />
+                    <Button variant="outline" className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7 group">
+                      <Plus className="h-2.5 w-2.5 group-hover:scale-125 group-hover:text-accent transition-all" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
                     <DialogHeader>
-                      <DialogTitle className="text-sm sm:text-base">Log Your Mood</DialogTitle>
+                      <DialogTitle className="text-sm sm:text-base text-primary">How You Feelin'?</DialogTitle>
                       <DialogDescription className="text-2xs sm:text-xs">
-                        How are you feeling today?
+                        Spill the tea (or just pick an emoji).
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 sm:space-y-4">
                       <div className="space-y-1 sm:space-y-1.5">
-                        <Label className="text-2xs sm:text-xs">Select your mood</Label>
+                        <Label className="text-2xs sm:text-xs">Pick Your Vibe:</Label>
                         <div className="flex justify-center gap-2 sm:gap-3">
                           {['😞', '😕', '😐', '🙂', '😊'].map((mood) => (
                             <button
                               key={mood}
-                              onClick={() => setSelectedMood(mood)}
+                              onClick={() => {
+                                setSelectedMood(mood);
+                                // Add a little animation on selection
+                                anime({ targets: `button[data-mood='${mood}']`, scale: [1, 1.2, 1], duration: 300, easing: 'easeOutElastic(1, .5)'});
+                              }}
+                              data-mood={mood}
                               className={cn(
-                                "text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-md transition-all",
+                                "text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-md transition-all duration-200",
                                 selectedMood === mood 
-                                  ? "neumorphic-inset-sm scale-110" 
-                                  : "neumorphic-sm hover:scale-105"
+                                  ? "neumorphic-inset-sm scale-110 ring-2 ring-accent" 
+                                  : "neumorphic-sm hover:scale-110 hover:shadow-accent/30"
                               )}
                             >
                               {mood}
@@ -580,25 +632,25 @@ const DashboardContent: React.FC = () => {
                       </div>
 
                       <div className="space-y-1 sm:space-y-1.5">
-                        <Label htmlFor="moodNotes" className="text-2xs sm:text-xs">Notes (optional)</Label>
+                        <Label htmlFor="moodNotes" className="text-2xs sm:text-xs">Any deets? (Optional)</Label>
                         <Textarea
                           id="moodNotes"
                           value={moodNotes}
                           onChange={(e) => setMoodNotes(e.target.value)}
-                          placeholder="How are you feeling? What's on your mind?"
+                          placeholder="What's up? Spill it..."
                           className="min-h-[60px] sm:min-h-[80px] text-xs sm:text-sm"
                         />
                       </div>
 
                       <div className="space-y-1 sm:space-y-1.5">
-                        <Label className="text-2xs sm:text-xs">Selfie (optional)</Label>
+                        <Label className="text-2xs sm:text-xs">Selfie Moment? (Optional)</Label>
                         {!isCameraOpen && !selfieDataUri && (
                           <Button
                             onClick={startCamera}
                             variant="outline"
-                            className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                            className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 group"
                           >
-                            <Camera className="mr-1 h-2.5 w-2.5" /> Take Selfie
+                            <Camera className="mr-1 h-2.5 w-2.5 group-hover:text-accent transition-colors" /> Take Selfie
                           </Button>
                         )}
                         
@@ -613,16 +665,16 @@ const DashboardContent: React.FC = () => {
                             <div className="flex gap-1.5 sm:gap-2">
                               <Button
                                 onClick={capturePhoto}
-                                className="flex-1 neumorphic-button-primary text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8"
+                                className="flex-1 neumorphic-button-primary text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8 group"
                               >
-                                <Camera className="mr-1 h-2.5 w-2.5" /> Capture
+                                <Camera className="mr-1 h-2.5 w-2.5 group-hover:scale-110 transition-transform" /> Capture
                               </Button>
                               <Button
                                 onClick={stopCamera}
                                 variant="outline"
-                                className="flex-1 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8"
+                                className="flex-1 neumorphic-button text-2xs sm:text-xs px-2 py-1 h-7 sm:h-8 group"
                               >
-                                <X className="mr-1 h-2.5 w-2.5" /> Cancel
+                                <X className="mr-1 h-2.5 w-2.5 group-hover:text-red-500 transition-colors" /> Cancel
                               </Button>
                             </div>
                           </div>
@@ -643,9 +695,9 @@ const DashboardContent: React.FC = () => {
                             <Button
                               onClick={() => setSelfieDataUri(undefined)}
                               variant="outline"
-                              className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                              className="w-full neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 group"
                             >
-                              <Trash2 className="mr-1 h-2.5 w-2.5" /> Remove Photo
+                              <Trash2 className="mr-1 h-2.5 w-2.5 group-hover:text-red-500 transition-colors" /> Remove Photo
                             </Button>
                           </div>
                         )}
@@ -654,14 +706,14 @@ const DashboardContent: React.FC = () => {
                       <Button
                         onClick={handleMoodSubmit}
                         disabled={!selectedMood || isSubmittingMood}
-                        className="w-full neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                        className="w-full neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8 group"
                       >
                         {isSubmittingMood ? (
                           <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" />
                         ) : (
-                          <Sparkles className="mr-1 h-2.5 w-2.5" />
+                          <Sparkles className="mr-1 h-3 w-3 group-hover:animate-ping-slow" />
                         )}
-                        Log Mood
+                        Log My Vibe!
                       </Button>
                     </div>
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -672,13 +724,13 @@ const DashboardContent: React.FC = () => {
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
               {moodLogs.length === 0 ? (
                 <p className="text-2xs sm:text-xs text-muted-foreground text-center py-3 sm:py-4">
-                  No mood logs yet. Start tracking your mood!
+                  No mood logs yet. How are you feeling today? 🤔
                 </p>
               ) : (
                 <ScrollArea className="h-[200px] sm:h-[250px] w-full">
                   <div className="space-y-1.5 sm:space-y-2">
                     {moodLogs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="neumorphic-sm p-2 sm:p-2.5 rounded-md">
+                      <div key={log.id} className="neumorphic-sm p-2 sm:p-2.5 rounded-md hover:bg-card/80 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5">
@@ -696,8 +748,8 @@ const DashboardContent: React.FC = () => {
                               </p>
                             )}
                             {log.aiFeedback && (
-                              <p className="text-3xs xs:text-2xs text-primary/80 italic mt-0.5 break-words">
-                                <Sparkles className="inline h-2 w-2 mr-0.5" />
+                              <p className="text-3xs xs:text-2xs text-primary/90 italic mt-0.5 break-words">
+                                <Sparkles className="inline h-2.5 w-2.5 mr-0.5 text-accent" />
                                 {log.aiFeedback}
                               </p>
                             )}
@@ -705,26 +757,26 @@ const DashboardContent: React.FC = () => {
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
-                                variant="outline"
-                                className="ml-1 sm:ml-1.5 neumorphic-button text-3xs px-1 py-0.5 h-5 sm:h-6"
+                                variant="ghost"
+                                className="ml-1 sm:ml-1.5 text-muted-foreground hover:text-red-500 hover:bg-destructive/10 p-1 h-6 w-6 sm:h-7 sm:w-7 rounded-md"
                               >
-                                <Trash2 className="h-2 w-2" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-sm sm:text-base">Delete Mood Log</AlertDialogTitle>
+                                <AlertDialogTitle className="text-sm sm:text-base text-primary">Delete Mood Log?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-2xs sm:text-xs">
-                                  Are you sure you want to delete this mood entry? This action cannot be undone.
+                                  Sure you wanna delete this vibe? No undos!
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                                <AlertDialogCancel className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8">Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="neumorphic-button text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8">Nah, Keep It</AlertDialogCancel>
                                 <AlertDialogAction 
                                   onClick={() => handleDeleteMoodLog(log.id)}
-                                  className="neumorphic-button-primary text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
+                                  className="neumorphic-button-primary bg-destructive hover:bg-destructive/90 text-destructive-foreground text-2xs sm:text-xs px-2.5 py-1 h-7 sm:h-8"
                                 >
-                                  Delete
+                                  Yep, Delete!
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -741,19 +793,19 @@ const DashboardContent: React.FC = () => {
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
-                <span className="flex items-center gap-1 sm:gap-1.5">
-                  <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> Grocery List
+                <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
+                  <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Grocery Haul
                 </span>
                 <Button
                   onClick={handleGenerateGroceryList}
                   disabled={isLoadingGroceryList}
                   variant="outline"
-                  className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7"
+                  className="neumorphic-button text-3xs px-1.5 py-0.5 h-6 sm:text-2xs sm:px-2 sm:py-1 sm:h-7 group"
                 >
                   {isLoadingGroceryList ? (
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-2.5 w-2.5" />
+                    <RefreshCw className="h-2.5 w-2.5 group-hover:rotate-180 transition-transform duration-300 group-hover:text-accent" />
                   )}
                 </Button>
               </CardTitle>
@@ -761,19 +813,19 @@ const DashboardContent: React.FC = () => {
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
               {!groceryList || groceryList.items.length === 0 ? (
                 <p className="text-2xs sm:text-xs text-muted-foreground text-center py-3 sm:py-4">
-                  {isLoadingGroceryList ? 'Generating grocery list...' : 'No grocery list yet. Generate one from your meal plan!'}
+                  {isLoadingGroceryList ? 'AI is making your list...' : 'No groceries yet. Generate one from your meal plan! 🛒'}
                 </p>
               ) : (
                 <ScrollArea className="h-[200px] sm:h-[250px] w-full">
                   <div className="space-y-1.5 sm:space-y-2">
                     {Object.entries(groupedGroceryItems).map(([category, items]) => (
                       <div key={category}>
-                        <h5 className="font-semibold text-2xs sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">
+                        <h5 className="font-semibold text-2xs sm:text-xs text-accent mb-0.5 sm:mb-1">
                           {category} ({items.length})
                         </h5>
                         <div className="space-y-0.5 sm:space-y-1 mb-1.5 sm:mb-2">
                           {items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between neumorphic-sm p-1.5 sm:p-2 rounded-md">
+                            <div key={item.id} className="flex items-center justify-between neumorphic-sm p-1.5 sm:p-2 rounded-md hover:bg-card/70 transition-colors">
                               <div className="flex-1 min-w-0">
                                 <p className="text-3xs xs:text-2xs font-medium truncate">{item.name}</p>
                                 {item.quantity && (
@@ -785,10 +837,10 @@ const DashboardContent: React.FC = () => {
                               </div>
                               <Button
                                 onClick={() => handleDeleteGroceryItem(item.id)}
-                                variant="outline"
-                                className="ml-1 sm:ml-1.5 neumorphic-button text-3xs px-1 py-0.5 h-5 sm:h-6 flex-shrink-0"
+                                variant="ghost"
+                                className="ml-1 sm:ml-1.5 text-muted-foreground hover:text-red-500 hover:bg-destructive/10 p-1 h-6 w-6 sm:h-7 sm:w-7 rounded-md flex-shrink-0"
                               >
-                                <Trash2 className="h-2 w-2" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           ))}
@@ -829,5 +881,4 @@ export default function DashboardPage() {
 
   return <DashboardContent />;
 }
-
-    
+```
