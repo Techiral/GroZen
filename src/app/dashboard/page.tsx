@@ -14,17 +14,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Progress as ShadProgress } from '@/components/ui/progress'; // Renamed to avoid conflict
+import { Progress as ShadProgress } from '@/components/ui/progress'; 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SocialShareCard from '@/components/social-share-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info } from 'lucide-react';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette } from 'lucide-react'; // Added Palette
 import type { MoodLog, GroceryItem, ChartMoodLog, Quest, QuestType, DailySummary, Badge as BadgeType } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
 import anime from 'animejs';
+import { useToast } from '@/hooks/use-toast';
+
 
 // Mood emoji to numeric value mapping for chart
 const moodToValue: { [key: string]: number } = {
@@ -45,12 +47,12 @@ const questTypeIcons: Record<QuestType, React.ElementType> = {
   study: BookOpen,
   workout: Dumbbell,
   hobby: Paintbrush,
-  chore: Briefcase, // Using Briefcase as a generic task icon
-  wellness: AwardIcon, // Using AwardIcon for general wellness
-  creative: Palette, // Using Palette for creative from landing page
+  chore: Briefcase, 
+  wellness: AwardIcon, 
+  creative: Palette, 
   social: Users,
   break: Coffee,
-  other: FerrisWheel, // Using FerrisWheel for 'other' as a fun, generic icon
+  other: FerrisWheel, 
 };
 
 
@@ -76,9 +78,10 @@ const DashboardContent: React.FC = () => {
     isLoadingUserChallenge,
     joinCurrentChallenge,
     logChallengeDay,
-    currentUserProfile, // Assuming this contains level, xp, streaks
+    currentUserProfile, 
     updateUserDisplayName
   } = usePlan();
+  const { toast } = useToast();
 
   const [selectedMood, setSelectedMood] = useState('');
   const [moodNotes, setMoodNotes] = useState('');
@@ -100,7 +103,6 @@ const DashboardContent: React.FC = () => {
   const xpBarRef = useRef<HTMLDivElement>(null);
 
 
-  // MOCK DATA FOR QUESTS - REPLACE WITH ACTUAL DATA FROM CONTEXT
   const [mockQuests, setMockQuests] = useState<Quest[]>([
     { id: 'q1', title: 'Morning Workout: 30 min jog', questType: 'workout', xpValue: 50, isCompleted: false, scheduledDate: format(new Date(), 'yyyy-MM-dd')},
     { id: 'q2', title: 'Study: Read Chapter 5 History', questType: 'study', xpValue: 75, isCompleted: false, scheduledDate: format(new Date(), 'yyyy-MM-dd') },
@@ -109,7 +111,7 @@ const DashboardContent: React.FC = () => {
   ]);
   const [mockUserXP, setMockUserXP] = useState(currentUserProfile?.xp || 120);
   const [mockUserLevel, setMockUserLevel] = useState(currentUserProfile?.level || 1);
-  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250); // Example
+  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250); 
   const [mockDailyStreak, setMockDailyStreak] = useState(currentUserProfile?.dailyQuestStreak || 3);
   const [mockBestStreak, setMockBestStreak] = useState(currentUserProfile?.bestQuestStreak || 7);
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
@@ -138,11 +140,9 @@ const DashboardContent: React.FC = () => {
       setMockUserLevel(currentUserProfile.level || 1);
       setMockDailyStreak(currentUserProfile.dailyQuestStreak || 0);
       setMockBestStreak(currentUserProfile.bestQuestStreak || 0);
-      // Recalculate XP to next level based on actual logic if available
     }
   }, [currentUserProfile]);
 
-  // Animate AI Feedback Card
   useEffect(() => {
     if (aiFeedbackToDisplay && aiFeedbackCardRef.current) {
       anime({
@@ -260,36 +260,30 @@ const DashboardContent: React.FC = () => {
     const newXP = mockUserXP + questToComplete.xpValue;
     setMockUserXP(newXP);
 
-    // XP Bar Animation
     if (xpBarRef.current) {
         const progressTo = (newXP / mockXPToNextLevel) * 100;
         anime({
             targets: xpBarRef.current.querySelector('.progress-bar-fill > div'),
-            width: `${Math.min(100, progressTo)}%`, // Ensure it doesn't exceed 100% visually
+            width: `${Math.min(100, progressTo)}%`, 
             duration: 800,
             easing: 'easeOutQuint'
         });
     }
 
 
-    // Level Up Logic (Simplified)
     if (newXP >= mockXPToNextLevel) {
       setMockUserLevel(prevLevel => prevLevel + 1);
-      setMockUserXP(newXP - mockXPToNextLevel); // Carry over extra XP
-      setMockXPToNextLevel(prev => prev + 100); // Example: Increase XP needed for next level
-      // TODO: Trigger level up animation
+      setMockUserXP(newXP - mockXPToNextLevel); 
+      setMockXPToNextLevel(prev => prev + 100); 
       toast({title: "LEVEL UP! 🎉", description: `You reached Level ${mockUserLevel + 1}!`});
     }
     
-    // Ripple effect on quest card
     const cardRef = questCardRefs.current.get(questId);
     if (cardRef) {
       cardRef.classList.add('animate-ripple');
       setTimeout(() => cardRef.classList.remove('animate-ripple'), 700);
     }
 
-    // Mock streak update (replace with actual logic from context later)
-    // This is highly simplified. Real streak logic needs to check last completion date.
     const allQuestsCompletedToday = mockQuests.filter(q => isSameDay(parseISO(q.scheduledDate), new Date())).every(q => q.isCompleted || q.id === questId);
     if(allQuestsCompletedToday) {
         setMockDailyStreak(prev => prev + 1);
@@ -305,11 +299,10 @@ const DashboardContent: React.FC = () => {
     const totalToday = mockQuests.filter(q => isSameDay(parseISO(q.scheduledDate), today));
     const xpGainedToday = completedToday.reduce((sum, q) => sum + q.xpValue, 0);
     
-    // Mock badge earning
     let earnedBadges: BadgeType[] = [];
     if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
-      localStorage.setItem('badge_quick_achiever_earned', 'true'); // Prevent re-earning for demo
+      localStorage.setItem('badge_quick_achiever_earned', 'true'); 
     }
 
     setMockDailySummary({
@@ -318,7 +311,7 @@ const DashboardContent: React.FC = () => {
       totalQuests: totalToday.length,
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
-      streakContinued: mockDailyStreak > 0, // Simplified
+      streakContinued: mockDailyStreak > 0, 
     });
     setIsSummaryDialogOpen(true);
   };
@@ -363,7 +356,7 @@ const DashboardContent: React.FC = () => {
     );
   }
 
-  if (!isPlanAvailable && mockQuests.length === 0) { // Check mockQuests too if plan is not yet central
+  if (!isPlanAvailable && mockQuests.length === 0) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <Logo size="text-xl sm:text-2xl" />
@@ -376,7 +369,7 @@ const DashboardContent: React.FC = () => {
   }
   
   const QuestIcon = ({ type }: { type: QuestType }) => {
-    const IconComponent = questTypeIcons[type] || Info; // Default to Info icon
+    const IconComponent = questTypeIcons[type] || Info; 
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />;
   };
 
@@ -472,7 +465,6 @@ const DashboardContent: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* User Profile & XP Bar Card */}
           <Card className="neumorphic hover:shadow-primary/20 transition-shadow duration-300">
             <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -498,12 +490,11 @@ const DashboardContent: React.FC = () => {
                 </div>
               </div>
               <div ref={xpBarRef}>
-                <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5 progress-bar-fill" />
+                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5" indicatorClassName="progress-bar-fill" />
               </div>
             </CardHeader>
           </Card>
           
-          {/* Daily Quest Streak Indicator */}
            <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-row items-center justify-between">
                 <CardTitle className="text-sm sm:text-base text-primary flex items-center">
@@ -513,7 +504,7 @@ const DashboardContent: React.FC = () => {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="flex items-center gap-0.5 sm:gap-1">
-                                {[...Array(Math.max(5, mockDailyStreak))].slice(0, 7).map((_, i) => ( // Show up to 7 circles
+                                {[...Array(Math.max(5, mockDailyStreak))].slice(0, 7).map((_, i) => ( 
                                     <div
                                         key={`streak-${i}`}
                                         className={cn(
@@ -535,13 +526,11 @@ const DashboardContent: React.FC = () => {
           </Card>
 
 
-          {/* Today's Quests Section */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-row items-center justify-between">
               <CardTitle className="text-sm sm:text-base text-primary flex items-center">
                 <Target className="h-4 w-4 mr-1.5 text-accent"/> Today&apos;s Quests
               </CardTitle>
-              {/* Button to add new quest would go here - for future implementation */}
               <Button variant="outline" size="sm" onClick={handleViewDailySummary} className="neumorphic-button text-3xs h-6 sm:h-7">
                   Daily Recap
               </Button>
@@ -555,7 +544,7 @@ const DashboardContent: React.FC = () => {
                         key={quest.id}
                         ref={el => questCardRefs.current.set(quest.id, el)}
                         className={cn(
-                            "neumorphic-sm p-2 sm:p-2.5 rounded-md group quest-card-ripple", // Added quest-card-ripple for animation
+                            "neumorphic-sm p-2 sm:p-2.5 rounded-md group quest-card-ripple", 
                             quest.isCompleted && "opacity-60 bg-card/50"
                         )}
                       >
@@ -603,7 +592,7 @@ const DashboardContent: React.FC = () => {
               </CardHeader>
               <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
                 <div className="space-y-2 sm:space-y-2.5">
-                  <ShadProgress value={challengeProgress} className="h-2 sm:h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-primary" />
+                  <ShadProgress value={challengeProgress} className="h-2 sm:h-2.5" indicatorClassName="[&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-primary" />
                   <div className="flex justify-between items-center">
                     <span className="text-2xs sm:text-xs text-muted-foreground">{challengeProgress}% Complete! Keep Going!</span>
                     <Button
@@ -1066,7 +1055,6 @@ const DashboardContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Daily Summary Modal */}
       <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
         <DialogContent className="neumorphic max-w-md">
           <DialogHeader>
@@ -1085,10 +1073,10 @@ const DashboardContent: React.FC = () => {
                 <div className="text-center space-y-1 pt-2">
                   <p className="text-sm font-semibold text-primary">Badges Unlocked!</p>
                   {mockDailySummary.badgesEarned.map(badge => {
-                    const BadgeIcon = questTypeIcons[badge.iconName as QuestType || 'other'] || Medal;
+                    const BadgeIconComponent = questTypeIcons[badge.iconName as QuestType || 'other'] || Medal; // Use questTypeIcons for badge icon
                     return (
                         <div key={badge.id} className="inline-flex flex-col items-center p-2 neumorphic-sm rounded-md m-1 badge-earned-popup">
-                             <BadgeIcon className="h-8 w-8 text-accent mb-1" />
+                             <BadgeIconComponent className="h-8 w-8 text-accent mb-1" />
                              <p className="text-xs font-medium text-foreground">{badge.name}</p>
                              <p className="text-2xs text-muted-foreground">{badge.description}</p>
                         </div>
