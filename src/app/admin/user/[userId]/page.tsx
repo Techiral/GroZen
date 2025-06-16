@@ -9,7 +9,7 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown, Sparkles, BookOpen, Wind, Coffee, Info, ListChecks, MessageSquare, ExternalLink } from 'lucide-react';
+import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown, Sparkles, BookOpen, Wind, Coffee, Info, ListChecks, MessageSquare, ExternalLink, Users, CheckCircle, Edit3 } from 'lucide-react';
 import type { FullUserDetail, Meal, Exercise, Mindfulness, MoodLog, GroceryItem, DailyPlan, ScheduledQuest, BreakSlot, QuestType } from '@/types/wellness';
 import { format, parseISO, isValid, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -48,7 +48,7 @@ const moodEmojis: { [key: string]: string | React.ReactNode } = {
 };
 
 const questTypeIcons: Record<QuestType, React.ElementType> = {
-  study: BookOpen, workout: Dumbbell, hobby: ExternalLink, chore: ListChecks, // Replaced PaintBrush with ExternalLink for hobby, ListChecks for chore
+  study: BookOpen, workout: Dumbbell, hobby: ExternalLink, chore: ListChecks,
   wellness: Sparkles, creative: Edit3, social: Users, break: Coffee, other: Info,
 };
 
@@ -376,3 +376,4 @@ export default function AdminUserDetailPage() {
     </main>
   );
 }
+
