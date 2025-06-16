@@ -58,6 +58,14 @@ service cloud.firestore {
         // userIdFromPath here refers to the {userIdFromPath} from the parent users collection.
         allow read, write, delete: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
       }
+
+      // --- DailyPlans Subcollection (nested under each user) ---
+      // Stores user-inputted raw tasks and AI-generated daily schedules.
+      match /dailyPlans/{planId} { // planId would be the YYYY-MM-DD date string
+        // An admin can read/write/delete any user's daily plans.
+        // A regular authenticated user can only read/write/delete their own daily plans.
+        allow read, write, delete: if request.auth != null && (request.auth.uid == userIdFromPath || isAdmin());
+      }
     }
 
     // --- Early Access Signups Collection ---
