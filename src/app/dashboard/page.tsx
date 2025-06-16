@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
-import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, PaintBrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star, Wind } from 'lucide-react';
+import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness, RawTask } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -41,11 +41,11 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
 );
 
 const questTypeIcons: Record<QuestType, React.ElementType> = {
-  study: BookOpen, workout: Dumbbell, hobby: Paintbrush, chore: Briefcase,
+  study: BookOpen, workout: Dumbbell, hobby: PaintBrush, chore: Briefcase,
   wellness: AwardIcon, creative: Edit3, social: Users, break: Coffee, other: FerrisWheel,
 };
 
-// Component to handle client-side rendering safely
+
 const DashboardContent: React.FC = () => {
   const router = useRouter();
   const {
@@ -73,6 +73,7 @@ const DashboardContent: React.FC = () => {
   const [newDisplayName, setNewDisplayName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [aiFeedbackToDisplay, setAiFeedbackToDisplay] = useState<string | null>(null);
+  const [userScheduleContext, setUserScheduleContext] = useState('');
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -89,9 +90,6 @@ const DashboardContent: React.FC = () => {
   const [mockDailyStreak, setMockDailyStreak] = useState(0); 
   const [mockBestStreak, setMockBestStreak] = useState(0); 
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
-
-  const [userScheduleContext, setUserScheduleContext] = useState('');
-
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -436,7 +434,7 @@ const DashboardContent: React.FC = () => {
                 </div>
               </div>
               <div ref={xpBarRef}>
-                 <ShadProgress value={(mockUserXP % mockXPToNextLevel) / mockXPToNextLevel * 100} className="h-2 sm:h-2.5 animate-progress-fill progress-bar-fill-xp" />
+                 <ShadProgress value={(mockUserXP % mockXPToNextLevel) / mockXPToNextLevel * 100} className="h-2 sm:h-2.5 animate-progress-fill progress-bar-fill-xp" indicatorClassName="progress-bar-fill-xp"/>
               </div>
             </CardHeader>
           </Card>
@@ -475,7 +473,7 @@ const DashboardContent: React.FC = () => {
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
               <div className="flex-1">
                 <CardTitle className="text-sm sm:text-base text-primary flex items-center">
-                  <Sparkle className="h-4 w-4 mr-1.5 text-accent"/> AI Quest Planner
+                  <Sparkles className="h-4 w-4 mr-1.5 text-accent"/> AI Quest Planner
                 </CardTitle>
                 <CardDescription className="text-2xs sm:text-xs">
                   Plan for: {format(selectedDateForPlanning, "eeee, MMM d")}
@@ -568,7 +566,7 @@ const DashboardContent: React.FC = () => {
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
                                 {quest && <QuestIcon type={quest.questType} />}
-                                {breakItem && <Coffee className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />}
+                                {breakItem && (isBreak && item.suggestion?.toLowerCase().includes('walk') ? <Wind className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" /> : <Coffee className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />)}
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs sm:text-sm font-medium truncate text-foreground">
                                         {quest ? quest.title : breakItem?.suggestion || "Quick Break"}
