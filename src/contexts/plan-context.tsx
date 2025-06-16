@@ -21,7 +21,7 @@ import {
 import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc, Timestamp, updateDoc, where, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
-import { format, startOfDay } from 'date-fns';
+import { format, startOfDay, parse } from 'date-fns';
 
 
 interface PlanContextType {
@@ -63,15 +63,17 @@ interface PlanContextType {
 
   selectedDateForPlanning: Date;
   setSelectedDateForPlanning: (date: Date) => void;
-  naturalLanguageDailyInput: string; 
-  setNaturalLanguageDailyInput: (input: string) => void; 
+  naturalLanguageDailyInput: string;
+  setNaturalLanguageDailyInput: (input: string) => void;
+  userScheduleContext: string;
+  setUserScheduleContext: (context: string) => void;
   scheduledQuestsForSelectedDate: ScheduledQuest[];
   scheduledBreaksForSelectedDate: BreakSlot[];
   aiDailySummaryMessage: string | null;
   isLoadingSchedule: boolean;
   fetchDailyPlan: (date: Date) => Promise<void>;
-  generateQuestScheduleForSelectedDate: (naturalLanguageTasksInput: string, userContext?: string) => Promise<void>;
-  completeQuestInSchedule: (questId: string) => Promise<void>;
+  generateQuestScheduleForSelectedDate: () => Promise<void>;
+  completeQuestInSchedule: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
   deleteScheduledItem: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
 }
 
@@ -98,6 +100,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const [_selectedDateForPlanning, _setSelectedDateForPlanning] = useState<Date>(startOfDay(new Date()));
   const [_naturalLanguageDailyInput, _setNaturalLanguageDailyInput] = useState<string>('');
+  const [_userScheduleContext, _setUserScheduleContext] = useState<string>('');
   const [_scheduledQuestsForSelectedDate, _setScheduledQuestsForSelectedDate] = useState<ScheduledQuest[]>([]);
   const [_scheduledBreaksForSelectedDate, _setScheduledBreaksForSelectedDate] = useState<BreakSlot[]>([]);
   const [_aiDailySummaryMessage, _setAiDailySummaryMessage] = useState<string | null>(null);
@@ -119,6 +122,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setIsLoadingPlan(false);
       _setIsLoadingGroceryList(false);
       _setNaturalLanguageDailyInput('');
+      _setUserScheduleContext('');
       _setScheduledQuestsForSelectedDate([]);
       _setScheduledBreaksForSelectedDate([]);
       _setAiDailySummaryMessage(null);
@@ -141,6 +145,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     _setSelectedDateForPlanning(startOfDay(new Date()));
     _setNaturalLanguageDailyInput('');
+    _setUserScheduleContext('');
     _setScheduledQuestsForSelectedDate([]);
     _setScheduledBreaksForSelectedDate([]);
     _setAiDailySummaryMessage(null);
@@ -172,18 +177,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (docSnap.exists()) {
         const data = docSnap.data() as DailyPlan;
         _setNaturalLanguageDailyInput(data.naturalLanguageDailyInput || '');
+        _setUserScheduleContext(data.userContextForAI || '');
         _setScheduledQuestsForSelectedDate(data.generatedQuests || []);
         _setScheduledBreaksForSelectedDate(data.generatedBreaks || []);
         _setAiDailySummaryMessage(data.aiDailySummaryMessage || null);
       } else {
         _setNaturalLanguageDailyInput('');
+         _setUserScheduleContext('');
         _setScheduledQuestsForSelectedDate([]);
         _setScheduledBreaksForSelectedDate([]);
         _setAiDailySummaryMessage(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching daily plan:", error);
-      toast({ variant: "destructive", title: "Load Error", description: "Could not load daily plan." });
+      toast({ variant: "destructive", title: "Load Error", description: `Could not load daily plan: ${error.message}` });
     } finally {
       _setIsLoadingSchedule(false);
     }
@@ -290,18 +297,18 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               } as MoodLog;
             });
             _setMoodLogs(fetchedMoodLogs);
-            
+
             await fetchDailyPlan(startOfDay(new Date()));
 
           } else {
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
             const initialAvatarUrl = user.photoURL || undefined;
 
-            setCurrentUserProfile({ 
-                displayName: initialProfileName, 
-                email: user.email || '', 
+            setCurrentUserProfile({
+                displayName: initialProfileName,
+                email: user.email || '',
                 avatarUrl: initialAvatarUrl,
-                level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 
+                level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0
             });
              const basicUserDoc = {
                 email: user.email,
@@ -329,6 +336,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setMoodLogs([]);
             _setUserActiveChallenge(null);
             _setNaturalLanguageDailyInput('');
+            _setUserScheduleContext('');
             _setScheduledQuestsForSelectedDate([]);
             _setScheduledBreaksForSelectedDate([]);
             _setAiDailySummaryMessage(null);
@@ -378,7 +386,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         userId: user.uid,
         email: user.email,
       };
-      
+
       await setDoc(usernameDocRef, usernameData);
 
       const userDocRef = doc(db, "users", user.uid);
@@ -396,7 +404,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         dailyQuestStreak: 0,
         bestQuestStreak: 0,
       };
-      
+
       await setDoc(userDocRef, userDocPayload);
 
       setCurrentUserProfile({
@@ -638,7 +646,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList); 
+      _setGroceryList(_groceryList);
       toast({ variant: "destructive", title: "Update Error", description: "Could not delete item." });
     }
   };
@@ -676,16 +684,27 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
       const userData = userSnap.data();
+
       const moodLogsSnap = await getDocs(query(collection(db, "users", targetUserId, "moodLogs"), orderBy("createdAt", "desc")));
       const fetchedMoodLogs = moodLogsSnap.docs.map(d => {
         const data = d.data();
         const dateStr = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : (data.date || new Date().toISOString());
         return { ...data, id: d.id, date: dateStr } as MoodLog;
       });
+
       let processedGL = null;
       if (userData.currentGroceryList) {
           processedGL = {...userData.currentGroceryList, items: userData.currentGroceryList.items?.map((i:any) => ({...i, id: i.id || crypto.randomUUID()})) || []};
       }
+
+      const dailyPlansColRef = collection(db, "users", targetUserId, "dailyPlans");
+      const dailyPlansSnap = await getDocs(query(dailyPlansColRef, orderBy("lastGeneratedAt", "desc"))); // Or sort by doc ID (date)
+      const fetchedDailyPlans = dailyPlansSnap.docs.map(d => {
+        const planData = d.data() as DailyPlan;
+        return { ...planData, id: d.id };
+      });
+
+
       return {
           id: targetUserId,
           email: userData.email || null,
@@ -696,7 +715,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           moodLogs: fetchedMoodLogs,
           groceryList: processedGL,
           activeChallengeProgress: userData.activeChallengeProgress || null,
-          profile: { 
+          profile: {
             displayName: userData.displayName || null,
             email: userData.email || null,
             avatarUrl: userData.avatarUrl || undefined,
@@ -706,10 +725,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             bestQuestStreak: userData.bestQuestStreak || 0,
             lastQuestCompletionDate: userData.lastQuestCompletionDate || undefined,
             title: userData.title || undefined,
-          }
+          },
+          dailyPlans: fetchedDailyPlans, // Added daily plans
         } as FullUserDetail;
-    } catch (error) {
-        toast({variant: "destructive", title: "Admin Error", description: "Could not fetch user details."});
+    } catch (error: any) {
+        toast({variant: "destructive", title: "Admin Error", description: `Could not fetch user details: ${error.message}`});
         return null;
     }
   };
@@ -785,22 +805,22 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return [];
     }
   };
-  
-  const generateQuestScheduleForSelectedDate = async (naturalLanguageTasksInput: string, userContextText?: string) => {
-    if (!currentUser || !naturalLanguageTasksInput.trim()) {
+
+  const generateQuestScheduleForSelectedDate = async () => {
+    if (!currentUser || !_naturalLanguageDailyInput.trim()) {
       toast({ title: "No Tasks Provided", description: "Please describe your day's tasks before generating a schedule!" });
       return;
     }
     _setIsLoadingSchedule(true);
     try {
       const input: GenerateDailyTimetableInput = {
-        naturalLanguageTasks: naturalLanguageTasksInput,
-        userContext: userContextText,
+        naturalLanguageTasks: _naturalLanguageDailyInput,
+        userContext: _userScheduleContext,
         currentDate: format(_selectedDateForPlanning, 'yyyy-MM-dd'),
         userName: currentUserProfile?.displayName || undefined,
       };
       const result = await aiGenerateDailyTimetable(input);
-      
+
       _setScheduledQuestsForSelectedDate(result.scheduledQuests || []);
       _setScheduledBreaksForSelectedDate(result.breaks || []);
       _setAiDailySummaryMessage(result.dailySummaryMessage || null);
@@ -808,13 +828,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
       if (planDocRef) {
         const planDataToSave: DailyPlan = {
-            naturalLanguageDailyInput: naturalLanguageTasksInput, 
-            userContextForAI: userContextText || null,
+            naturalLanguageDailyInput: _naturalLanguageDailyInput,
+            userContextForAI: _userScheduleContext || null,
             generatedQuests: result.scheduledQuests || [],
             generatedBreaks: result.breaks || [],
             aiDailySummaryMessage: result.dailySummaryMessage || null,
             questCompletionStatus: (result.scheduledQuests || []).reduce((acc, quest) => {
-                acc[quest.id] = 'active'; 
+                acc[quest.id] = 'active';
                 return acc;
             }, {} as Record<string, 'active' | 'completed' | 'missed'>),
             lastGeneratedAt: serverTimestamp(),
@@ -829,16 +849,48 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setIsLoadingSchedule(false);
     }
   };
-  
-  const completeQuestInSchedule = async (questId: string) => {
+
+  const completeQuestInSchedule = async (itemId: string, itemType: 'quest' | 'break') => {
     if (!currentUser) return;
-    
-    _setScheduledQuestsForSelectedDate(prevQuests => 
-        prevQuests.map(q => q.id === questId ? {...q, notes: (q.notes || "") + " (Completed!)" } : q)
-    );
-    _setScheduledBreaksForSelectedDate(prevBreaks => 
-        prevBreaks.map(b => b.id === questId ? {...b, suggestion: (b.suggestion || "") + " (Taken!)" } : b)
-    );
+
+    let xpGained = 0;
+    let isQuest = itemType === 'quest';
+
+    if (isQuest) {
+        _setScheduledQuestsForSelectedDate(prevQuests =>
+            prevQuests.map(q => {
+                if (q.id === itemId && !q.notes?.includes("(Completed!)")) {
+                    xpGained = q.xp;
+                    return {...q, notes: (q.notes || "") + " (Completed!)" };
+                }
+                return q;
+            })
+        );
+    } else {
+        _setScheduledBreaksForSelectedDate(prevBreaks =>
+            prevBreaks.map(b => {
+                if (b.id === itemId && !b.suggestion?.includes("(Taken!)")) {
+                    xpGained = b.xp || 0;
+                    return {...b, suggestion: (b.suggestion || "") + " (Taken!)" };
+                }
+                return b;
+            })
+        );
+    }
+
+    if (xpGained > 0 && currentUserProfile) {
+        const newTotalXP = (currentUserProfile.xp || 0) + xpGained;
+        let newLevel = currentUserProfile.level || 1;
+        // Basic level up logic, can be expanded
+        const xpForNextLevel = (newLevel * 250); // Example: Level 1 needs 250, Level 2 needs 500 etc.
+        if (newTotalXP >= xpForNextLevel) {
+            newLevel += 1;
+            toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${newLevel}! Keep crushing it!`, duration: 4000 });
+        }
+         setCurrentUserProfile(prev => prev ? {...prev, xp: newTotalXP, level: newLevel } : null);
+         await updateDoc(doc(db, "users", currentUser.uid), { xp: newTotalXP, level: newLevel });
+    }
+
 
     const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
     if (planDocRef) {
@@ -846,12 +898,16 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const currentPlanSnap = await getDoc(planDocRef);
             if (currentPlanSnap.exists()) {
                 const currentPlanData = currentPlanSnap.data() as DailyPlan;
-                const updatedStatus = { ...currentPlanData.questCompletionStatus, [questId]: 'completed' as const };
-                await updateDoc(planDocRef, { 
+                const updatedStatus = { ...currentPlanData.questCompletionStatus, [itemId]: 'completed' as const };
+                await updateDoc(planDocRef, {
                     questCompletionStatus: updatedStatus,
                     updatedAt: serverTimestamp()
                 });
-                toast({title: "Awesome!", description: "Great job staying on track!"});
+                 if (xpGained > 0) {
+                    toast({title: `+${xpGained} XP!`, description: "Awesome job staying on track!"});
+                 } else {
+                    toast({title: "Task Complete!", description: "Great job staying on track!"});
+                 }
             }
         } catch (error) {
             toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion."})
@@ -876,14 +932,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
     if (planDocRef) {
       try {
-        await updateDoc(planDocRef, {
-          generatedQuests: updatedQuests,
-          generatedBreaks: updatedBreaks,
-          updatedAt: serverTimestamp(),
-        });
+        const currentPlanSnap = await getDoc(planDocRef);
+        if (currentPlanSnap.exists()) {
+            const currentPlanData = currentPlanSnap.data() as DailyPlan;
+            const updatedStatus = { ...currentPlanData.questCompletionStatus };
+            delete updatedStatus[itemId];
+
+            await updateDoc(planDocRef, {
+              generatedQuests: updatedQuests,
+              generatedBreaks: updatedBreaks,
+              questCompletionStatus: updatedStatus,
+              updatedAt: serverTimestamp(),
+            });
+        }
       } catch (error) {
         console.error("Error deleting scheduled item from Firestore:", error);
-        // Revert local state if Firestore update fails
         if (itemType === 'quest') _setScheduledQuestsForSelectedDate(_scheduledQuestsForSelectedDate);
         else _setScheduledBreaksForSelectedDate(_scheduledBreaksForSelectedDate);
         toast({ variant: "destructive", title: "Delete Error", description: "Could not remove item from schedule." });
@@ -908,6 +971,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedDateForPlanning: _setSelectedDateForPlanning,
       naturalLanguageDailyInput: _naturalLanguageDailyInput,
       setNaturalLanguageDailyInput: _setNaturalLanguageDailyInput,
+      userScheduleContext: _userScheduleContext,
+      setUserScheduleContext: _setUserScheduleContext,
       scheduledQuestsForSelectedDate: _scheduledQuestsForSelectedDate,
       scheduledBreaksForSelectedDate: _scheduledBreaksForSelectedDate,
       aiDailySummaryMessage: _aiDailySummaryMessage,

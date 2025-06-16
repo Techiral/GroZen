@@ -31,27 +31,27 @@ export interface OnboardingData {
 }
 
 export interface MoodLog {
-  id: string; 
-  date: string; 
-  mood: string; 
+  id: string;
+  date: string;
+  mood: string;
   notes?: string;
-  selfieDataUri?: string; 
-  aiFeedback?: string; 
-  createdAt?: any; 
+  selfieDataUri?: string;
+  aiFeedback?: string;
+  createdAt?: any;
 }
 
 export interface GroceryItem {
-  id: string; 
+  id: string;
   name: string;
-  category: string; 
-  quantity?: string; 
-  notes?: string; 
+  category: string;
+  quantity?: string;
+  notes?: string;
 }
 
 export interface GroceryList {
   id: string;
   items: GroceryItem[];
-  generatedDate: string; 
+  generatedDate: string;
 }
 
 export interface UserProfile {
@@ -62,31 +62,32 @@ export interface UserProfile {
   xp?: number;
   dailyQuestStreak?: number;
   bestQuestStreak?: number;
-  lastQuestCompletionDate?: string; 
-  title?: string; 
+  lastQuestCompletionDate?: string;
+  title?: string;
 }
 
 export interface UserListItem {
-  id: string; 
+  id: string;
   email: string | null;
   displayName?: string | null;
-  avatarUrl?: string; 
+  avatarUrl?: string;
 }
 
-export interface FullUserDetail extends UserListItem { 
+export interface FullUserDetail extends UserListItem {
   onboardingData: OnboardingData | null;
   wellnessPlan: WellnessPlan | null;
   moodLogs: MoodLog[];
   groceryList: GroceryList | null;
   activeChallengeProgress?: UserActiveChallenge | null;
-  profile?: UserProfile; 
+  profile?: UserProfile;
+  dailyPlans?: DailyPlan[]; // Added to hold daily quest plans
 }
 
 export interface ChartMoodLog {
-  date: string; 
-  moodValue: number; 
-  moodEmoji: string; 
-  fullDate: string; 
+  date: string;
+  moodValue: number;
+  moodEmoji: string;
+  fullDate: string;
 }
 
 export interface CurrentChallenge {
@@ -98,13 +99,13 @@ export interface CurrentChallenge {
 
 export interface UserActiveChallenge {
   challengeId: string;
-  joinedDate: string; 
-  completedDates: string[]; 
+  joinedDate: string;
+  completedDates: string[];
   daysCompleted: number;
 }
 
 export interface LeaderboardEntry {
-  id: string; 
+  id: string;
   displayName: string | null;
   daysCompleted: number;
   rank?: number;
@@ -117,35 +118,36 @@ export type QuestType = 'study' | 'workout' | 'hobby' | 'chore' | 'wellness' | '
 
 // AI-Generated Scheduled Quest
 export interface ScheduledQuest {
-  id: string; 
-  originalTaskId: string; 
-  title: string; 
-  startTime: string; 
-  endTime: string; 
+  id: string;
+  originalTaskId: string;
+  title: string;
+  startTime: string;
+  endTime: string;
   questType: QuestType;
-  xp: number; 
-  notes?: string; 
+  xp: number;
+  notes?: string;
 }
 
 // AI-Generated Break Slot
 export interface BreakSlot {
-  id: string; 
-  startTime: string; 
-  endTime: string; 
-  suggestion?: string; 
-  xp?: number; 
+  id: string;
+  startTime: string;
+  endTime: string;
+  suggestion?: string;
+  xp?: number;
 }
 
 // Structure for storing daily plans in Firestore
 export interface DailyPlan {
-  naturalLanguageDailyInput: string | null; // User's natural language input for the day
-  userContextForAI: string | null; 
+  id?: string; // Document ID, typically the date string YYYY-MM-DD
+  naturalLanguageDailyInput: string | null;
+  userContextForAI: string | null;
   generatedQuests: ScheduledQuest[];
   generatedBreaks: BreakSlot[];
   aiDailySummaryMessage: string | null;
-  questCompletionStatus: Record<string, 'active' | 'completed' | 'missed'>; 
-  lastGeneratedAt: any; 
-  updatedAt: any; 
+  questCompletionStatus: Record<string, 'active' | 'completed' | 'missed'>;
+  lastGeneratedAt: any;
+  updatedAt: any;
 }
 
 
@@ -153,27 +155,27 @@ export interface Badge {
   id: string;
   name: string;
   description: string;
-  iconName: string; 
-  earnedDate?: string; 
+  iconName: string;
+  earnedDate?: string;
 }
 
-export interface Collectible { 
+export interface Collectible {
   id: string;
   name: string;
   description: string;
   type: 'skin_avatar' | 'skin_profile_border' | 'boost_xp' | 'boost_quest_slot';
   iconName: string;
-  duration?: number; 
-  effectValue?: number; 
+  duration?: number;
+  effectValue?: number;
   isEquipped?: boolean;
 }
 
 export interface DailySummary {
-  date: string; 
+  date: string;
   questsCompleted: number;
   totalQuests: number;
   xpGained: number;
   badgesEarned: Badge[];
   streakContinued: boolean;
-  activityScore?: number; 
+  activityScore?: number;
 }

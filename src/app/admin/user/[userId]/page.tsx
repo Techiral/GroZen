@@ -9,13 +9,13 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown, Sparkles } from 'lucide-react';
-import type { FullUserDetail, Meal, Exercise, Mindfulness, MoodLog, GroceryItem } from '@/types/wellness';
-import { format } from 'date-fns';
+import { Loader2, UserCircle, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays, ArrowLeft, LogOut, FileText, BarChart3, Laugh, Meh, Annoyed, Frown, Sparkles, BookOpen, Wind, Coffee, Info, ListChecks, MessageSquare, ExternalLink } from 'lucide-react';
+import type { FullUserDetail, Meal, Exercise, Mindfulness, MoodLog, GroceryItem, DailyPlan, ScheduledQuest, BreakSlot, QuestType } from '@/types/wellness';
+import { format, parseISO, isValid, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const DetailSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; isEmpty?: boolean; emptyText?: string }> = ({ title, icon, children, isEmpty, emptyText = "No data available." }) => (
-  <Card className="neumorphic w-full mb-3 sm:mb-4">
+const DetailSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; isEmpty?: boolean; emptyText?: string; className?: string }> = ({ title, icon, children, isEmpty, emptyText = "No data available.", className }) => (
+  <Card className={cn("neumorphic w-full mb-3 sm:mb-4", className)}>
     <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
       <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-1 sm:gap-1.5">
         {icon} {title}
@@ -33,6 +33,12 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
   </div>
 );
 
+const QuestItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={cn("neumorphic-inset-sm p-2 sm:p-2.5 rounded-md", className)}>
+    {children}
+  </div>
+);
+
 const moodEmojis: { [key: string]: string | React.ReactNode } = {
   "😊": <Laugh className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-400" aria-label="Happy emoji icon" />,
   "🙂": <Smile className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" aria-label="Okay emoji icon" />,
@@ -40,6 +46,17 @@ const moodEmojis: { [key: string]: string | React.ReactNode } = {
   "😕": <Annoyed className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400" aria-label="Worried emoji icon" />,
   "😞": <Frown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-400" aria-label="Sad emoji icon" />
 };
+
+const questTypeIcons: Record<QuestType, React.ElementType> = {
+  study: BookOpen, workout: Dumbbell, hobby: ExternalLink, chore: ListChecks, // Replaced PaintBrush with ExternalLink for hobby, ListChecks for chore
+  wellness: Sparkles, creative: Edit3, social: Users, break: Coffee, other: Info,
+};
+
+const QuestIcon: React.FC<{ type: QuestType }> = ({ type }) => {
+  const IconComponent = questTypeIcons[type] || Info;
+  return <IconComponent className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />;
+};
+
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -87,8 +104,17 @@ export default function AdminUserDetailPage() {
       </div>
     );
   }
-  
-  const { onboardingData, wellnessPlan, moodLogs, groceryList, avatarUrl } = userData;
+
+  const { onboardingData, wellnessPlan, moodLogs, groceryList, avatarUrl, dailyPlans } = userData;
+  const sortedDailyPlans = dailyPlans?.sort((a, b) => {
+      const dateA = a.id ? parse(a.id, 'yyyy-MM-dd', new Date()) : new Date(0);
+      const dateB = b.id ? parse(b.id, 'yyyy-MM-dd', new Date()) : new Date(0);
+      if (!isValid(dateA) && isValid(dateB)) return 1; // a is invalid, b is valid, so b comes first
+      if (isValid(dateA) && !isValid(dateB)) return -1; // a is valid, b is invalid, so a comes first
+      if (!isValid(dateA) && !isValid(dateB)) return 0; // both invalid, order doesn't matter
+      return dateB.getTime() - dateA.getTime(); // Sort descending (most recent first)
+  }) || [];
+
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
@@ -97,9 +123,9 @@ export default function AdminUserDetailPage() {
             <Logo size="text-lg sm:text-xl" />
          </div>
         <div className="flex items-center gap-1 sm:gap-1.5 mt-2 sm:mt-0">
-            <Button 
-                variant="outline" 
-                onClick={() => router.push('/admin')} 
+            <Button
+                variant="outline"
+                onClick={() => router.push('/admin')}
                 className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8"
                 aria-label="Back to User List"
             >
@@ -110,7 +136,7 @@ export default function AdminUserDetailPage() {
             </Button>
         </div>
       </header>
-      
+
       <Card className="neumorphic mb-4 sm:mb-5">
         <CardHeader className="flex flex-row items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-2.5">
           {avatarUrl ? (
@@ -146,6 +172,91 @@ export default function AdminUserDetailPage() {
             <p><strong>Budget:</strong> <span className="capitalize">{onboardingData.budget}</span></p>
           </div>
         )}
+      </DetailSection>
+
+      <DetailSection title="AI Daily Quest Plans" icon={<ListChecks className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent" />} isEmpty={!sortedDailyPlans || sortedDailyPlans.length === 0}>
+        <ScrollArea className="w-full h-[400px] sm:h-[500px] md:h-[600px] whitespace-nowrap rounded-md">
+          <div className="flex flex-col space-y-3 sm:space-y-4 p-0.5">
+            {sortedDailyPlans.map((plan: DailyPlan) => (
+              <Card key={plan.id || new Date(plan.lastGeneratedAt?.toDate?.() || Date.now()).toISOString()} className="bg-card/50 neumorphic-sm">
+                <CardHeader className="px-2.5 py-2 sm:px-3 sm:py-2.5">
+                  <CardTitle className="text-xs sm:text-sm flex items-center justify-between">
+                    <span>
+                       Plan for: {plan.id ? format(parse(plan.id, 'yyyy-MM-dd', new Date()), "MMM d, yyyy") : "Unknown Date"}
+                    </span>
+                    {plan.lastGeneratedAt?.toDate && (
+                       <span className="text-3xs text-muted-foreground">Generated: {format(plan.lastGeneratedAt.toDate(), "h:mma")}</span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-2.5 pt-0 pb-2 sm:px-3 sm:pb-2.5 space-y-2">
+                  {plan.naturalLanguageDailyInput && (
+                    <div className="mb-2">
+                      <h5 className="font-semibold text-2xs text-muted-foreground mb-0.5">User Input:</h5>
+                      <p className="text-3xs xs:text-2xs p-1.5 bg-muted/30 rounded-md whitespace-pre-wrap break-words neumorphic-inset-sm">{plan.naturalLanguageDailyInput}</p>
+                    </div>
+                  )}
+                   {plan.userContextForAI && (
+                    <div className="mb-2">
+                      <h5 className="font-semibold text-2xs text-muted-foreground mb-0.5">User Context for AI:</h5>
+                      <p className="text-3xs xs:text-2xs p-1.5 bg-muted/30 rounded-md whitespace-pre-wrap break-words neumorphic-inset-sm">{plan.userContextForAI}</p>
+                    </div>
+                  )}
+                  {plan.aiDailySummaryMessage && (
+                     <div className="mb-2">
+                        <h5 className="font-semibold text-2xs text-muted-foreground mb-0.5 flex items-center"><Sparkles className="h-3 w-3 mr-1 text-accent"/>AI Daily Tip:</h5>
+                        <p className="text-3xs xs:text-2xs p-1.5 bg-accent/10 rounded-md whitespace-pre-wrap break-words italic neumorphic-inset-sm">{plan.aiDailySummaryMessage}</p>
+                    </div>
+                  )}
+
+                  {plan.generatedQuests && plan.generatedQuests.length > 0 && (
+                    <div>
+                      <h5 className="font-semibold text-2xs text-muted-foreground mb-1">Generated Quests ({plan.generatedQuests.length})</h5>
+                      <div className="space-y-1.5">
+                        {plan.generatedQuests.map((quest: ScheduledQuest) => (
+                          <QuestItemCard key={quest.id} className="bg-background/70">
+                            <div className="flex items-center gap-1.5">
+                              <QuestIcon type={quest.questType} />
+                              <div className="flex-1">
+                                <p className="text-2xs sm:text-xs font-medium truncate">{quest.title}</p>
+                                <p className="text-3xs text-muted-foreground">{quest.startTime} - {quest.endTime} | XP: {quest.xp}</p>
+                                {quest.notes && <p className="text-3xs italic text-primary/80 truncate" title={quest.notes}>{quest.notes}</p>}
+                              </div>
+                              {plan.questCompletionStatus?.[quest.id] === 'completed' && <CheckCircle className="h-3.5 w-3.5 text-green-400" />}
+                            </div>
+                          </QuestItemCard>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {plan.generatedBreaks && plan.generatedBreaks.length > 0 && (
+                     <div className="mt-2">
+                      <h5 className="font-semibold text-2xs text-muted-foreground mb-1">Suggested Breaks ({plan.generatedBreaks.length})</h5>
+                       <div className="space-y-1.5">
+                        {plan.generatedBreaks.map((br: BreakSlot) => (
+                          <QuestItemCard key={br.id} className="bg-background/70">
+                            <div className="flex items-center gap-1.5">
+                               {br.suggestion?.toLowerCase().includes('walk') ? <Wind className="h-3 w-3 text-muted-foreground"/> : <Coffee className="h-3 w-3 text-muted-foreground"/>}
+                              <div className="flex-1">
+                                <p className="text-2xs sm:text-xs font-medium truncate">{br.suggestion || "Quick Break"}</p>
+                                <p className="text-3xs text-muted-foreground">{br.startTime} - {br.endTime} {br.xp ? `| XP: ${br.xp}` : ''}</p>
+                              </div>
+                              {plan.questCompletionStatus?.[br.id] === 'completed' && <CheckCircle className="h-3.5 w-3.5 text-green-400" />}
+                            </div>
+                          </QuestItemCard>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                   {(!plan.generatedQuests || plan.generatedQuests.length === 0) && (!plan.generatedBreaks || plan.generatedBreaks.length === 0) && (
+                     <p className="text-center text-muted-foreground text-3xs py-2">No quests or breaks generated for this day.</p>
+                   )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <ScrollBar orientation="vertical" />
+        </ScrollArea>
       </DetailSection>
 
       <DetailSection title="Wellness Plan" icon={<BarChart3 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent" />} isEmpty={!wellnessPlan || !wellnessPlan.meals || wellnessPlan.meals.length === 0}>
