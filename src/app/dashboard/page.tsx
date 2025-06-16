@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
 import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -42,7 +42,7 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
 
 const questTypeIcons: Record<QuestType, React.ElementType> = {
   study: BookOpen, workout: Dumbbell, hobby: Paintbrush, chore: Briefcase,
-  wellness: AwardIcon, creative: Palette, social: Users, break: Coffee, other: FerrisWheel,
+  wellness: AwardIcon, creative: Edit3, social: Users, break: Coffee, other: FerrisWheel,
 };
 
 // Component to handle client-side rendering safely
@@ -55,10 +55,10 @@ const DashboardContent: React.FC = () => {
     isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile,
     updateUserDisplayName,
     selectedDateForPlanning, setSelectedDateForPlanning, 
-    naturalLanguageDailyInput, setNaturalLanguageDailyInput, // Changed from rawTasks
+    naturalLanguageDailyInput, setNaturalLanguageDailyInput,
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
     isLoadingSchedule, 
-    generateQuestScheduleForSelectedDate, completeQuestInSchedule
+    generateQuestScheduleForSelectedDate, completeQuestInSchedule, deleteScheduledItem,
   } = usePlan();
   const { toast } = useToast();
 
@@ -90,7 +90,7 @@ const DashboardContent: React.FC = () => {
   const [mockBestStreak, setMockBestStreak] = useState(0); 
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
 
-  const [userScheduleContext, setUserScheduleContext] = useState(''); // For additional preferences for AI
+  const [userScheduleContext, setUserScheduleContext] = useState('');
 
 
   const [isMounted, setIsMounted] = useState(false);
@@ -298,6 +298,11 @@ const DashboardContent: React.FC = () => {
     setIsSummaryDialogOpen(true);
   };
 
+  const handleDeleteScheduledItem = async (itemId: string, itemType: 'quest' | 'break') => {
+    await deleteScheduledItem(itemId, itemType);
+    toast({title: `${itemType === 'quest' ? 'Quest' : 'Break'} Removed`, description: "Your schedule has been updated."});
+  };
+
   const chartData: ChartMoodLog[] = useMemo(() =>
     moodLogs.filter(log => moodToValue[log.mood] !== undefined).slice(0, 30)
       .map(log => ({ date: format(parseISO(log.date), 'MMM d'), moodValue: moodToValue[log.mood], moodEmoji: log.mood, fullDate: log.date, }))
@@ -431,7 +436,7 @@ const DashboardContent: React.FC = () => {
                 </div>
               </div>
               <div ref={xpBarRef}>
-                 <ShadProgress value={(mockUserXP % mockXPToNextLevel) / mockXPToNextLevel * 100} className="h-2 sm:h-2.5 animate-progress-fill" indicatorClassName="progress-bar-fill-xp" />
+                 <ShadProgress value={(mockUserXP % mockXPToNextLevel) / mockXPToNextLevel * 100} className="h-2 sm:h-2.5 animate-progress-fill progress-bar-fill-xp" />
               </div>
             </CardHeader>
           </Card>
@@ -503,7 +508,7 @@ const DashboardContent: React.FC = () => {
                 <Label htmlFor="naturalLanguageTasks" className="text-xs text-muted-foreground">What&apos;s your quest for {format(selectedDateForPlanning, "MMM d")}? (Tell AI everything!)</Label>
                 <Textarea
                   id="naturalLanguageTasks"
-                  placeholder="e.g., I have to first update my app with some new features, solve some bugs, share the information of the app to sales executive, complete homework, ask teammate for the presentation, check the hackathon, go to coaching, try to learn some social skills, etc."
+                  placeholder="I have to first update my app with some new features, solve some bugs, share the information of the app to sales executive, complete homework, ask teammate for the presentation, check the hackathon, go to coaching, try to learn some social skills, etc."
                   value={naturalLanguageDailyInput}
                   onChange={(e) => setNaturalLanguageDailyInput(e.target.value)}
                   className="min-h-[80px] text-sm"
@@ -560,7 +565,7 @@ const DashboardContent: React.FC = () => {
                                 isCompleted && "opacity-60 bg-card/50"
                             )}
                           >
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
                                 {quest && <QuestIcon type={quest.questType} />}
                                 {breakItem && <Coffee className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />}
@@ -576,18 +581,41 @@ const DashboardContent: React.FC = () => {
                                     {quest?.notes && !isCompleted && <p className="text-3xs text-primary/80 italic pt-0.5">{quest.notes}</p>}
                                 </div>
                               </div>
-                              {!isCompleted ? (
-                                <Button
-                                  variant="neumorphic-primary"
-                                  size="sm"
-                                  onClick={() => handleCompleteQuest(itemId)}
-                                  className="text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
-                                >
-                                  {isBreak ? "Done!" : "Complete"}
-                                </Button>
-                              ) : (
-                                <CheckCircle className="h-5 w-5 text-green-400" />
-                              )}
+                              <div className="flex items-center gap-1">
+                                {!isCompleted ? (
+                                  <Button
+                                    variant="neumorphic-primary"
+                                    size="sm"
+                                    onClick={() => handleCompleteQuest(itemId)}
+                                    className="text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
+                                  >
+                                    {isBreak ? "Done!" : "Complete"}
+                                  </Button>
+                                ) : (
+                                  <CheckCircle className="h-5 w-5 text-green-400" />
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" aria-label={`Delete ${isBreak ? 'break' : 'quest'}`}>
+                                      <Trash2 className="h-3 w-3"/>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="neumorphic">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete This Item?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to remove "{quest ? quest.title : breakItem?.suggestion || 'this break'}" from your schedule? This cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel className="neumorphic-button">Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteScheduledItem(itemId, isBreak ? 'break' : 'quest')} className="neumorphic-button-primary bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </div>
                           </div>
                        );

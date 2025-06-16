@@ -61,11 +61,10 @@ interface PlanContextType {
   logChallengeDay: () => Promise<void>;
   fetchLeaderboardData: () => Promise<LeaderboardEntry[]>;
 
-  // AI Daily Scheduling with Natural Language Input
   selectedDateForPlanning: Date;
   setSelectedDateForPlanning: (date: Date) => void;
-  naturalLanguageDailyInput: string; // Stores the user's natural language input for the day
-  setNaturalLanguageDailyInput: (input: string) => void; // To update from Textarea
+  naturalLanguageDailyInput: string; 
+  setNaturalLanguageDailyInput: (input: string) => void; 
   scheduledQuestsForSelectedDate: ScheduledQuest[];
   scheduledBreaksForSelectedDate: BreakSlot[];
   aiDailySummaryMessage: string | null;
@@ -73,6 +72,7 @@ interface PlanContextType {
   fetchDailyPlan: (date: Date) => Promise<void>;
   generateQuestScheduleForSelectedDate: (naturalLanguageTasksInput: string, userContext?: string) => Promise<void>;
   completeQuestInSchedule: (questId: string) => Promise<void>;
+  deleteScheduledItem: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
 }
 
 const defaultOnboardingData: OnboardingData | null = null;
@@ -96,9 +96,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [_userActiveChallenge, _setUserActiveChallenge] = useState<UserActiveChallenge | null>(null);
   const [_isLoadingUserChallenge, _setIsLoadingUserChallenge] = useState(false);
 
-  // State for AI Daily Scheduling with Natural Language Input
   const [_selectedDateForPlanning, _setSelectedDateForPlanning] = useState<Date>(startOfDay(new Date()));
-  const [_naturalLanguageDailyInput, _setNaturalLanguageDailyInput] = useState<string>(''); // New state
+  const [_naturalLanguageDailyInput, _setNaturalLanguageDailyInput] = useState<string>('');
   const [_scheduledQuestsForSelectedDate, _setScheduledQuestsForSelectedDate] = useState<ScheduledQuest[]>([]);
   const [_scheduledBreaksForSelectedDate, _setScheduledBreaksForSelectedDate] = useState<BreakSlot[]>([]);
   const [_aiDailySummaryMessage, _setAiDailySummaryMessage] = useState<string | null>(null);
@@ -119,7 +118,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setErrorGroceryList(null);
       _setIsLoadingPlan(false);
       _setIsLoadingGroceryList(false);
-      // Clear scheduling related state
       _setNaturalLanguageDailyInput('');
       _setScheduledQuestsForSelectedDate([]);
       _setScheduledBreaksForSelectedDate([]);
@@ -141,7 +139,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setIsLoadingUserChallenge(false);
     setCurrentUserProfile(null);
 
-    // Clear scheduling related state
     _setSelectedDateForPlanning(startOfDay(new Date()));
     _setNaturalLanguageDailyInput('');
     _setScheduledQuestsForSelectedDate([]);
@@ -151,7 +148,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
     if (isFullLogout) {
-      // Future: localStorage.removeItem('grozen_onboardingData');
     }
   }, []);
 
@@ -212,16 +208,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'QNSRsQsMqRRuS4288vtlBYT1a7E2';
         if (adminUid && user.uid === adminUid) {
           setIsAdminUser(true);
-          console.log(`User ${user.uid} recognized as Admin.`);
         }
         try {
           const userDocRef = doc(db, "users", user.uid);
           const userDocSnap = await getDoc(userDocRef);
-          console.log(`onAuthStateChanged: User ${user.uid} authenticated. Checking Firestore doc...`);
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
-            console.log(`onAuthStateChanged: Firestore document found for user ${user.uid}. Data:`, userData);
              setCurrentUserProfile({
               displayName: userData.displayName || user.displayName || user.email?.split('@')[0] || 'GroZen User',
               email: user.email || '',
@@ -245,11 +238,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                    if(plan.meals && Array.isArray(plan.meals) && plan.exercise && Array.isArray(plan.exercise) && plan.mindfulness && Array.isArray(plan.mindfulness)) {
                     _setWellnessPlan(plan);
                   } else {
-                    console.warn("Wellness plan structure in Firestore is invalid for user:", user.uid, plan);
                     _setWellnessPlan(null);
                   }
               } catch (e) {
-                  console.error("Error parsing wellness plan from Firestore for user:", user.uid, e);
                   _setWellnessPlan(null);
               }
             } else {
@@ -264,7 +255,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   id: gItem.id || crypto.randomUUID(),
                 }));
               } else {
-                console.warn("Grocery list items in Firestore are invalid for user:", user.uid, loadedGroceryList);
                 loadedGroceryList.items = [];
               }
               _setGroceryList(loadedGroceryList);
@@ -288,8 +278,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   dateStr = data.createdAt.toDate().toISOString();
               } else if (data.date && typeof data.date === 'string') {
                   dateStr = data.date;
-              } else {
-                console.warn("Mood log missing valid date for user:", user.uid, "log ID:", docSnap.id);
               }
               return {
                 id: docSnap.id,
@@ -306,7 +294,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await fetchDailyPlan(startOfDay(new Date()));
 
           } else {
-            console.log(`onAuthStateChanged: User ${user.uid} authenticated, but no Firestore document found. Likely new user or provider sign-in.`);
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
             const initialAvatarUrl = user.photoURL || undefined;
 
@@ -316,7 +303,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 avatarUrl: initialAvatarUrl,
                 level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 
             });
-             console.log(`onAuthStateChanged: Attempting to create basic user doc for new Google/provider sign-in: ${user.uid}`);
              const basicUserDoc = {
                 email: user.email,
                 displayName: initialProfileName,
@@ -331,12 +317,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 dailyQuestStreak: 0,
                 bestQuestStreak: 0,
              };
-             console.log("Basic user doc payload for new user:", basicUserDoc);
              try {
                 await setDoc(doc(db, "users", user.uid), basicUserDoc, { merge: true });
-                console.log(`onAuthStateChanged: Basic user doc created/merged for ${user.uid}`);
              } catch (basicDocError) {
-                console.error(`onAuthStateChanged: Failed to create/merge basic user doc for ${user.uid}`, basicDocError);
                 toast({ variant: "destructive", title: "Account Setup Incomplete", description: "Could not initialize your profile. Please try signing up manually or contact support."});
              }
             _setOnboardingData(defaultOnboardingData);
@@ -372,7 +355,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Signup Started", description: "Welcome to GroZen! Please complete your profile setup." });
       return userCredential.user;
     } catch (error: any) {
-      console.error("Signup error (signupWithEmail):", error);
       toast({ variant: "destructive", title: "Signup Failed", description: error.message || "Could not create account."});
       setIsLoadingAuth(false);
       return null;
@@ -383,15 +365,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoadingAuth(true);
     let user: User | null = null;
     try {
-      console.log("Attempting signupWithDetails for email:", emailVal, "username:", usernameVal);
       const userCredential = await createUserWithEmailAndPassword(auth, emailVal, passwordVal);
       user = userCredential.user;
-      console.log("Firebase Auth user created with UID:", user.uid);
 
       await updateProfile(user, {
         displayName: usernameVal.trim(),
       });
-      console.log("Firebase Auth profile updated with displayName:", usernameVal.trim());
 
       const trimmedUsername = usernameVal.trim().toLowerCase();
       const usernameDocRef = doc(db, "usernames", trimmedUsername);
@@ -401,7 +380,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       
       await setDoc(usernameDocRef, usernameData);
-      console.log("Username document created successfully.");
 
       const userDocRef = doc(db, "users", user.uid);
       const userDocPayload: UserProfile & { createdAt: FieldValue, onboardingData: null, wellnessPlan: null, currentGroceryList: null, activeChallengeProgress: null } = {
@@ -420,7 +398,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       
       await setDoc(userDocRef, userDocPayload);
-      console.log("User document created successfully.");
 
       setCurrentUserProfile({
         displayName: usernameVal.trim(),
@@ -435,7 +412,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
 
     } catch (error: any) {
-      console.error("Detailed Signup error (signupWithDetails):", error);
       if (user && (error.code?.includes("permission-denied") || error.message?.includes("permission denied") || error.message?.includes("Missing or insufficient permissions") || error.name === 'FirebaseError')) {
         try {
           await user.delete();
@@ -463,7 +439,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Login Successful", description: "Welcome back!" });
       return userCredential.user;
     } catch (error: any) {
-      console.error("Login error", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Invalid email or password." });
       setIsLoadingAuth(false);
       return null;
@@ -491,7 +466,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Password Reset Email Sent", description: "Check your inbox (and spam folder) for a link to reset your password." });
       return true;
     } catch (error: any) {
-      console.error("Password reset error", error);
       let errorMessage = "Could not send password reset email.";
       if (error.code === 'auth/user-not-found') {
         errorMessage = "No user found with this email address.";
@@ -510,7 +484,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error: any) {
-      console.error("Logout error", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not log out." });
     }
   };
@@ -532,7 +505,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '', avatarUrl: prev?.avatarUrl, level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 });
       toast({ title: "Display Name Updated" });
     } catch (error: any) {
-      console.error("Error updating display name:", error);
       toast({ variant: "destructive", title: "Update Failed", description: error.message });
     }
   };
@@ -547,7 +519,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(userDocRef, { onboardingData: data, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Preferences Saved" });
     } catch (error) {
-      console.error("Error saving onboarding data:", error);
       toast({ variant: "destructive", title: "Save Error", description: "Could not save preferences." });
     }
   };
@@ -577,11 +548,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await setDoc(userDocRef, { wellnessPlan: planToSet, updatedAt: serverTimestamp() }, { merge: true });
         toast({ title: "Plan Generated & Saved!" });
       } else {
-        console.error("AI generated an incomplete or malformed plan:", parsedPlanCandidate);
         throw new Error("AI generated an incomplete or malformed plan.");
       }
     } catch (err: any) {
-      console.error("Failed to generate plan:", err);
       _setErrorPlan(err.message);
       toast({ variant: "destructive", title: "Error Generating Plan", description: err.message });
       _setWellnessPlan(null);
@@ -618,7 +587,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ title: "Mood Logged", description: aiFeedbackText ? `GroZen: ${aiFeedbackText}` : "Successfully recorded."});
       return aiFeedbackText;
     } catch (error) {
-      console.error("Error saving mood log:", error);
       toast({ variant: "destructive", title: "Save Error", description: "Could not save your mood log." });
       return undefined;
     }
@@ -631,7 +599,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setMoodLogs(prev => prev.filter(log => log.id !== logId));
       toast({ title: "Mood Log Deleted" });
     } catch (error) {
-      console.error("Error deleting mood log:", error);
       toast({ variant: "destructive", title: "Delete Error", description: "Could not delete the mood log." });
     }
   };
@@ -655,7 +622,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setGroceryList(newGroceryList);
       toast({ title: "Grocery List Generated!" });
     } catch (err: any) {
-      console.error("Failed to generate grocery list:", err);
       _setErrorGroceryList(err.message);
       toast({ variant: "destructive", title: "Grocery List Error", description: err.message });
     } finally {
@@ -672,14 +638,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList); // Revert on error
+      _setGroceryList(_groceryList); 
       toast({ variant: "destructive", title: "Update Error", description: "Could not delete item." });
     }
   };
 
   const fetchAllUsers = async (): Promise<UserListItem[]> => {
     if (!isAdminUser) {
-        console.warn("fetchAllUsers called by non-admin.");
         return [];
     }
     try {
@@ -695,7 +660,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return userItem;
         });
     } catch (error) {
-        console.error("Error fetching all users (admin):", error);
         toast({variant: "destructive", title: "Admin Error", description: "Could not fetch user list."});
         return [];
     }
@@ -703,7 +667,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchFullUserDetailsForAdmin = async (targetUserId: string): Promise<FullUserDetail | null> => {
      if (!isAdminUser) {
-        console.warn("fetchFullUserDetailsForAdmin called by non-admin.");
         return null;
      }
     try {
@@ -746,7 +709,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         } as FullUserDetail;
     } catch (error) {
-        console.error("Error fetching user details (admin):", error);
         toast({variant: "destructive", title: "Admin Error", description: "Could not fetch user details."});
         return null;
     }
@@ -766,7 +728,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setUserActiveChallenge(newChallenge);
       toast({ title: "Challenge Joined!", description: `Let's do this: ${CURRENT_CHALLENGE.title}` });
     } catch (e) {
-        console.error("Error joining challenge:", e);
         toast({variant: "destructive", title: "Error Joining Challenge", description: "Could not join the challenge."});
     }
     finally { _setIsLoadingUserChallenge(false); }
@@ -791,7 +752,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setUserActiveChallenge(updatedChallenge);
       toast({ title: "Day Logged!", description: "Awesome progress!" });
     } catch (e) {
-        console.error("Error logging challenge day:", e);
         toast({variant: "destructive", title: "Error Logging Day", description: "Could not log your progress."});
     }
     finally { _setIsLoadingUserChallenge(false); }
@@ -821,7 +781,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } as LeaderboardEntry;
       });
     } catch (e: any) {
-      console.error("Error fetching leaderboard data:", e);
       toast({variant: "destructive", title: "Leaderboard Error", description: "Could not load leaderboard. " + (e.message || "Please check your network or try again later.") });
       return [];
     }
@@ -849,7 +808,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
       if (planDocRef) {
         const planDataToSave: DailyPlan = {
-            naturalLanguageDailyInput: naturalLanguageTasksInput, // Save the input
+            naturalLanguageDailyInput: naturalLanguageTasksInput, 
             userContextForAI: userContextText || null,
             generatedQuests: result.scheduledQuests || [],
             generatedBreaks: result.breaks || [],
@@ -865,7 +824,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toast({ title: "Quest Schedule Generated!", description: "Your AI-powered plan is ready." });
       }
     } catch (error: any) {
-      console.error("Error generating quest schedule:", error);
       toast({ variant: "destructive", title: "AI Error", description: error.message || "Could not generate schedule." });
     } finally {
       _setIsLoadingSchedule(false);
@@ -896,9 +854,40 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 toast({title: "Awesome!", description: "Great job staying on track!"});
             }
         } catch (error) {
-            console.error("Error updating quest/break status in Firestore:", error);
             toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion."})
         }
+    }
+  };
+
+  const deleteScheduledItem = async (itemId: string, itemType: 'quest' | 'break') => {
+    if (!currentUser) return;
+
+    let updatedQuests = [..._scheduledQuestsForSelectedDate];
+    let updatedBreaks = [..._scheduledBreaksForSelectedDate];
+
+    if (itemType === 'quest') {
+      updatedQuests = _scheduledQuestsForSelectedDate.filter(q => q.id !== itemId);
+      _setScheduledQuestsForSelectedDate(updatedQuests);
+    } else {
+      updatedBreaks = _scheduledBreaksForSelectedDate.filter(b => b.id !== itemId);
+      _setScheduledBreaksForSelectedDate(updatedBreaks);
+    }
+
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (planDocRef) {
+      try {
+        await updateDoc(planDocRef, {
+          generatedQuests: updatedQuests,
+          generatedBreaks: updatedBreaks,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("Error deleting scheduled item from Firestore:", error);
+        // Revert local state if Firestore update fails
+        if (itemType === 'quest') _setScheduledQuestsForSelectedDate(_scheduledQuestsForSelectedDate);
+        else _setScheduledBreaksForSelectedDate(_scheduledBreaksForSelectedDate);
+        toast({ variant: "destructive", title: "Delete Error", description: "Could not remove item from schedule." });
+      }
     }
   };
 
@@ -915,7 +904,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fetchAllUsers, fetchFullUserDetailsForAdmin,
       userActiveChallenge: _userActiveChallenge, isLoadingUserChallenge: _isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay,
       fetchLeaderboardData,
-      // AI Daily Scheduling with Natural Language Input
       selectedDateForPlanning: _selectedDateForPlanning,
       setSelectedDateForPlanning: _setSelectedDateForPlanning,
       naturalLanguageDailyInput: _naturalLanguageDailyInput,
@@ -927,6 +915,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fetchDailyPlan,
       generateQuestScheduleForSelectedDate,
       completeQuestInSchedule,
+      deleteScheduledItem,
   };
 
   return (
