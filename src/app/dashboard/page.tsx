@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { usePlan } from '@/contexts/plan-context';
 import Logo from '@/components/logo';
@@ -18,8 +18,8 @@ import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SocialShareCard from '@/components/social-share-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { MoodLog, GroceryItem, ChartMoodLog, Quest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask } from '@/types/wellness'; // Renamed Quest to ScheduledQuestType
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap } from 'lucide-react'; // Added Zap
+import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask, BreakSlot } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -55,7 +55,6 @@ const DashboardContent: React.FC = () => {
     generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge, 
     isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile, 
     updateUserDisplayName,
-    // AI Daily Scheduling
     selectedDateForPlanning, setSelectedDateForPlanning, rawTasksForSelectedDate,
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
     isLoadingSchedule, addRawTask, updateRawTask, deleteRawTask,
@@ -82,7 +81,6 @@ const DashboardContent: React.FC = () => {
   const questCardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const xpBarRef = useRef<HTMLDivElement>(null);
 
-  const [mockQuests, setMockQuests] = useState<ScheduledQuestType[]>([]); // Using ScheduledQuestType
   const [mockUserXP, setMockUserXP] = useState(0);
   const [mockUserLevel, setMockUserLevel] = useState(1);
   const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250); 
@@ -95,6 +93,9 @@ const DashboardContent: React.FC = () => {
   const [currentRawTaskDuration, setCurrentRawTaskDuration] = useState<string>('');
   const [currentRawTaskPriority, setCurrentRawTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [currentRawTaskType, setCurrentRawTaskType] = useState<QuestType>('other');
+  const [currentRawTaskUrgency, setCurrentRawTaskUrgency] = useState<string>('');
+  const [currentRawTaskEnergy, setCurrentRawTaskEnergy] = useState<string>('');
+
   const [isAddingRawTask, setIsAddingRawTask] = useState(false);
   const [userScheduleContext, setUserScheduleContext] = useState('');
 
@@ -117,7 +118,6 @@ const DashboardContent: React.FC = () => {
       setMockUserLevel(currentUserProfile.level || 1);
       setMockDailyStreak(currentUserProfile.dailyQuestStreak || 0);
       setMockBestStreak(currentUserProfile.bestQuestStreak || 0);
-      // Potentially pre-fill userScheduleContext from profile if we store it
     }
   }, [currentUserProfile]);
 
@@ -152,35 +152,53 @@ const DashboardContent: React.FC = () => {
       durationMinutes: currentRawTaskDuration ? parseInt(currentRawTaskDuration, 10) : undefined,
       priority: currentRawTaskPriority,
       questType: currentRawTaskType,
+      urgency: currentRawTaskUrgency.trim() || undefined,
+      requiredEnergyLevel: currentRawTaskEnergy.trim() || undefined,
     };
     await addRawTask(taskData);
     setCurrentRawTaskDesc('');
     setCurrentRawTaskDuration('');
+    setCurrentRawTaskUrgency('');
+    setCurrentRawTaskEnergy('');
     setIsAddingRawTask(false);
   };
 
   const handleGenerateSchedule = async () => {
+    if (rawTasksForSelectedDate.length === 0) {
+        toast({ title: "No Tasks Yet!", description: "Add some tasks for today before generating a schedule." });
+        return;
+    }
     await generateQuestScheduleForSelectedDate(userScheduleContext);
   };
 
   const handleCompleteQuest = async (questId: string) => {
-    // Animate card first
     const cardRef = questCardRefs.current.get(questId);
     if (cardRef) {
-      cardRef.classList.add('animate-ripple'); // You'll need to define this animation
+      cardRef.classList.add('animate-ripple'); 
       setTimeout(() => cardRef.classList.remove('animate-ripple'), 700);
     }
-    await completeQuestInSchedule(questId); // Then call context function
-    // Future: update mockUserXP and level based on actual XP from completed quest
+    await completeQuestInSchedule(questId);
+    
+    // Mock XP gain for UI feedback - replace with actual XP from quest and context later
+    const questXP = scheduledQuestsForSelectedDate.find(q => q.id === questId)?.xp || 
+                    scheduledBreaksForSelectedDate.find(b => b.id === questId)?.xp || 10;
+    setMockUserXP(prev => prev + questXP); 
+    
+    // Simple Level Up Mock
+    const newTotalXP = (currentUserProfile?.xp || 0) + questXP; // Use context for true XP if available
+    if (newTotalXP >= mockXPToNextLevel) {
+      setMockUserLevel(prev => prev + 1);
+      setMockXPToNextLevel(prev => prev + 150); // Increase next level threshold
+      toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${mockUserLevel + 1}!`, duration: 4000 });
+    }
   };
   
   const handleViewDailySummary = () => {
-     // This will be driven by actual scheduledQuests and their completion status later
-    const completedToday = scheduledQuestsForSelectedDate.filter(q => q.notes?.includes("(Completed!)")); // Placeholder logic
+    const completedToday = scheduledQuestsForSelectedDate.filter(q => q.notes?.includes("(Completed!)"));
     const totalToday = scheduledQuestsForSelectedDate.length;
     const xpGainedToday = completedToday.reduce((sum, q) => sum + q.xp, 0);
     
-    let earnedBadges: BadgeType[] = []; // Placeholder
+    let earnedBadges: BadgeType[] = []; 
     if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
       localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); 
@@ -193,31 +211,58 @@ const DashboardContent: React.FC = () => {
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
       streakContinued: mockDailyStreak > 0, 
+      activityScore: Math.round((completedToday.length / (totalToday || 1)) * 100)
     });
     setIsSummaryDialogOpen(true);
   };
 
-  const chartData: ChartMoodLog[] = moodLogs.filter(log => moodToValue[log.mood] !== undefined).slice(0, 30)
-    .map(log => ({ date: format(parseISO(log.date), 'MMM d'), moodValue: moodToValue[log.mood], moodEmoji: log.mood, fullDate: log.date, }))
-    .reverse();
-  const moodLogsWithSelfies = moodLogs.filter(log => log.selfieDataUri);
+  const chartData: ChartMoodLog[] = useMemo(() => 
+    moodLogs.filter(log => moodToValue[log.mood] !== undefined).slice(0, 30)
+      .map(log => ({ date: format(parseISO(log.date), 'MMM d'), moodValue: moodToValue[log.mood], moodEmoji: log.mood, fullDate: log.date, }))
+      .reverse(),
+  [moodLogs]);
+  
+  const moodLogsWithSelfies = useMemo(() => moodLogs.filter(log => log.selfieDataUri), [moodLogs]);
   const beforeLog = moodLogsWithSelfies.length > 1 ? moodLogsWithSelfies[moodLogsWithSelfies.length - 1] : null;
   const afterLog = moodLogsWithSelfies.length > 0 ? moodLogsWithSelfies[0] : null;
-  const groupedGroceryItems = groceryList?.items.reduce((acc, item) => {
-    const category = item.category || 'Other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(item);
-    return acc;
-  }, {} as Record<string, GroceryItem[]>) || {};
+  
+  const groupedGroceryItems = useMemo(() => 
+    groceryList?.items.reduce((acc, item) => {
+      const category = item.category || 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, GroceryItem[]>) || {},
+  [groceryList]);
+
   const challengeProgress = userActiveChallenge ? Math.round((userActiveChallenge.daysCompleted / CURRENT_CHALLENGE.durationDays) * 100) : 0;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const hasLoggedToday = userActiveChallenge?.completedDates.includes(todayStr) || false;
 
   if (!isMounted || isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isOnboardedState && !isLoadingAuth)) {
-    return ( /* ... (existing loading screen) ... */ );
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-xl sm:text-2xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Loading your dashboard...</p>
+      </div>
+    );
   }
   if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && rawTasksForSelectedDate.length === 0) { 
-    return ( /* ... (existing no plan screen, maybe adapt to "no quests for today") ... */ );
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
+        <Logo size="text-xl sm:text-2xl" />
+        <Zap className="w-12 h-12 text-accent my-4" />
+        <h2 className="text-lg font-semibold text-primary">Your Quest Planner is Ready!</h2>
+        <p className="text-muted-foreground text-sm max-w-md mt-2 mb-4">
+          Looks like you don't have any tasks scheduled for today yet, or an AI plan hasn't been generated.
+          Add some tasks above and let GroZen's AI craft your epic daily quest list!
+        </p>
+        <Button onClick={() => document.getElementById('rawTaskDesc')?.focus()} className="neumorphic-button-primary">
+          <Plus className="mr-2 h-4 w-4" /> Add First Task
+        </Button>
+      </div>
+    );
   }
   
   const QuestIcon = ({ type }: { type: QuestType }) => {
@@ -225,7 +270,7 @@ const DashboardContent: React.FC = () => {
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />;
   };
 
-  const displayedQuests = useMemo(() => {
+  const displayedItems = useMemo(() => { // Renamed to displayedItems
     return [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate]
         .sort((a, b) => {
             const timeA = parseInt(a.startTime.replace(':', ''), 10);
@@ -237,20 +282,54 @@ const DashboardContent: React.FC = () => {
 
   return (
     <main className="container mx-auto p-3 sm:p-4 md:p-6">
-      {/* ... (AI Feedback Card and Header remain largely the same) ... */}
        <header className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Logo size="text-xl sm:text-2xl" />
-          <span className="text-sm sm:text-md font-semibold text-primary">Dashboard</span>
         </div>
         <div className="flex items-center gap-1 sm:gap-1.5 mt-2 sm:mt-0">
-          {/* ... (Leaderboard, Settings, Logout buttons) ... */}
+           <Button variant="outline" onClick={() => router.push('/leaderboard')} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="View Leaderboard">
+             <Trophy className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Leaderboard
+           </Button>
+           <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+            <DialogTrigger asChild>
+               <Button variant="outline" className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Open Settings">
+                 <Settings className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Settings
+               </Button>
+            </DialogTrigger>
+            <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="text-sm sm:text-base">User Settings</DialogTitle>
+                    <DialogDescription className="text-2xs sm:text-xs">Update your display name.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3 py-3">
+                    <Label htmlFor="displayName" className="text-2xs sm:text-xs">Display Name</Label>
+                    <Input id="displayName" value={newDisplayName} onChange={(e) => setNewDisplayName(e.target.value)} className="h-8 sm:h-9 text-xs sm:text-sm" disabled={isUpdatingName}/>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSettingsDialogOpen(false)} className="neumorphic-button text-xs sm:text-sm h-8 sm:h-9" disabled={isUpdatingName}>Cancel</Button>
+                    <Button onClick={handleUpdateDisplayName} disabled={isUpdatingName || !newDisplayName.trim()} className="neumorphic-button-primary text-xs sm:text-sm h-8 sm:h-9">
+                        {isUpdatingName && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />} Save
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+           </Dialog>
+           <Button variant="outline" onClick={logoutUser} className="neumorphic-button text-3xs px-2 py-1 sm:text-2xs sm:px-2.5 sm:py-1.5 h-7 sm:h-8" aria-label="Logout">
+             <LogOut className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Logout
+           </Button>
         </div>
       </header>
+      
+      {aiFeedbackToDisplay && (
+        <Card ref={aiFeedbackCardRef} className="neumorphic mb-3 sm:mb-4 p-2 sm:p-2.5 bg-accent/10 border-accent/30">
+          <CardTitle className="text-xs sm:text-sm font-semibold flex items-center text-primary">
+            <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 text-accent" /> GroZen Insight:
+          </CardTitle>
+          <CardDescription className="text-2xs sm:text-xs text-foreground/90 italic">{aiFeedbackToDisplay}</CardDescription>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* ... (Profile Card, Daily Quest Streak Card) ... */}
           <Card className="neumorphic hover:shadow-primary/20 transition-shadow duration-300">
             <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -276,7 +355,7 @@ const DashboardContent: React.FC = () => {
                 </div>
               </div>
               <div ref={xpBarRef}>
-                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5" indicatorClassName="progress-bar-fill" />
+                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5" indicatorClassName="progress-bar-fill-xp" />
               </div>
             </CardHeader>
           </Card>
@@ -311,7 +390,6 @@ const DashboardContent: React.FC = () => {
             </CardHeader>
           </Card>
 
-           {/* AI Daily Schedule Section */}
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
               <div className="flex-1">
@@ -344,7 +422,6 @@ const DashboardContent: React.FC = () => {
               </div>
             </CardHeader>
 
-            {/* Raw Task Input Area */}
             <CardContent className="px-3 pt-2 pb-2.5 sm:px-4 sm:pb-3 border-t border-border/50">
               <div className="space-y-2 mb-3">
                 <Label htmlFor="rawTaskDesc" className="text-xs text-muted-foreground">New Task / Goal for {format(selectedDateForPlanning, "MMM d")}:</Label>
@@ -355,7 +432,7 @@ const DashboardContent: React.FC = () => {
                   onChange={(e) => setCurrentRawTaskDesc(e.target.value)}
                   className="min-h-[40px] text-sm"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                   <Input 
                     type="number" 
                     placeholder="Mins (opt.)" 
@@ -381,9 +458,23 @@ const DashboardContent: React.FC = () => {
                       <option key={type} value={type} className="capitalize">{type.charAt(0).toUpperCase() + type.slice(1)}</option>
                     ))}
                   </select>
+                   <Input 
+                    type="text" 
+                    placeholder="Urgency (e.g. ASAP)" 
+                    value={currentRawTaskUrgency} 
+                    onChange={(e) => setCurrentRawTaskUrgency(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                   <Input 
+                    type="text" 
+                    placeholder="Energy (e.g. High Focus)" 
+                    value={currentRawTaskEnergy} 
+                    onChange={(e) => setCurrentRawTaskEnergy(e.target.value)}
+                    className="h-8 text-xs"
+                  />
                 </div>
                 <Button onClick={handleAddRawTask} disabled={isAddingRawTask || !currentRawTaskDesc.trim()} className="w-full sm:w-auto neumorphic-button-primary h-8 text-xs">
-                  {isAddingRawTask ? <Loader2 className="h-3 w-3 animate-spin"/> : <Plus className="h-3 w-3"/>} Add to List
+                  {isAddingRawTask ? <Loader2 className="h-3 w-3 animate-spin"/> : <Plus className="h-3 w-3"/>} Add Task to List
                 </Button>
               </div>
 
@@ -393,7 +484,7 @@ const DashboardContent: React.FC = () => {
                   <ScrollArea className="h-[100px] w-full neumorphic-inset-sm p-2 rounded-md">
                     {rawTasksForSelectedDate.map(task => (
                       <div key={task.id} className="text-xs flex justify-between items-center py-0.5">
-                        <span>{task.description} {task.durationMinutes ? `(${task.durationMinutes}m)` : ''} - {task.questType}</span>
+                        <span className="truncate max-w-[80%]">{task.description} {task.durationMinutes ? `(${task.durationMinutes}m)` : ''} - <span className="capitalize">{task.questType}</span></span>
                         <Button variant="ghost" size="icon" onClick={() => deleteRawTask(task.id)} className="h-5 w-5"><Trash2 className="h-3 w-3"/></Button>
                       </div>
                     ))}
@@ -404,14 +495,13 @@ const DashboardContent: React.FC = () => {
                     onChange={(e) => setUserScheduleContext(e.target.value)}
                     className="min-h-[40px] text-xs mt-1"
                   />
-                  <Button onClick={handleGenerateSchedule} disabled={isLoadingSchedule} className="w-full neumorphic-button-primary h-9 text-sm mt-1">
+                  <Button onClick={handleGenerateSchedule} disabled={isLoadingSchedule || rawTasksForSelectedDate.length === 0} className="w-full neumorphic-button-primary h-9 text-sm mt-1">
                     {isLoadingSchedule ? <Loader2 className="h-4 w-4 animate-spin"/> : <Wand2 className="h-4 w-4"/>} AI, Plan My Quests!
                   </Button>
                 </div>
               )}
             </CardContent>
 
-            {/* Display AI Generated Quests */}
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-row items-center justify-between border-t border-border/50">
               <CardTitle className="text-sm sm:text-base text-primary flex items-center">
                 <Target className="h-4 w-4 mr-1.5 text-accent"/> Scheduled Quests
@@ -424,23 +514,24 @@ const DashboardContent: React.FC = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <Button variant="outline" size="sm" onClick={handleViewDailySummary} className="neumorphic-button text-3xs h-6 sm:h-7">
+              <Button variant="outline" size="sm" onClick={handleViewDailySummary} className="neumorphic-button text-3xs h-6 sm:h-7" disabled={displayedItems.length === 0}>
                   Daily Recap
               </Button>
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
               {isLoadingSchedule && <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin mr-2" /> <p className="text-sm text-muted-foreground">AI is crafting your schedule...</p></div>}
-              {!isLoadingSchedule && displayedQuests.length === 0 && rawTasksForSelectedDate.length === 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Add some tasks above and let AI plan your quests!</p>}
-              {!isLoadingSchedule && displayedQuests.length === 0 && rawTasksForSelectedDate.length > 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Click "AI, Plan My Quests!" to generate your schedule.</p>}
+              {!isLoadingSchedule && displayedItems.length === 0 && rawTasksForSelectedDate.length === 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Add some tasks above and let AI plan your quests!</p>}
+              {!isLoadingSchedule && displayedItems.length === 0 && rawTasksForSelectedDate.length > 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Click "AI, Plan My Quests!" to generate your schedule.</p>}
 
-              {displayedQuests.length > 0 ? (
+              {displayedItems.length > 0 ? (
                 <ScrollArea className="h-[250px] sm:h-[300px] w-full">
                   <div className="space-y-2 sm:space-y-2.5 pr-1">
-                    {displayedQuests.map((item) => {
-                       const isBreak = 'suggestion' in item; // Type guard
+                    {displayedItems.map((item) => {
+                       const isBreak = 'suggestion' in item; 
                        const quest = isBreak ? null : item as ScheduledQuestType;
                        const breakItem = isBreak ? item as BreakSlot : null;
                        const itemId = item.id;
+                       const isCompleted = quest?.notes?.includes("(Completed!)") || breakItem?.suggestion?.includes("(Taken!)");
 
                        return (
                           <div
@@ -448,7 +539,7 @@ const DashboardContent: React.FC = () => {
                             ref={el => questCardRefs.current.set(itemId, el)}
                             className={cn(
                                 "neumorphic-sm p-2 sm:p-2.5 rounded-md group quest-card-ripple", 
-                                (quest?.notes?.includes("(Completed!)") || breakItem?.suggestion?.includes("(Taken!)")) && "opacity-60 bg-card/50"
+                                isCompleted && "opacity-60 bg-card/50"
                             )}
                           >
                             <div className="flex items-center justify-between">
@@ -464,14 +555,14 @@ const DashboardContent: React.FC = () => {
                                       {quest && ` | XP: ${quest.xp}`}
                                       {breakItem && breakItem.xp ? ` | XP: ${breakItem.xp}`: ''}
                                     </p>
-                                    {quest?.notes && !quest.notes.includes("(Completed!)") && <p className="text-3xs text-primary/80 italic pt-0.5">{quest.notes}</p>}
+                                    {quest?.notes && !isCompleted && <p className="text-3xs text-primary/80 italic pt-0.5">{quest.notes}</p>}
                                 </div>
                               </div>
-                              {!(quest?.notes?.includes("(Completed!)") || breakItem?.suggestion?.includes("(Taken!)")) ? (
+                              {!isCompleted ? (
                                 <Button
                                   variant="neumorphic-primary"
                                   size="sm"
-                                  onClick={() => handleCompleteQuest(itemId)} // Simplified
+                                  onClick={() => handleCompleteQuest(itemId)}
                                   className="text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
                                 >
                                   {isBreak ? "Done!" : "Complete"}
@@ -489,44 +580,262 @@ const DashboardContent: React.FC = () => {
             </CardContent>
           </Card>
 
+          <Card className="neumorphic">
+            <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="flex items-center justify-between text-sm sm:text-base">
+                    <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
+                      <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Mood Trends (Last 30)
+                    </span>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="px-1 py-2.5 sm:px-2 sm:pb-3 h-[180px] sm:h-[200px]">
+                {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                        <XAxis dataKey="date" tick={{ fontSize: '10px', fill: 'hsl(var(--muted-foreground))' }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={{ stroke: 'hsl(var(--border))' }} />
+                        <YAxis domain={[0.5, 5.5]} tickCount={5} tickFormatter={(value) => ['😞','😕','😐','🙂','😊'][value-1] || ''} tick={{ fontSize: '12px', fill: 'hsl(var(--muted-foreground))' }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={{ stroke: 'hsl(var(--border))' }} />
+                        <RechartsTooltip
+                        contentStyle={{
+                            backgroundColor: 'hsl(var(--popover))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            fontSize: '12px',
+                            color: 'hsl(var(--popover-foreground))',
+                            boxShadow: 'var(--neumorphic-shadow-light)'
+                        }}
+                        labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--primary))' }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                        formatter={(value, name, props) => [`${props.payload.moodEmoji}`, 'Mood']}
+                        />
+                        <Line type="monotone" dataKey="moodValue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5, fill: 'hsl(var(--accent))', stroke: 'hsl(var(--primary))' }} />
+                    </LineChart>
+                </ResponsiveContainer>
+                ) : <p className="text-center text-muted-foreground text-xs pt-10">Not enough mood data to show a trend yet.</p>}
+            </CardContent>
+          </Card>
 
-          {/* ... (Challenge Card, Wellness Plan Tabs, Mood Chart) ... */}
-          {/* These would remain largely the same as before, but might be moved or condensed if space is an issue */}
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          {/* ... (Mood Logging, Grocery Haul, Social Share Card) ... */}
            <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                 <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
                   <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Vibe Check!
                 </span>
-                {/* ... Mood Dialog Trigger ... */}
+                <Dialog open={isMoodDialogOpen} onOpenChange={setIsMoodDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="neumorphic-button text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2">
+                            <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3"/> Log Mood
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="neumorphic max-w-[90vw] xs:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle className="text-sm sm:text-base">How You Feelin&apos;?</DialogTitle>
+                            <DialogDescription className="text-2xs sm:text-xs">Log your current mood. Add notes or a selfie if you like!</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 py-2">
+                            <div className="flex justify-around">
+                                {["😊", "🙂", "😐", "😕", "😞"].map(mood => (
+                                    <button key={mood} onClick={() => setSelectedMood(mood)} className={cn("text-3xl sm:text-4xl p-1 rounded-md transition-all", selectedMood === mood ? 'bg-primary/20 scale-110 ring-2 ring-primary' : 'hover:bg-muted/50 hover:scale-105')}>
+                                        {mood}
+                                    </button>
+                                ))}
+                            </div>
+                            <Textarea placeholder="Any deets? (Optional)" value={moodNotes} onChange={e => setMoodNotes(e.target.value)} className="min-h-[40px] text-xs sm:text-sm" />
+                            {isCameraOpen && (
+                            <div className="space-y-2">
+                                <div className="relative w-full aspect-video bg-muted rounded-md neumorphic-inset-sm overflow-hidden">
+                                    {selfieDataUri ? (
+                                        <Image src={selfieDataUri} alt="Selfie preview" fill style={{ objectFit: 'cover' }} data-ai-hint="selfie preview" />
+                                    ) : (
+                                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                                    )}
+                                    <canvas ref={canvasRef} className="hidden"></canvas>
+                                </div>
+                                <div className="flex gap-2">
+                                {selfieDataUri ? (
+                                    <Button onClick={() => { setSelfieDataUri(undefined); startCamera(); }} className="w-full neumorphic-button text-xs" variant="outline">Retake</Button>
+                                ) : (
+                                    <Button onClick={capturePhoto} className="w-full neumorphic-button text-xs" variant="outline">Capture</Button>
+                                )}
+                                <Button onClick={() => { stopCamera(); setIsCameraOpen(false); setSelfieDataUri(undefined); }} className="w-full neumorphic-button text-xs" variant="outline">Cancel</Button>
+                                </div>
+                            </div>
+                            )}
+                            {!isCameraOpen && !selfieDataUri && (
+                                <Button onClick={() => { setIsCameraOpen(true); startCamera();}} variant="outline" className="w-full neumorphic-button text-xs"><Camera className="mr-1.5 h-3 w-3"/> Take Selfie (Optional)</Button>
+                            )}
+                            {selfieDataUri && !isCameraOpen && (
+                                 <Button onClick={() => { setIsCameraOpen(true); startCamera();}} variant="outline" className="w-full neumorphic-button text-xs"><Edit3 className="mr-1.5 h-3 w-3"/> Change Selfie</Button>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => {setIsMoodDialogOpen(false); stopCamera(); setSelectedMood(''); setMoodNotes(''); setSelfieDataUri(undefined); setIsCameraOpen(false);}} className="neumorphic-button text-xs sm:text-sm h-8 sm:h-9" disabled={isSubmittingMood}>Cancel</Button>
+                            <Button onClick={handleMoodSubmit} disabled={!selectedMood || isSubmittingMood} className="neumorphic-button-primary text-xs sm:text-sm h-8 sm:h-9">
+                                {isSubmittingMood && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />} Log My Vibe!
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
-              {/* ... Mood Logs Display ... */}
+              {moodLogs.length === 0 ? (
+                <p className="text-center text-muted-foreground text-xs py-4">No mood logs yet. Tap the `+` to add one!</p>
+              ) : (
+                <ScrollArea className="h-[180px] sm:h-[200px] w-full">
+                    <div className="space-y-2 pr-1">
+                    {moodLogs.slice(0, 10).map(log => (
+                        <div key={log.id} className="neumorphic-sm p-2 rounded-md flex items-start gap-2">
+                        {log.selfieDataUri && (
+                            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden neumorphic-inset-sm shrink-0">
+                            <Image src={log.selfieDataUri} alt={`Selfie ${log.mood}`} fill style={{objectFit: 'cover'}} data-ai-hint="selfie photo"/>
+                            </div>
+                        )}
+                        <div className="flex-grow min-w-0">
+                            <div className="flex justify-between items-start">
+                            <span className="text-xl sm:text-2xl">{log.mood}</span>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="neumorphic">
+                                <AlertDialogHeader><AlertDialogTitle>Delete Mood Log?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel className="neumorphic-button">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteMoodLog(log.id)} className="neumorphic-button-primary bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                            </div>
+                            <p className="text-3xs text-muted-foreground">{format(parseISO(log.date), "MMM d, h:mma")}</p>
+                            {log.notes && <p className="text-2xs sm:text-xs mt-1 truncate" title={log.notes}>{log.notes}</p>}
+                            {log.aiFeedback && <p className="text-2xs sm:text-xs mt-1 italic text-primary/80 truncate" title={log.aiFeedback}><Sparkles className="h-3 w-3 inline-block mr-0.5 text-accent"/>{log.aiFeedback}</p>}
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
+
            <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                 <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
                   <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Grocery Haul
                 </span>
-                 {/* ... Grocery List Generate Button ... */}
+                 <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleGenerateGroceryList} 
+                    disabled={isLoadingGroceryList || !wellnessPlan}
+                    className="neumorphic-button text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
+                  >
+                    {isLoadingGroceryList ? <Loader2 className="h-3 w-3 animate-spin"/> : <RefreshCw className="h-3 w-3"/>} Gen List
+                  </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
-               {/* ... Grocery List Display ... */}
+              {isLoadingGroceryList && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+              {!isLoadingGroceryList && !groceryList?.items?.length && (
+                <p className="text-center text-muted-foreground text-xs py-4">
+                  {wellnessPlan ? "Click 'Gen List' to create a shopping list from your meal plan!" : "Generate a wellness plan first to create a grocery list."}
+                </p>
+              )}
+              {!isLoadingGroceryList && groceryList?.items?.length && (
+                <ScrollArea className="h-[180px] sm:h-[200px] w-full">
+                  <div className="space-y-1.5 pr-1">
+                    {Object.entries(groupedGroceryItems).map(([category, items]) => (
+                      <div key={category}>
+                        <h4 className="text-xs font-semibold text-muted-foreground mt-1 mb-0.5">{category}</h4>
+                        <ul className="space-y-0.5">
+                          {items.map(item => (
+                            <li key={item.id} className="text-2xs sm:text-xs flex justify-between items-center neumorphic-inset-sm p-1 rounded">
+                              <span className="truncate max-w-[85%]">
+                                {item.name} 
+                                {item.quantity && <span className="text-muted-foreground text-3xs"> ({item.quantity})</span>}
+                                {item.notes && <em className="text-muted-foreground text-3xs block truncate"> - {item.notes}</em>}
+                              </span>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteGroceryItem(item.id)} className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
       <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
-        {/* ... (Daily Summary Dialog Content - uses mockDailySummary for now) ... */}
+         <DialogContent className="neumorphic max-w-md">
+            <DialogHeader>
+                <DialogTitle className="text-center text-lg text-primary flex items-center justify-center gap-2">
+                    <PartyPopper className="h-6 w-6 text-accent"/> Daily Quest Recap!
+                </DialogTitle>
+                <DialogDescription className="text-center text-muted-foreground text-sm">
+                    {mockDailySummary ? format(parseISO(mockDailySummary.date), "eeee, MMMM do") : "Recap"}
+                </DialogDescription>
+            </DialogHeader>
+            {mockDailySummary ? (
+                <div className="space-y-3 py-3">
+                    <div className="flex justify-around text-center">
+                        <div>
+                            <p className="text-2xl font-bold text-primary">{mockDailySummary.questsCompleted}/{mockDailySummary.totalQuests}</p>
+                            <p className="text-xs text-muted-foreground">Quests Done</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-primary">+{mockDailySummary.xpGained}</p>
+                            <p className="text-xs text-muted-foreground">XP Earned</p>
+                        </div>
+                         <div>
+                            <p className="text-2xl font-bold text-primary">{mockDailySummary.activityScore || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Activity Score</p>
+                        </div>
+                    </div>
+                    {mockDailySummary.streakContinued && (
+                        <p className="text-center text-sm text-primary flex items-center justify-center gap-1">
+                            <Flame className="h-4 w-4 text-accent" /> Streak Continued! Keep it up!
+                        </p>
+                    )}
+                    {mockDailySummary.badgesEarned.length > 0 && (
+                        <div className="text-center">
+                            <h4 className="text-sm font-semibold text-primary mb-1">Badges Unlocked!</h4>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {mockDailySummary.badgesEarned.map(badge => (
+                                    <TooltipProvider key={badge.id}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="p-2 neumorphic-sm rounded-md bg-card animate-badge-pop">
+                                                    <Medal className="h-8 w-8 text-accent" />
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="neumorphic-sm text-xs">
+                                                <p className="font-bold">{badge.name}</p>
+                                                <p>{badge.description}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-xs text-muted-foreground text-center pt-2">You crushed it today! Keep that awesome momentum going!</p>
+                </div>
+            ) : (
+                <p className="text-center text-muted-foreground py-4">No summary data available yet.</p>
+            )}
+             <DialogFooter>
+                <Button onClick={() => setIsSummaryDialogOpen(false)} className="neumorphic-button w-full">Got It!</Button>
+            </DialogFooter>
+         </DialogContent>
       </Dialog>
     </main>
   );
@@ -535,8 +844,14 @@ const DashboardContent: React.FC = () => {
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) { /* ... (loading screen) ... */ }
+  if (!mounted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Logo size="text-xl sm:text-2xl" />
+        <Loader2 className="mt-4 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
   return <DashboardContent />;
 }
 
-    
