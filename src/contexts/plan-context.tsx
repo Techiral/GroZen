@@ -1,11 +1,12 @@
 
 "use client";
 
-import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, UserProfile } from '@/types/wellness';
+import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, UserProfile, RawTask, ScheduledQuest, BreakSlot, DailyPlan, QuestType } from '@/types/wellness'; // Added QuestType
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
 import { generateGroceryList as aiGenerateGroceryList, type GenerateGroceryListInput, type GenerateGroceryListOutput } from '@/ai/flows/generate-grocery-list';
+import { generateDailyTimetable as aiGenerateDailyTimetable, type GenerateDailyTimetableInput, type GenerateDailyTimetableOutput } from '@/ai/flows/generate-daily-timetable';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from '@/lib/firebase';
 import {
@@ -20,7 +21,7 @@ import {
 import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc, Timestamp, updateDoc, where, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 
 
 interface PlanContextType {
@@ -59,6 +60,21 @@ interface PlanContextType {
   joinCurrentChallenge: () => Promise<void>;
   logChallengeDay: () => Promise<void>;
   fetchLeaderboardData: () => Promise<LeaderboardEntry[]>;
+
+  // New AI Daily Scheduling
+  selectedDateForPlanning: Date;
+  setSelectedDateForPlanning: (date: Date) => void;
+  rawTasksForSelectedDate: RawTask[];
+  scheduledQuestsForSelectedDate: ScheduledQuest[];
+  scheduledBreaksForSelectedDate: BreakSlot[];
+  aiDailySummaryMessage: string | null;
+  isLoadingSchedule: boolean;
+  addRawTask: (taskData: Omit<RawTask, 'id'>) => Promise<void>;
+  updateRawTask: (taskId: string, updates: Partial<RawTask>) => Promise<void>;
+  deleteRawTask: (taskId: string) => Promise<void>;
+  fetchDailyPlan: (date: Date) => Promise<void>;
+  generateQuestScheduleForSelectedDate: (userContext?: string) => Promise<void>;
+  completeQuestInSchedule: (questId: string) => Promise<void>; // Simplified for now
 }
 
 const defaultOnboardingData: OnboardingData | null = null;
@@ -82,6 +98,15 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [_userActiveChallenge, _setUserActiveChallenge] = useState<UserActiveChallenge | null>(null);
   const [_isLoadingUserChallenge, _setIsLoadingUserChallenge] = useState(false);
 
+  // New state for AI Daily Scheduling
+  const [_selectedDateForPlanning, _setSelectedDateForPlanning] = useState<Date>(startOfDay(new Date()));
+  const [_rawTasksForSelectedDate, _setRawTasksForSelectedDate] = useState<RawTask[]>([]);
+  const [_scheduledQuestsForSelectedDate, _setScheduledQuestsForSelectedDate] = useState<ScheduledQuest[]>([]);
+  const [_scheduledBreaksForSelectedDate, _setScheduledBreaksForSelectedDate] = useState<BreakSlot[]>([]);
+  const [_aiDailySummaryMessage, _setAiDailySummaryMessage] = useState<string | null>(null);
+  const [_isLoadingSchedule, _setIsLoadingSchedule] = useState(false);
+
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -96,6 +121,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setErrorGroceryList(null);
       _setIsLoadingPlan(false);
       _setIsLoadingGroceryList(false);
+      // Clear scheduling related state if specifically requested to clear plan state
+      _setRawTasksForSelectedDate([]);
+      _setScheduledQuestsForSelectedDate([]);
+      _setScheduledBreaksForSelectedDate([]);
+      _setAiDailySummaryMessage(null);
+      _setIsLoadingSchedule(false);
       return;
     }
 
@@ -112,10 +143,60 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setIsLoadingUserChallenge(false);
     setCurrentUserProfile(null);
 
+    // Clear scheduling related state
+    _setSelectedDateForPlanning(startOfDay(new Date()));
+    _setRawTasksForSelectedDate([]);
+    _setScheduledQuestsForSelectedDate([]);
+    _setScheduledBreaksForSelectedDate([]);
+    _setAiDailySummaryMessage(null);
+    _setIsLoadingSchedule(false);
+
+
     if (isFullLogout) {
       // Future: localStorage.removeItem('grozen_onboardingData');
     }
   }, []);
+
+  const fetchDailyPlan = useCallback(async (date: Date) => {
+    if (!currentUser) return;
+    _setIsLoadingSchedule(true);
+    const planDocRef = getDailyPlanDocRef(date);
+    if (!planDocRef) {
+      _setIsLoadingSchedule(false);
+      return;
+    }
+
+    try {
+      const docSnap = await getDoc(planDocRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as DailyPlan;
+        _setRawTasksForSelectedDate(data.rawTasks || []);
+        _setScheduledQuestsForSelectedDate(data.generatedQuests || []);
+        _setScheduledBreaksForSelectedDate(data.generatedBreaks || []);
+        _setAiDailySummaryMessage(data.aiDailySummaryMessage || null);
+      } else {
+        _setRawTasksForSelectedDate([]);
+        _setScheduledQuestsForSelectedDate([]);
+        _setScheduledBreaksForSelectedDate([]);
+        _setAiDailySummaryMessage(null);
+      }
+    } catch (error) {
+      console.error("Error fetching daily plan:", error);
+      toast({ variant: "destructive", title: "Load Error", description: "Could not load daily plan." });
+    } finally {
+      _setIsLoadingSchedule(false);
+    }
+  }, [currentUser, toast]);
+
+
+  // Effect to load daily plan when selectedDateForPlanning changes or user logs in
+  useEffect(() => {
+    if (currentUser) {
+      fetchDailyPlan(_selectedDateForPlanning);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_selectedDateForPlanning, currentUser, fetchDailyPlan]);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -141,7 +222,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
              setCurrentUserProfile({
               displayName: userData.displayName || user.displayName || user.email?.split('@')[0] || 'GroZen User',
               email: user.email || '',
-              avatarUrl: userData.avatarUrl || user.photoURL || undefined
+              avatarUrl: userData.avatarUrl || user.photoURL || undefined,
+              level: userData.level || 1,
+              xp: userData.xp || 0,
+              dailyQuestStreak: userData.dailyQuestStreak || 0,
+              bestQuestStreak: userData.bestQuestStreak || 0,
             });
             if (userData.onboardingData) {
               _setOnboardingData(userData.onboardingData as OnboardingData);
@@ -214,13 +299,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               } as MoodLog;
             });
             _setMoodLogs(fetchedMoodLogs);
+            
+            // Fetch initial daily plan for today
+            await fetchDailyPlan(startOfDay(new Date()));
 
           } else {
             console.log(`onAuthStateChanged: User ${user.uid} authenticated, but no Firestore document found. Likely new user or provider sign-in.`);
             const initialProfileName = user.displayName || user.email?.split('@')[0] || 'GroZen User';
             const initialAvatarUrl = user.photoURL || undefined;
 
-            setCurrentUserProfile({ displayName: initialProfileName, email: user.email || '', avatarUrl: initialAvatarUrl });
+            setCurrentUserProfile({ 
+                displayName: initialProfileName, 
+                email: user.email || '', 
+                avatarUrl: initialAvatarUrl,
+                level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 
+            });
              console.log(`onAuthStateChanged: Attempting to create basic user doc for new Google/provider sign-in: ${user.uid}`);
              const basicUserDoc = {
                 email: user.email,
@@ -231,6 +324,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 wellnessPlan: null,
                 currentGroceryList: null,
                 activeChallengeProgress: null,
+                level: 1,
+                xp: 0,
+                dailyQuestStreak: 0,
+                bestQuestStreak: 0,
              };
              console.log("Basic user doc payload for new user:", basicUserDoc);
              try {
@@ -246,6 +343,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setGroceryList(null);
             _setMoodLogs([]);
             _setUserActiveChallenge(null);
+            _setRawTasksForSelectedDate([]);
+            _setScheduledQuestsForSelectedDate([]);
+            _setScheduledBreaksForSelectedDate([]);
+            _setAiDailySummaryMessage(null);
           }
         } catch (error) {
           console.error("Error in onAuthStateChanged fetching/creating user data from Firestore:", error);
@@ -259,7 +360,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     return () => unsubscribe();
-  }, [clearPlanAndData, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearPlanAndData, toast, fetchDailyPlan]);
 
 
   const signupWithEmail = async (email: string, pass: string): Promise<User | null> => {
@@ -296,34 +398,34 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         userId: user.uid,
         email: user.email,
       };
-      console.log("Attempting to set username document:", `/usernames/${trimmedUsername}`, "with data:", usernameData);
-      console.log("Authenticated user UID for username rule check (request.auth.uid):", user.uid);
-      console.log("Data for username rule check (request.resource.data.userId):", usernameData.userId);
+      
       await setDoc(usernameDocRef, usernameData);
       console.log("Username document created successfully.");
 
       const userDocRef = doc(db, "users", user.uid);
-      const userDocPayload = {
+      const userDocPayload: UserProfile & { createdAt: FieldValue, onboardingData: null, wellnessPlan: null, currentGroceryList: null, activeChallengeProgress: null } = {
         email: user.email,
         displayName: usernameVal.trim(),
-        avatarUrl: (avatarDataUri && typeof avatarDataUri === 'string' && avatarDataUri.trim() !== "") ? avatarDataUri : null,
+        avatarUrl: (avatarDataUri && typeof avatarDataUri === 'string' && avatarDataUri.trim() !== "") ? avatarDataUri : undefined,
         createdAt: serverTimestamp(),
         onboardingData: null,
         wellnessPlan: null,
         currentGroceryList: null,
         activeChallengeProgress: null,
+        level: 1,
+        xp: 0,
+        dailyQuestStreak: 0,
+        bestQuestStreak: 0,
       };
-      console.log("Attempting to set user document:", `/users/${user.uid}`, "with payload:", userDocPayload);
-      console.log("Authenticated user UID for user doc rule check (request.auth.uid):", user.uid);
-      console.log("Document ID for user doc rule check (userIdFromPath):", user.uid);
-
+      
       await setDoc(userDocRef, userDocPayload);
       console.log("User document created successfully.");
 
       setCurrentUserProfile({
         displayName: usernameVal.trim(),
         email: user.email || '',
-        avatarUrl: userDocPayload.avatarUrl || undefined
+        avatarUrl: userDocPayload.avatarUrl || undefined,
+        level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0,
       });
       _setIsOnboardedState(false);
 
@@ -333,40 +435,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     } catch (error: any) {
       console.error("Detailed Signup error (signupWithDetails):", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-
       if (user && (error.code?.includes("permission-denied") || error.message?.includes("permission denied") || error.message?.includes("Missing or insufficient permissions") || error.name === 'FirebaseError')) {
         try {
-          console.warn("Firestore write failed, attempting to delete created Firebase Auth user:", user.uid);
           await user.delete();
-          console.log("Firebase Auth user deleted due to Firestore error during signup.");
         } catch (deleteError: any) {
           console.error("Failed to delete Firebase Auth user after signup failure:", deleteError);
-          toast({ variant: "destructive", title: "Critical Signup Error", description: "Account may be partially created. Please contact support." });
         }
       }
-
       const commonErrorMessages: {[key: string]: string} = {
         'auth/email-already-in-use': "This email address is already in use. Try logging in or use a different email.",
-        'firestore/permission-denied': "Could not save your details due to a permission issue. Please ensure your app has the correct setup.",
-        'FirebaseError: Missing or insufficient permissions.': "A permission error occurred while saving your profile. Please ensure the app has the necessary permissions.",
       };
-      let description = commonErrorMessages[error.code] || commonErrorMessages[error.message] || error.message || "An unexpected error occurred during signup.";
-
-      if (error.message && error.message.includes("Unsupported field value: undefined") && error.message.includes("avatarUrl")) {
-        description = "There was an issue processing your avatar. Please try uploading and validating it again. If the problem persists, try a different photo.";
-      } else if (error.code === "permission-denied" || error.message?.includes("permission-denied") || error.message?.includes("Missing or insufficient permissions")){
-        description = "Action blocked by security rules. Please check Firestore rules configuration in your Firebase project console."
+      let description = commonErrorMessages[error.code] || error.message || "An unexpected error occurred during signup.";
+      if (error.message && error.message.includes("firestore/permission-denied")) {
+        description = "Action blocked by security rules. Please check Firestore rules configuration in your Firebase project console.";
       }
-
-
-      toast({
-        variant: "destructive",
-        title: "Signup Failed",
-        description: description,
-        duration: 7000,
-      });
+      toast({ variant: "destructive", title: "Signup Failed", description: description, duration: 7000 });
       setIsLoadingAuth(false);
       return false;
     }
@@ -393,7 +476,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await signInWithPopup(auth, provider);
       toast({ title: "Signed In with Google", description: "Welcome!" });
       return result.user;
-    } catch (error: any) {
+    } catch (error: any) { // Added opening brace for catch block
       console.error("Google sign-in error", error);
       toast({ variant: "destructive", title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google." });
       setIsLoadingAuth(false);
@@ -432,7 +515,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUserDisplayName = async (newName: string) => {
-    if (!currentUser) {
+    if (!currentUser || !auth.currentUser) {
       toast({ variant: "destructive", title: "Not Authenticated" });
       return;
     }
@@ -443,9 +526,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const userDocRef = doc(db, "users", currentUser.uid);
     try {
-      await updateProfile(auth.currentUser!, { displayName: newName.trim() });
+      await updateProfile(auth.currentUser, { displayName: newName.trim() });
       await updateDoc(userDocRef, { displayName: newName.trim() });
-      setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '', avatarUrl: prev?.avatarUrl });
+      setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '', avatarUrl: prev?.avatarUrl, level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 });
       toast({ title: "Display Name Updated" });
     } catch (error: any) {
       console.error("Error updating display name:", error);
@@ -506,13 +589,17 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string) => {
-    if (!currentUser) return router.push('/login');
+  const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string): Promise<void> => { // Return type changed to Promise<void>
+    if (!currentUser) {
+      router.push('/login');
+      return Promise.resolve(); // Return a resolved promise
+    }
     let aiFeedbackText: string | undefined;
     try {
       const feedbackInput: ProvideMoodFeedbackInput = { mood };
       if (notes) feedbackInput.notes = notes;
-      aiFeedbackText = (await aiProvideMoodFeedback(feedbackInput)).feedback;
+      const feedbackResponse = await aiProvideMoodFeedback(feedbackInput);
+      aiFeedbackText = feedbackResponse.feedback;
     } catch (err) { console.warn("AI mood feedback failed:", err); }
 
     const newLogData = {
@@ -593,9 +680,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return [];
     }
     try {
-      console.log("fetchAllUsers: Admin authenticated. Fetching all users from 'users' collection.");
       const snap = await getDocs(collection(db, "users"));
-      console.log(`fetchAllUsers: Found ${snap.docs.length} user documents.`);
       return snap.docs.map(d => {
           const data = d.data();
           const userItem: UserListItem = {
@@ -604,7 +689,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               displayName: data.displayName || null,
               avatarUrl: data.avatarUrl || undefined
           };
-          console.log("fetchAllUsers: Mapping user:", userItem);
           return userItem;
         });
     } catch (error) {
@@ -646,6 +730,17 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           moodLogs: fetchedMoodLogs,
           groceryList: processedGL,
           activeChallengeProgress: userData.activeChallengeProgress || null,
+          profile: { // Include full profile for admin view
+            displayName: userData.displayName || null,
+            email: userData.email || null,
+            avatarUrl: userData.avatarUrl || undefined,
+            level: userData.level || 1,
+            xp: userData.xp || 0,
+            dailyQuestStreak: userData.dailyQuestStreak || 0,
+            bestQuestStreak: userData.bestQuestStreak || 0,
+            lastQuestCompletionDate: userData.lastQuestCompletionDate || undefined,
+            title: userData.title || undefined,
+          }
         } as FullUserDetail;
     } catch (error) {
         console.error("Error fetching user details (admin):", error);
@@ -701,10 +796,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
     if (!currentUser) {
-      console.log("fetchLeaderboardData: No current user, returning empty array.");
       return [];
     }
-    console.log("fetchLeaderboardData: Current user authenticated, proceeding to fetch.");
     try {
       const q = query(
         collection(db, "users"),
@@ -712,30 +805,164 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         orderBy("activeChallengeProgress.daysCompleted", "desc"),
         limit(10)
       );
-      console.log("fetchLeaderboardData: Query constructed:", q);
       const snap = await getDocs(q);
-      console.log(`fetchLeaderboardData: Query executed. Found ${snap.docs.length} documents.`);
-      if (snap.empty) {
-        console.log("fetchLeaderboardData: No users found matching leaderboard criteria.");
-      }
       return snap.docs.map(d => {
         const data = d.data();
-        console.log("fetchLeaderboardData: Mapping document:", d.id, "Data:", data);
         return {
           id: d.id,
           displayName: data.displayName || "Anonymous User",
           daysCompleted: data.activeChallengeProgress?.daysCompleted || 0,
-          avatarUrl: data.avatarUrl || undefined
+          avatarUrl: data.avatarUrl || undefined,
+          level: data.level || 1,
+          xp: data.xp || 0,
         } as LeaderboardEntry;
       });
     } catch (e: any) {
-      console.error("fetchLeaderboardData: Error fetching leaderboard data:", e);
-      console.error("Error code:", e.code);
-      console.error("Error message:", e.message);
+      console.error("Error fetching leaderboard data:", e);
       toast({variant: "destructive", title: "Leaderboard Error", description: "Could not load leaderboard. " + (e.message || "Please check your network or try again later.") });
       return [];
     }
   };
+  
+  // --- AI Daily Scheduling Functions ---
+  const getDailyPlanDocRef = (date: Date) => {
+    if (!currentUser) return null;
+    const dateString = format(date, 'yyyy-MM-dd');
+    return doc(db, "users", currentUser.uid, "dailyPlans", dateString);
+  };
+
+
+  const addRawTask = async (taskData: Omit<RawTask, 'id'>) => {
+    if (!currentUser) return;
+    const newTask: RawTask = { ...taskData, id: crypto.randomUUID() }; // Ensure ID is string
+    const updatedTasks = [..._rawTasksForSelectedDate, newTask];
+    _setRawTasksForSelectedDate(updatedTasks);
+
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (planDocRef) {
+      try {
+        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
+        toast({ title: "Task Added", description: "Ready for AI planning!"});
+      } catch (error) {
+        console.error("Error saving raw task:", error);
+        toast({ variant: "destructive", title: "Save Error", description: "Could not save task." });
+        _setRawTasksForSelectedDate(prev => prev.filter(t => t.id !== newTask.id)); // Revert
+      }
+    }
+  };
+
+  const updateRawTask = async (taskId: string, updates: Partial<RawTask>) => {
+    if (!currentUser) return;
+    const updatedTasks = _rawTasksForSelectedDate.map(task =>
+      task.id === taskId ? { ...task, ...updates } : task
+    );
+    _setRawTasksForSelectedDate(updatedTasks);
+
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (planDocRef) {
+      try {
+        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
+      } catch (error) {
+        console.error("Error updating raw task:", error);
+        toast({ variant: "destructive", title: "Update Error", description: "Could not update task." });
+        // Consider reverting state if critical
+      }
+    }
+  };
+
+  const deleteRawTask = async (taskId: string) => {
+    if (!currentUser) return;
+    const updatedTasks = _rawTasksForSelectedDate.filter(task => task.id !== taskId);
+    _setRawTasksForSelectedDate(updatedTasks);
+
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (planDocRef) {
+      try {
+        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
+      } catch (error) {
+        console.error("Error deleting raw task:", error);
+        toast({ variant: "destructive", title: "Delete Error", description: "Could not delete task." });
+        // Consider reverting state
+      }
+    }
+  };
+
+  const generateQuestScheduleForSelectedDate = async (userContextText?: string) => {
+    if (!currentUser || _rawTasksForSelectedDate.length === 0) {
+      toast({ title: "No Tasks", description: "Add some tasks before generating a schedule!" });
+      return;
+    }
+    _setIsLoadingSchedule(true);
+    try {
+      const input: GenerateDailyTimetableInput = {
+        tasks: _rawTasksForSelectedDate,
+        userContext: userContextText,
+        currentDate: format(_selectedDateForPlanning, 'yyyy-MM-dd'),
+        userName: currentUserProfile?.displayName || undefined,
+      };
+      const result = await aiGenerateDailyTimetable(input);
+      
+      _setScheduledQuestsForSelectedDate(result.scheduledQuests || []);
+      _setScheduledBreaksForSelectedDate(result.breaks || []);
+      _setAiDailySummaryMessage(result.dailySummaryMessage || null);
+
+      const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+      if (planDocRef) {
+        const planDataToSave: DailyPlan = {
+            rawTasks: _rawTasksForSelectedDate,
+            userContextForAI: userContextText || null,
+            generatedQuests: result.scheduledQuests || [],
+            generatedBreaks: result.breaks || [],
+            aiDailySummaryMessage: result.dailySummaryMessage || null,
+            questCompletionStatus: (result.scheduledQuests || []).reduce((acc, quest) => { // Ensure scheduledQuests is not undefined
+                acc[quest.id] = 'active'; // Initialize all as active
+                return acc;
+            }, {} as Record<string, 'active' | 'completed' | 'missed'>),
+            lastGeneratedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        };
+        await setDoc(planDocRef, planDataToSave, { merge: true });
+        toast({ title: "Quest Schedule Generated!", description: "Your AI-powered plan is ready." });
+      }
+    } catch (error: any) {
+      console.error("Error generating quest schedule:", error);
+      toast({ variant: "destructive", title: "AI Error", description: error.message || "Could not generate schedule." });
+    } finally {
+      _setIsLoadingSchedule(false);
+    }
+  };
+  
+  const completeQuestInSchedule = async (questId: string) => {
+    if (!currentUser) return;
+    
+    _setScheduledQuestsForSelectedDate(prevQuests => 
+        prevQuests.map(q => q.id === questId ? {...q, notes: (q.notes || "") + " (Completed!)" } : q)
+    );
+    // Also handle breaks if their ID matches
+    _setScheduledBreaksForSelectedDate(prevBreaks => 
+        prevBreaks.map(b => b.id === questId ? {...b, suggestion: (b.suggestion || "") + " (Taken!)" } : b)
+    );
+
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (planDocRef) {
+        try {
+            const currentPlanSnap = await getDoc(planDocRef);
+            if (currentPlanSnap.exists()) {
+                const currentPlanData = currentPlanSnap.data() as DailyPlan;
+                const updatedStatus = { ...currentPlanData.questCompletionStatus, [questId]: 'completed' as const };
+                await updateDoc(planDocRef, { 
+                    questCompletionStatus: updatedStatus,
+                    updatedAt: serverTimestamp()
+                });
+                toast({title: "Awesome!", description: "Great job staying on track!"});
+            }
+        } catch (error) {
+            console.error("Error updating quest/break status in Firestore:", error);
+            toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion."})
+        }
+    }
+  };
+
 
   const isPlanAvailable = !!_wellnessPlan?.meals?.length;
 
@@ -749,6 +976,20 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fetchAllUsers, fetchFullUserDetailsForAdmin,
       userActiveChallenge: _userActiveChallenge, isLoadingUserChallenge: _isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay,
       fetchLeaderboardData,
+      // AI Daily Scheduling
+      selectedDateForPlanning: _selectedDateForPlanning,
+      setSelectedDateForPlanning: _setSelectedDateForPlanning,
+      rawTasksForSelectedDate: _rawTasksForSelectedDate,
+      scheduledQuestsForSelectedDate: _scheduledQuestsForSelectedDate,
+      scheduledBreaksForSelectedDate: _scheduledBreaksForSelectedDate,
+      aiDailySummaryMessage: _aiDailySummaryMessage,
+      isLoadingSchedule: _isLoadingSchedule,
+      addRawTask,
+      updateRawTask,
+      deleteRawTask,
+      fetchDailyPlan,
+      generateQuestScheduleForSelectedDate,
+      completeQuestInSchedule,
   };
 
   return (
@@ -764,3 +1005,6 @@ export const usePlan = (): PlanContextType => {
   return context;
 };
 
+    
+
+    
