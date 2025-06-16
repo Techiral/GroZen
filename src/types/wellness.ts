@@ -113,54 +113,39 @@ export interface LeaderboardEntry {
   xp?: number;
 }
 
-// GAMIFICATION & AI SCHEDULING TYPES
 export type QuestType = 'study' | 'workout' | 'hobby' | 'chore' | 'wellness' | 'creative' | 'social' | 'break' | 'other';
-
-// User's raw input for a task
-export interface RawTask {
-  id: string; // Client-generated UUID
-  description: string;
-  durationMinutes?: number;
-  priority?: 'high' | 'medium' | 'low';
-  questType?: QuestType;
-  fixedTime?: string; // e.g., "14:00-15:00" or "10:00 start"
-  deadline?: string; // e.g., "today EOD"
-  urgency?: string; // User-defined text like "ASAP!"
-  requiredEnergyLevel?: string; // User-defined text like "High focus"
-}
 
 // AI-Generated Scheduled Quest
 export interface ScheduledQuest {
-  id: string; // Unique ID for this scheduled slot (can be same as originalTaskId or new)
-  originalTaskId: string; // ID of the RawTask it corresponds to
-  title: string; // Engaging, quest-like title from AI
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  id: string; 
+  originalTaskId: string; 
+  title: string; 
+  startTime: string; 
+  endTime: string; 
   questType: QuestType;
-  xp: number; // XP for completing this quest
-  notes?: string; // AI-generated tip or note
-  // status will be managed in Firestore via questCompletionStatus in DailyPlan
+  xp: number; 
+  notes?: string; 
 }
 
 // AI-Generated Break Slot
 export interface BreakSlot {
-  id: string; // Unique ID for this break slot
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
-  suggestion?: string; // Fun break activity
-  xp?: number; // Small XP for taking the break
+  id: string; 
+  startTime: string; 
+  endTime: string; 
+  suggestion?: string; 
+  xp?: number; 
 }
 
 // Structure for storing daily plans in Firestore
 export interface DailyPlan {
-  rawTasks: RawTask[];
-  userContextForAI: string | null; // User's textual context provided to AI for this day
+  naturalLanguageDailyInput: string | null; // User's natural language input for the day
+  userContextForAI: string | null; 
   generatedQuests: ScheduledQuest[];
   generatedBreaks: BreakSlot[];
   aiDailySummaryMessage: string | null;
-  questCompletionStatus: Record<string, 'active' | 'completed' | 'missed'>; // key is ScheduledQuest.id
-  lastGeneratedAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
+  questCompletionStatus: Record<string, 'active' | 'completed' | 'missed'>; 
+  lastGeneratedAt: any; 
+  updatedAt: any; 
 }
 
 
@@ -192,5 +177,3 @@ export interface DailySummary {
   streakContinued: boolean;
   activityScore?: number; 
 }
-
-    

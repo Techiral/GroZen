@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, UserProfile, RawTask, ScheduledQuest, BreakSlot, DailyPlan, QuestType } from '@/types/wellness'; // Added QuestType
+import type { WellnessPlan, OnboardingData, MoodLog, GroceryList, Meal, GroceryItem, UserListItem, FullUserDetail, UserActiveChallenge, LeaderboardEntry, UserProfile, ScheduledQuest, BreakSlot, DailyPlan, QuestType } from '@/types/wellness';
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { generateWellnessPlan as aiGenerateWellnessPlan, type GenerateWellnessPlanInput } from '@/ai/flows/generate-wellness-plan';
 import { provideMoodFeedback as aiProvideMoodFeedback, type ProvideMoodFeedbackInput } from '@/ai/flows/provide-mood-feedback';
@@ -46,7 +46,7 @@ interface PlanContextType {
   isOnboardedState: boolean;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
   moodLogs: MoodLog[];
-  addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<void>;
+  addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<string | undefined>;
   deleteMoodLog: (logId: string) => Promise<void>;
   groceryList: GroceryList | null;
   isLoadingGroceryList: boolean;
@@ -61,20 +61,18 @@ interface PlanContextType {
   logChallengeDay: () => Promise<void>;
   fetchLeaderboardData: () => Promise<LeaderboardEntry[]>;
 
-  // New AI Daily Scheduling
+  // AI Daily Scheduling with Natural Language Input
   selectedDateForPlanning: Date;
   setSelectedDateForPlanning: (date: Date) => void;
-  rawTasksForSelectedDate: RawTask[];
+  naturalLanguageDailyInput: string; // Stores the user's natural language input for the day
+  setNaturalLanguageDailyInput: (input: string) => void; // To update from Textarea
   scheduledQuestsForSelectedDate: ScheduledQuest[];
   scheduledBreaksForSelectedDate: BreakSlot[];
   aiDailySummaryMessage: string | null;
   isLoadingSchedule: boolean;
-  addRawTask: (taskData: Omit<RawTask, 'id'>) => Promise<void>;
-  updateRawTask: (taskId: string, updates: Partial<RawTask>) => Promise<void>;
-  deleteRawTask: (taskId: string) => Promise<void>;
   fetchDailyPlan: (date: Date) => Promise<void>;
-  generateQuestScheduleForSelectedDate: (userContext?: string) => Promise<void>;
-  completeQuestInSchedule: (questId: string) => Promise<void>; // Simplified for now
+  generateQuestScheduleForSelectedDate: (naturalLanguageTasksInput: string, userContext?: string) => Promise<void>;
+  completeQuestInSchedule: (questId: string) => Promise<void>;
 }
 
 const defaultOnboardingData: OnboardingData | null = null;
@@ -98,9 +96,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [_userActiveChallenge, _setUserActiveChallenge] = useState<UserActiveChallenge | null>(null);
   const [_isLoadingUserChallenge, _setIsLoadingUserChallenge] = useState(false);
 
-  // New state for AI Daily Scheduling
+  // State for AI Daily Scheduling with Natural Language Input
   const [_selectedDateForPlanning, _setSelectedDateForPlanning] = useState<Date>(startOfDay(new Date()));
-  const [_rawTasksForSelectedDate, _setRawTasksForSelectedDate] = useState<RawTask[]>([]);
+  const [_naturalLanguageDailyInput, _setNaturalLanguageDailyInput] = useState<string>(''); // New state
   const [_scheduledQuestsForSelectedDate, _setScheduledQuestsForSelectedDate] = useState<ScheduledQuest[]>([]);
   const [_scheduledBreaksForSelectedDate, _setScheduledBreaksForSelectedDate] = useState<BreakSlot[]>([]);
   const [_aiDailySummaryMessage, _setAiDailySummaryMessage] = useState<string | null>(null);
@@ -121,8 +119,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setErrorGroceryList(null);
       _setIsLoadingPlan(false);
       _setIsLoadingGroceryList(false);
-      // Clear scheduling related state if specifically requested to clear plan state
-      _setRawTasksForSelectedDate([]);
+      // Clear scheduling related state
+      _setNaturalLanguageDailyInput('');
       _setScheduledQuestsForSelectedDate([]);
       _setScheduledBreaksForSelectedDate([]);
       _setAiDailySummaryMessage(null);
@@ -145,7 +143,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Clear scheduling related state
     _setSelectedDateForPlanning(startOfDay(new Date()));
-    _setRawTasksForSelectedDate([]);
+    _setNaturalLanguageDailyInput('');
     _setScheduledQuestsForSelectedDate([]);
     _setScheduledBreaksForSelectedDate([]);
     _setAiDailySummaryMessage(null);
@@ -156,6 +154,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Future: localStorage.removeItem('grozen_onboardingData');
     }
   }, []);
+
+  const getDailyPlanDocRef = useCallback((date: Date) => {
+    if (!currentUser) return null;
+    const dateString = format(date, 'yyyy-MM-dd');
+    return doc(db, "users", currentUser.uid, "dailyPlans", dateString);
+  }, [currentUser]);
+
 
   const fetchDailyPlan = useCallback(async (date: Date) => {
     if (!currentUser) return;
@@ -170,12 +175,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const docSnap = await getDoc(planDocRef);
       if (docSnap.exists()) {
         const data = docSnap.data() as DailyPlan;
-        _setRawTasksForSelectedDate(data.rawTasks || []);
+        _setNaturalLanguageDailyInput(data.naturalLanguageDailyInput || '');
         _setScheduledQuestsForSelectedDate(data.generatedQuests || []);
         _setScheduledBreaksForSelectedDate(data.generatedBreaks || []);
         _setAiDailySummaryMessage(data.aiDailySummaryMessage || null);
       } else {
-        _setRawTasksForSelectedDate([]);
+        _setNaturalLanguageDailyInput('');
         _setScheduledQuestsForSelectedDate([]);
         _setScheduledBreaksForSelectedDate([]);
         _setAiDailySummaryMessage(null);
@@ -186,15 +191,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       _setIsLoadingSchedule(false);
     }
-  }, [currentUser, toast]);
+  }, [currentUser, toast, getDailyPlanDocRef]);
 
 
-  // Effect to load daily plan when selectedDateForPlanning changes or user logs in
   useEffect(() => {
     if (currentUser) {
       fetchDailyPlan(_selectedDateForPlanning);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_selectedDateForPlanning, currentUser, fetchDailyPlan]);
 
 
@@ -300,7 +303,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             _setMoodLogs(fetchedMoodLogs);
             
-            // Fetch initial daily plan for today
             await fetchDailyPlan(startOfDay(new Date()));
 
           } else {
@@ -343,7 +345,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setGroceryList(null);
             _setMoodLogs([]);
             _setUserActiveChallenge(null);
-            _setRawTasksForSelectedDate([]);
+            _setNaturalLanguageDailyInput('');
             _setScheduledQuestsForSelectedDate([]);
             _setScheduledBreaksForSelectedDate([]);
             _setAiDailySummaryMessage(null);
@@ -360,7 +362,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPlanAndData, toast, fetchDailyPlan]);
 
 
@@ -476,7 +477,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await signInWithPopup(auth, provider);
       toast({ title: "Signed In with Google", description: "Welcome!" });
       return result.user;
-    } catch (error: any) { // Added opening brace for catch block
+    } catch (error: any) {
       console.error("Google sign-in error", error);
       toast({ variant: "destructive", title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google." });
       setIsLoadingAuth(false);
@@ -589,10 +590,10 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string): Promise<void> => { // Return type changed to Promise<void>
+  const addMoodLog = async (mood: string, notes?: string, selfieDataUri?: string): Promise<string | undefined> => {
     if (!currentUser) {
       router.push('/login');
-      return Promise.resolve(); // Return a resolved promise
+      return undefined;
     }
     let aiFeedbackText: string | undefined;
     try {
@@ -615,9 +616,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setMoodLogs(prev => [{ ...newLogData, id: docRef.id, date: new Date().toISOString(), createdAt: new Date() } as MoodLog, ...prev]
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       toast({ title: "Mood Logged", description: aiFeedbackText ? `GroZen: ${aiFeedbackText}` : "Successfully recorded."});
+      return aiFeedbackText;
     } catch (error) {
       console.error("Error saving mood log:", error);
       toast({ variant: "destructive", title: "Save Error", description: "Could not save your mood log." });
+      return undefined;
     }
   };
 
@@ -669,7 +672,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(doc(db, "users", currentUser.uid), { currentGroceryList: updatedGroceryList, updatedAt: serverTimestamp() }, { merge: true });
       toast({ title: "Item Deleted" });
     } catch (error) {
-      _setGroceryList(_groceryList);
+      _setGroceryList(_groceryList); // Revert on error
       toast({ variant: "destructive", title: "Update Error", description: "Could not delete item." });
     }
   };
@@ -730,7 +733,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           moodLogs: fetchedMoodLogs,
           groceryList: processedGL,
           activeChallengeProgress: userData.activeChallengeProgress || null,
-          profile: { // Include full profile for admin view
+          profile: { 
             displayName: userData.displayName || null,
             email: userData.email || null,
             avatarUrl: userData.avatarUrl || undefined,
@@ -824,78 +827,15 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
   
-  // --- AI Daily Scheduling Functions ---
-  const getDailyPlanDocRef = (date: Date) => {
-    if (!currentUser) return null;
-    const dateString = format(date, 'yyyy-MM-dd');
-    return doc(db, "users", currentUser.uid, "dailyPlans", dateString);
-  };
-
-
-  const addRawTask = async (taskData: Omit<RawTask, 'id'>) => {
-    if (!currentUser) return;
-    const newTask: RawTask = { ...taskData, id: crypto.randomUUID() }; // Ensure ID is string
-    const updatedTasks = [..._rawTasksForSelectedDate, newTask];
-    _setRawTasksForSelectedDate(updatedTasks);
-
-    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
-    if (planDocRef) {
-      try {
-        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
-        toast({ title: "Task Added", description: "Ready for AI planning!"});
-      } catch (error) {
-        console.error("Error saving raw task:", error);
-        toast({ variant: "destructive", title: "Save Error", description: "Could not save task." });
-        _setRawTasksForSelectedDate(prev => prev.filter(t => t.id !== newTask.id)); // Revert
-      }
-    }
-  };
-
-  const updateRawTask = async (taskId: string, updates: Partial<RawTask>) => {
-    if (!currentUser) return;
-    const updatedTasks = _rawTasksForSelectedDate.map(task =>
-      task.id === taskId ? { ...task, ...updates } : task
-    );
-    _setRawTasksForSelectedDate(updatedTasks);
-
-    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
-    if (planDocRef) {
-      try {
-        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (error) {
-        console.error("Error updating raw task:", error);
-        toast({ variant: "destructive", title: "Update Error", description: "Could not update task." });
-        // Consider reverting state if critical
-      }
-    }
-  };
-
-  const deleteRawTask = async (taskId: string) => {
-    if (!currentUser) return;
-    const updatedTasks = _rawTasksForSelectedDate.filter(task => task.id !== taskId);
-    _setRawTasksForSelectedDate(updatedTasks);
-
-    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
-    if (planDocRef) {
-      try {
-        await setDoc(planDocRef, { rawTasks: updatedTasks, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (error) {
-        console.error("Error deleting raw task:", error);
-        toast({ variant: "destructive", title: "Delete Error", description: "Could not delete task." });
-        // Consider reverting state
-      }
-    }
-  };
-
-  const generateQuestScheduleForSelectedDate = async (userContextText?: string) => {
-    if (!currentUser || _rawTasksForSelectedDate.length === 0) {
-      toast({ title: "No Tasks", description: "Add some tasks before generating a schedule!" });
+  const generateQuestScheduleForSelectedDate = async (naturalLanguageTasksInput: string, userContextText?: string) => {
+    if (!currentUser || !naturalLanguageTasksInput.trim()) {
+      toast({ title: "No Tasks Provided", description: "Please describe your day's tasks before generating a schedule!" });
       return;
     }
     _setIsLoadingSchedule(true);
     try {
       const input: GenerateDailyTimetableInput = {
-        tasks: _rawTasksForSelectedDate,
+        naturalLanguageTasks: naturalLanguageTasksInput,
         userContext: userContextText,
         currentDate: format(_selectedDateForPlanning, 'yyyy-MM-dd'),
         userName: currentUserProfile?.displayName || undefined,
@@ -909,13 +849,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
       if (planDocRef) {
         const planDataToSave: DailyPlan = {
-            rawTasks: _rawTasksForSelectedDate,
+            naturalLanguageDailyInput: naturalLanguageTasksInput, // Save the input
             userContextForAI: userContextText || null,
             generatedQuests: result.scheduledQuests || [],
             generatedBreaks: result.breaks || [],
             aiDailySummaryMessage: result.dailySummaryMessage || null,
-            questCompletionStatus: (result.scheduledQuests || []).reduce((acc, quest) => { // Ensure scheduledQuests is not undefined
-                acc[quest.id] = 'active'; // Initialize all as active
+            questCompletionStatus: (result.scheduledQuests || []).reduce((acc, quest) => {
+                acc[quest.id] = 'active'; 
                 return acc;
             }, {} as Record<string, 'active' | 'completed' | 'missed'>),
             lastGeneratedAt: serverTimestamp(),
@@ -938,7 +878,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setScheduledQuestsForSelectedDate(prevQuests => 
         prevQuests.map(q => q.id === questId ? {...q, notes: (q.notes || "") + " (Completed!)" } : q)
     );
-    // Also handle breaks if their ID matches
     _setScheduledBreaksForSelectedDate(prevBreaks => 
         prevBreaks.map(b => b.id === questId ? {...b, suggestion: (b.suggestion || "") + " (Taken!)" } : b)
     );
@@ -976,17 +915,15 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fetchAllUsers, fetchFullUserDetailsForAdmin,
       userActiveChallenge: _userActiveChallenge, isLoadingUserChallenge: _isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay,
       fetchLeaderboardData,
-      // AI Daily Scheduling
+      // AI Daily Scheduling with Natural Language Input
       selectedDateForPlanning: _selectedDateForPlanning,
       setSelectedDateForPlanning: _setSelectedDateForPlanning,
-      rawTasksForSelectedDate: _rawTasksForSelectedDate,
+      naturalLanguageDailyInput: _naturalLanguageDailyInput,
+      setNaturalLanguageDailyInput: _setNaturalLanguageDailyInput,
       scheduledQuestsForSelectedDate: _scheduledQuestsForSelectedDate,
       scheduledBreaksForSelectedDate: _scheduledBreaksForSelectedDate,
       aiDailySummaryMessage: _aiDailySummaryMessage,
       isLoadingSchedule: _isLoadingSchedule,
-      addRawTask,
-      updateRawTask,
-      deleteRawTask,
       fetchDailyPlan,
       generateQuestScheduleForSelectedDate,
       completeQuestInSchedule,
@@ -1004,7 +941,3 @@ export const usePlan = (): PlanContextType => {
   if (context === undefined) throw new Error('usePlan must be used within a PlanProvider');
   return context;
 };
-
-    
-
-    

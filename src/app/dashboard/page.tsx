@@ -16,10 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-// Removed SocialShareCard as it's not currently used and was causing issues with mood log dependencies
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
-import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
+import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -55,9 +54,10 @@ const DashboardContent: React.FC = () => {
     generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge,
     isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile,
     updateUserDisplayName,
-    selectedDateForPlanning, setSelectedDateForPlanning, rawTasksForSelectedDate,
+    selectedDateForPlanning, setSelectedDateForPlanning, 
+    naturalLanguageDailyInput, setNaturalLanguageDailyInput, // Changed from rawTasks
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
-    isLoadingSchedule, addRawTask, updateRawTask, deleteRawTask,
+    isLoadingSchedule, 
     generateQuestScheduleForSelectedDate, completeQuestInSchedule
   } = usePlan();
   const { toast } = useToast();
@@ -86,20 +86,11 @@ const DashboardContent: React.FC = () => {
   const [mockUserXP, setMockUserXP] = useState(0);
   const [mockUserLevel, setMockUserLevel] = useState(1);
   const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250);
-  const [mockDailyStreak, setMockDailyStreak] = useState(0); // UI Only for now
-  const [mockBestStreak, setMockBestStreak] = useState(0); // UI Only for now
+  const [mockDailyStreak, setMockDailyStreak] = useState(0); 
+  const [mockBestStreak, setMockBestStreak] = useState(0); 
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
 
-  // State for Raw Task Input
-  const [currentRawTaskDesc, setCurrentRawTaskDesc] = useState('');
-  const [currentRawTaskDuration, setCurrentRawTaskDuration] = useState<string>('');
-  const [currentRawTaskPriority, setCurrentRawTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [currentRawTaskType, setCurrentRawTaskType] = useState<QuestType>('other');
-  const [currentRawTaskUrgency, setCurrentRawTaskUrgency] = useState<string>('');
-  const [currentRawTaskEnergy, setCurrentRawTaskEnergy] = useState<string>('');
-
-  const [isAddingRawTask, setIsAddingRawTask] = useState(false);
-  const [userScheduleContext, setUserScheduleContext] = useState('');
+  const [userScheduleContext, setUserScheduleContext] = useState(''); // For additional preferences for AI
 
 
   const [isMounted, setIsMounted] = useState(false);
@@ -118,7 +109,6 @@ const DashboardContent: React.FC = () => {
       setNewDisplayName(currentUserProfile.displayName || '');
       setMockUserXP(currentUserProfile.xp || 0);
       setMockUserLevel(currentUserProfile.level || 1);
-      // For now, streaks are mock. Real streaks would come from context/backend.
       setMockDailyStreak(currentUserProfile.dailyQuestStreak || 0);
       setMockBestStreak(currentUserProfile.bestQuestStreak || 0);
     }
@@ -165,7 +155,7 @@ const DashboardContent: React.FC = () => {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/webp', 0.8); // Use webp for smaller size
+        const dataUri = canvas.toDataURL('image/webp', 0.8); 
         setSelfieDataUri(dataUri);
         stopCamera();
         setIsCameraOpen(false);
@@ -179,13 +169,13 @@ const DashboardContent: React.FC = () => {
         return;
     }
     setIsSubmittingMood(true);
-    const feedback = await addMoodLog(selectedMood, moodNotes, selfieDataUri); // Assuming addMoodLog returns AI feedback
+    const feedback = await addMoodLog(selectedMood, moodNotes, selfieDataUri); 
     setIsSubmittingMood(false);
     setIsMoodDialogOpen(false);
     setSelectedMood('');
     setMoodNotes('');
     setSelfieDataUri(undefined);
-    setIsCameraOpen(false); // Close camera view in modal
+    setIsCameraOpen(false); 
     if(typeof feedback === 'string' && feedback) {
       setAiFeedbackToDisplay(feedback);
     }
@@ -218,34 +208,12 @@ const DashboardContent: React.FC = () => {
     setIsSettingsDialogOpen(false);
   };
 
-  const handleAddRawTask = async () => {
-    if (!currentRawTaskDesc.trim()) {
-      toast({ variant: "destructive", title: "Task Empty", description: "Please describe your task." });
-      return;
-    }
-    setIsAddingRawTask(true);
-    const taskData: Omit<RawTask, 'id'> = {
-      description: currentRawTaskDesc.trim(),
-      durationMinutes: currentRawTaskDuration ? parseInt(currentRawTaskDuration, 10) : undefined,
-      priority: currentRawTaskPriority,
-      questType: currentRawTaskType,
-      urgency: currentRawTaskUrgency.trim() || undefined,
-      requiredEnergyLevel: currentRawTaskEnergy.trim() || undefined,
-    };
-    await addRawTask(taskData);
-    setCurrentRawTaskDesc('');
-    setCurrentRawTaskDuration('');
-    setCurrentRawTaskUrgency('');
-    setCurrentRawTaskEnergy('');
-    setIsAddingRawTask(false);
-  };
-
   const handleGenerateSchedule = async () => {
-    if (rawTasksForSelectedDate.length === 0) {
-        toast({ title: "No Tasks Yet!", description: "Add some tasks for today before generating a schedule." });
+    if (!naturalLanguageDailyInput.trim()) {
+        toast({ title: "No Tasks Yet!", description: "Describe your day's tasks before generating a schedule." });
         return;
     }
-    await generateQuestScheduleForSelectedDate(userScheduleContext);
+    await generateQuestScheduleForSelectedDate(naturalLanguageDailyInput, userScheduleContext);
   };
 
   const handleCompleteQuest = async (questId: string) => {
@@ -260,15 +228,14 @@ const DashboardContent: React.FC = () => {
                     scheduledBreaksForSelectedDate.find(b => b.id === questId)?.xp || 10;
     
     const newTotalXP = (currentUserProfile?.xp || 0) + questXP;
-    setMockUserXP(newTotalXP); // Update local mock XP
+    setMockUserXP(newTotalXP); 
 
     if (newTotalXP >= mockXPToNextLevel) {
       const newLevel = (currentUserProfile?.level || 1) + 1;
       setMockUserLevel(newLevel);
-      setMockXPToNextLevel(prev => prev + 150); // Increase next level threshold
+      setMockXPToNextLevel(prev => prev + 150); 
       toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${newLevel}! Keep crushing it!`, duration: 4000 });
       
-      // Animate XP bar reset for level up
       if (xpBarRef.current) {
         const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
         if(indicator) {
@@ -280,7 +247,7 @@ const DashboardContent: React.FC = () => {
                 complete: () => {
                      anime({
                         targets: indicator,
-                        width: `${( (newTotalXP - mockXPToNextLevel + 150) / (mockXPToNextLevel - mockXPToNextLevel + 150 +150) ) * 100}%`, // This logic needs refinement based on actual next level XP
+                        width: `${( (newTotalXP - mockXPToNextLevel + 150) / (mockXPToNextLevel - mockXPToNextLevel + 150 +150) ) * 100}%`, 
                         duration: 500,
                         easing: 'easeOutExpo'
                     });
@@ -289,7 +256,6 @@ const DashboardContent: React.FC = () => {
         }
       }
     } else {
-        // Animate XP bar fill
         if (xpBarRef.current) {
           const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
           if (indicator) {
@@ -312,7 +278,7 @@ const DashboardContent: React.FC = () => {
     let earnedBadges: BadgeType[] = [];
     if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
-      localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); // Mock earning
+      localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); 
     }
      if (completedToday.length >= 1 && mockDailyStreak === 0 && !localStorage.getItem('badge_first_streak_earned')) {
       earnedBadges.push({id: 'b_streak1', name: 'Streak Starter!', description: 'Completed your first day in a row!', iconName: 'Flame'});
@@ -326,7 +292,7 @@ const DashboardContent: React.FC = () => {
       totalQuests: totalToday,
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
-      streakContinued: mockDailyStreak > 0, // This should be based on actual streak logic
+      streakContinued: mockDailyStreak > 0, 
       activityScore: Math.round((completedToday.length / (totalToday || 1)) * 100)
     });
     setIsSummaryDialogOpen(true);
@@ -366,18 +332,19 @@ const DashboardContent: React.FC = () => {
       </div>
     );
   }
-  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && rawTasksForSelectedDate.length === 0) {
+  
+  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && !naturalLanguageDailyInput.trim()) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
         <Logo size="text-xl sm:text-2xl" />
         <Zap className="w-12 h-12 text-accent my-4" />
         <h2 className="text-lg font-semibold text-primary">Your Quest Planner is Ready!</h2>
         <p className="text-muted-foreground text-sm max-w-md mt-2 mb-4">
-          Looks like you don&apos;t have any tasks scheduled for {format(selectedDateForPlanning, "eeee")} yet, or an AI plan hasn&apos;t been generated for this day.
-          Add some tasks above and let GroZen&apos;s AI craft your epic daily quest list!
+          Looks like you haven&apos;t described your day for {format(selectedDateForPlanning, "eeee")} yet.
+          Tell GroZen what you need to do, and let the AI craft your epic daily quest list!
         </p>
-        <Button onClick={() => document.getElementById('rawTaskDesc')?.focus()} className="neumorphic-button-primary">
-          <Plus className="mr-2 h-4 w-4" /> Add First Task for {format(selectedDateForPlanning, "MMM d")}
+        <Button onClick={() => document.getElementById('naturalLanguageTasks')?.focus()} className="neumorphic-button-primary">
+          <Plus className="mr-2 h-4 w-4" /> Describe Your Day for {format(selectedDateForPlanning, "MMM d")}
         </Button>
       </div>
     );
@@ -533,82 +500,24 @@ const DashboardContent: React.FC = () => {
 
             <CardContent className="px-3 pt-2 pb-2.5 sm:px-4 sm:pb-3 border-t border-border/50">
               <div className="space-y-2 mb-3">
-                <Label htmlFor="rawTaskDesc" className="text-xs text-muted-foreground">New Task / Goal for {format(selectedDateForPlanning, "MMM d")}:</Label>
+                <Label htmlFor="naturalLanguageTasks" className="text-xs text-muted-foreground">What&apos;s your quest for {format(selectedDateForPlanning, "MMM d")}? (Tell AI everything!)</Label>
                 <Textarea
-                  id="rawTaskDesc"
-                  placeholder="e.g., Finish math homework, 30 min jog, Call grandma"
-                  value={currentRawTaskDesc}
-                  onChange={(e) => setCurrentRawTaskDesc(e.target.value)}
-                  className="min-h-[40px] text-sm"
+                  id="naturalLanguageTasks"
+                  placeholder="e.g., I have to first update my app with some new features, solve some bugs, share the information of the app to sales executive, complete homework, ask teammate for the presentation, check the hackathon, go to coaching, try to learn some social skills, etc."
+                  value={naturalLanguageDailyInput}
+                  onChange={(e) => setNaturalLanguageDailyInput(e.target.value)}
+                  className="min-h-[80px] text-sm"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Mins (opt.)"
-                    value={currentRawTaskDuration}
-                    onChange={(e) => setCurrentRawTaskDuration(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                  <select
-                    value={currentRawTaskPriority}
-                    onChange={(e) => setCurrentRawTaskPriority(e.target.value as 'low'|'medium'|'high')}
-                    className="h-8 text-xs neumorphic-inset-sm rounded-md px-2 py-1 bg-input border border-input"
-                  >
-                    <option value="low">Low Priority</option>
-                    <option value="medium">Medium Priority</option>
-                    <option value="high">High Priority</option>
-                  </select>
-                  <select
-                    value={currentRawTaskType}
-                    onChange={(e) => setCurrentRawTaskType(e.target.value as QuestType)}
-                    className="h-8 text-xs neumorphic-inset-sm rounded-md px-2 py-1 bg-input border border-input"
-                  >
-                    {Object.keys(questTypeIcons).map(type => (
-                      <option key={type} value={type} className="capitalize">{type.charAt(0).toUpperCase() + type.slice(1)}</option>
-                    ))}
-                  </select>
-                   <Input
-                    type="text"
-                    placeholder="Urgency (e.g. ASAP)"
-                    value={currentRawTaskUrgency}
-                    onChange={(e) => setCurrentRawTaskUrgency(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                   <Input
-                    type="text"
-                    placeholder="Energy (e.g. High Focus)"
-                    value={currentRawTaskEnergy}
-                    onChange={(e) => setCurrentRawTaskEnergy(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <Button onClick={handleAddRawTask} disabled={isAddingRawTask || !currentRawTaskDesc.trim()} className="w-full sm:w-auto neumorphic-button-primary h-8 text-xs">
-                  {isAddingRawTask ? <Loader2 className="h-3 w-3 animate-spin"/> : <Plus className="h-3 w-3"/>} Add Task to List
-                </Button>
-              </div>
-
-              {rawTasksForSelectedDate.length > 0 && (
-                <div className="mb-3 space-y-1.5">
-                  <h4 className="text-xs font-semibold text-muted-foreground">Your Tasks for {format(selectedDateForPlanning, "MMM d")}:</h4>
-                  <ScrollArea className="h-[100px] w-full neumorphic-inset-sm p-2 rounded-md">
-                    {rawTasksForSelectedDate.map(task => (
-                      <div key={task.id} className="text-xs flex justify-between items-center py-0.5">
-                        <span className="truncate max-w-[80%]">{task.description} {task.durationMinutes ? `(${task.durationMinutes}m)` : ''} - <span className="capitalize">{task.questType}</span></span>
-                        <Button variant="ghost" size="icon" onClick={() => deleteRawTask(task.id)} className="h-5 w-5"><Trash2 className="h-3 w-3"/></Button>
-                      </div>
-                    ))}
-                  </ScrollArea>
-                  <Textarea
+                 <Textarea
                     placeholder="Any special notes for AI? (e.g., I have an appointment at 2 PM, prefer workouts in evening)"
                     value={userScheduleContext}
                     onChange={(e) => setUserScheduleContext(e.target.value)}
                     className="min-h-[40px] text-xs mt-1"
                   />
-                  <Button onClick={handleGenerateSchedule} disabled={isLoadingSchedule || rawTasksForSelectedDate.length === 0} className="w-full neumorphic-button-primary h-9 text-sm mt-1">
-                    {isLoadingSchedule ? <Loader2 className="h-4 w-4 animate-spin"/> : <Wand2 className="h-4 w-4"/>} AI, Plan My Quests!
-                  </Button>
-                </div>
-              )}
+                <Button onClick={handleGenerateSchedule} disabled={isLoadingSchedule || !naturalLanguageDailyInput.trim()} className="w-full neumorphic-button-primary h-9 text-sm mt-1">
+                  {isLoadingSchedule ? <Loader2 className="h-4 w-4 animate-spin"/> : <Wand2 className="h-4 w-4"/>} AI, Plan My Quests!
+                </Button>
+              </div>
             </CardContent>
 
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-row items-center justify-between border-t border-border/50">
@@ -629,8 +538,8 @@ const DashboardContent: React.FC = () => {
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
               {isLoadingSchedule && <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin mr-2" /> <p className="text-sm text-muted-foreground">AI is crafting your schedule...</p></div>}
-              {!isLoadingSchedule && displayedItems.length === 0 && rawTasksForSelectedDate.length === 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Add some tasks above and let AI plan your quests!</p>}
-              {!isLoadingSchedule && displayedItems.length === 0 && rawTasksForSelectedDate.length > 0 && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Click "AI, Plan My Quests!" to generate your schedule.</p>}
+              {!isLoadingSchedule && displayedItems.length === 0 && !naturalLanguageDailyInput.trim() && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Describe your day above and let AI plan your quests!</p>}
+              {!isLoadingSchedule && displayedItems.length === 0 && naturalLanguageDailyInput.trim() && <p className="text-2xs sm:text-xs text-muted-foreground text-center py-4">Click "AI, Plan My Quests!" to generate your schedule.</p>}
 
               {displayedItems.length > 0 ? (
                 <ScrollArea className="h-[250px] sm:h-[300px] w-full">
@@ -689,7 +598,6 @@ const DashboardContent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Reinstated Wellness Plan Display */}
           {wellnessPlan && isPlanAvailable && (
             <Card className="neumorphic">
               <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
