@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, PaintBrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star, Wind } from 'lucide-react';
-import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness, RawTask } from '@/types/wellness';
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star, Wind } from 'lucide-react';
+import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -41,7 +41,7 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
 );
 
 const questTypeIcons: Record<QuestType, React.ElementType> = {
-  study: BookOpen, workout: Dumbbell, hobby: PaintBrush, chore: Briefcase,
+  study: BookOpen, workout: Dumbbell, hobby: Paintbrush, chore: Briefcase,
   wellness: AwardIcon, creative: Edit3, social: Users, break: Coffee, other: FerrisWheel,
 };
 
@@ -961,3 +961,4 @@ export default function DashboardPage() {
   }
   return <DashboardContent />;
 }
+
