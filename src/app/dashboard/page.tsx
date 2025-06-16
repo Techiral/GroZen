@@ -14,11 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Progress as ShadProgress } from '@/components/ui/progress'; 
+import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SocialShareCard from '@/components/social-share-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap } from 'lucide-react'; // Added Zap
+import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
 import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask, BreakSlot } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -42,18 +42,18 @@ const ItemCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
 );
 
 const questTypeIcons: Record<QuestType, React.ElementType> = {
-  study: BookOpen, workout: Dumbbell, hobby: Paintbrush, chore: Briefcase, 
-  wellness: AwardIcon, creative: Palette, social: Users, break: Coffee, other: FerrisWheel, 
+  study: BookOpen, workout: Dumbbell, hobby: Paintbrush, chore: Briefcase,
+  wellness: AwardIcon, creative: Palette, social: Users, break: Coffee, other: FerrisWheel,
 };
 
 // Component to handle client-side rendering safely
 const DashboardContent: React.FC = () => {
   const router = useRouter();
-  const { 
-    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan, 
-    moodLogs, addMoodLog, deleteMoodLog, groceryList, isLoadingGroceryList, 
-    generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge, 
-    isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile, 
+  const {
+    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan,
+    moodLogs, addMoodLog, deleteMoodLog, groceryList, isLoadingGroceryList,
+    generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge,
+    isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile,
     updateUserDisplayName,
     selectedDateForPlanning, setSelectedDateForPlanning, rawTasksForSelectedDate,
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
@@ -73,17 +73,19 @@ const DashboardContent: React.FC = () => {
   const [newDisplayName, setNewDisplayName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [aiFeedbackToDisplay, setAiFeedbackToDisplay] = useState<string | null>(null);
-  const aiFeedbackCardRef = useRef<HTMLDivElement>(null);
+
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const questCardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const xpBarRef = useRef<HTMLDivElement>(null);
+  const aiFeedbackCardRef = useRef<HTMLDivElement>(null);
+
 
   const [mockUserXP, setMockUserXP] = useState(0);
   const [mockUserLevel, setMockUserLevel] = useState(1);
-  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250); 
+  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250);
   const [mockDailyStreak, setMockDailyStreak] = useState(0);
   const [mockBestStreak, setMockBestStreak] = useState(0);
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
@@ -174,16 +176,16 @@ const DashboardContent: React.FC = () => {
   const handleCompleteQuest = async (questId: string) => {
     const cardRef = questCardRefs.current.get(questId);
     if (cardRef) {
-      cardRef.classList.add('animate-ripple'); 
+      cardRef.classList.add('animate-ripple');
       setTimeout(() => cardRef.classList.remove('animate-ripple'), 700);
     }
     await completeQuestInSchedule(questId);
-    
+
     // Mock XP gain for UI feedback - replace with actual XP from quest and context later
-    const questXP = scheduledQuestsForSelectedDate.find(q => q.id === questId)?.xp || 
+    const questXP = scheduledQuestsForSelectedDate.find(q => q.id === questId)?.xp ||
                     scheduledBreaksForSelectedDate.find(b => b.id === questId)?.xp || 10;
-    setMockUserXP(prev => prev + questXP); 
-    
+    setMockUserXP(prev => prev + questXP);
+
     // Simple Level Up Mock
     const newTotalXP = (currentUserProfile?.xp || 0) + questXP; // Use context for true XP if available
     if (newTotalXP >= mockXPToNextLevel) {
@@ -192,16 +194,16 @@ const DashboardContent: React.FC = () => {
       toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${mockUserLevel + 1}!`, duration: 4000 });
     }
   };
-  
+
   const handleViewDailySummary = () => {
     const completedToday = scheduledQuestsForSelectedDate.filter(q => q.notes?.includes("(Completed!)"));
     const totalToday = scheduledQuestsForSelectedDate.length;
     const xpGainedToday = completedToday.reduce((sum, q) => sum + q.xp, 0);
-    
-    let earnedBadges: BadgeType[] = []; 
+
+    let earnedBadges: BadgeType[] = [];
     if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
-      localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); 
+      localStorage.setItem('badge_quick_achiever_earned_v2', 'true');
     }
 
     setMockDailySummary({
@@ -210,23 +212,23 @@ const DashboardContent: React.FC = () => {
       totalQuests: totalToday,
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
-      streakContinued: mockDailyStreak > 0, 
+      streakContinued: mockDailyStreak > 0,
       activityScore: Math.round((completedToday.length / (totalToday || 1)) * 100)
     });
     setIsSummaryDialogOpen(true);
   };
 
-  const chartData: ChartMoodLog[] = useMemo(() => 
+  const chartData: ChartMoodLog[] = useMemo(() =>
     moodLogs.filter(log => moodToValue[log.mood] !== undefined).slice(0, 30)
       .map(log => ({ date: format(parseISO(log.date), 'MMM d'), moodValue: moodToValue[log.mood], moodEmoji: log.mood, fullDate: log.date, }))
       .reverse(),
   [moodLogs]);
-  
+
   const moodLogsWithSelfies = useMemo(() => moodLogs.filter(log => log.selfieDataUri), [moodLogs]);
   const beforeLog = moodLogsWithSelfies.length > 1 ? moodLogsWithSelfies[moodLogsWithSelfies.length - 1] : null;
   const afterLog = moodLogsWithSelfies.length > 0 ? moodLogsWithSelfies[0] : null;
-  
-  const groupedGroceryItems = useMemo(() => 
+
+  const groupedGroceryItems = useMemo(() =>
     groceryList?.items.reduce((acc, item) => {
       const category = item.category || 'Other';
       if (!acc[category]) acc[category] = [];
@@ -239,6 +241,16 @@ const DashboardContent: React.FC = () => {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const hasLoggedToday = userActiveChallenge?.completedDates.includes(todayStr) || false;
 
+  const displayedItems = useMemo(() => {
+    return [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate]
+        .sort((a, b) => {
+            const timeA = parseInt(a.startTime.replace(':', ''), 10);
+            const timeB = parseInt(b.startTime.replace(':', ''), 10);
+            return timeA - timeB;
+        });
+  }, [scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate]);
+
+
   if (!isMounted || isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isOnboardedState && !isLoadingAuth)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -248,7 +260,7 @@ const DashboardContent: React.FC = () => {
       </div>
     );
   }
-  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && rawTasksForSelectedDate.length === 0) { 
+  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && rawTasksForSelectedDate.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
         <Logo size="text-xl sm:text-2xl" />
@@ -264,20 +276,11 @@ const DashboardContent: React.FC = () => {
       </div>
     );
   }
-  
+
   const QuestIcon = ({ type }: { type: QuestType }) => {
-    const IconComponent = questTypeIcons[type] || Info; 
+    const IconComponent = questTypeIcons[type] || Info;
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />;
   };
-
-  const displayedItems = useMemo(() => { // Renamed to displayedItems
-    return [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate]
-        .sort((a, b) => {
-            const timeA = parseInt(a.startTime.replace(':', ''), 10);
-            const timeB = parseInt(b.startTime.replace(':', ''), 10);
-            return timeA - timeB;
-        });
-  }, [scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate]);
 
 
   return (
@@ -318,7 +321,7 @@ const DashboardContent: React.FC = () => {
            </Button>
         </div>
       </header>
-      
+
       {aiFeedbackToDisplay && (
         <Card ref={aiFeedbackCardRef} className="neumorphic mb-3 sm:mb-4 p-2 sm:p-2.5 bg-accent/10 border-accent/30">
           <CardTitle className="text-xs sm:text-sm font-semibold flex items-center text-primary">
@@ -334,11 +337,11 @@ const DashboardContent: React.FC = () => {
             <CardHeader className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                 {currentUserProfile?.avatarUrl ? (
-                  <Image 
-                    src={currentUserProfile.avatarUrl} 
-                    alt="User avatar" 
-                    width={40} 
-                    height={40} 
+                  <Image
+                    src={currentUserProfile.avatarUrl}
+                    alt="User avatar"
+                    width={40}
+                    height={40}
                     className="rounded-full neumorphic-sm object-cover h-8 w-8 sm:h-10 sm:w-10"
                     data-ai-hint="user avatar"
                   />
@@ -355,11 +358,11 @@ const DashboardContent: React.FC = () => {
                 </div>
               </div>
               <div ref={xpBarRef}>
-                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5" indicatorClassName="progress-bar-fill-xp" />
+                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5 animate-progress-fill" indicatorClassName="progress-bar-fill-xp" />
               </div>
             </CardHeader>
           </Card>
-          
+
            <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex-row items-center justify-between">
                 <CardTitle className="text-sm sm:text-base text-primary flex items-center">
@@ -369,12 +372,12 @@ const DashboardContent: React.FC = () => {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="flex items-center gap-0.5 sm:gap-1">
-                                {[...Array(Math.max(5, mockDailyStreak))].slice(0, 7).map((_, i) => ( 
+                                {[...Array(Math.max(5, mockDailyStreak))].slice(0, 7).map((_, i) => (
                                     <div
                                         key={`streak-${i}`}
                                         className={cn(
                                             "h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full neumorphic-inset-sm",
-                                            i < mockDailyStreak ? "bg-primary" : "bg-muted/30"
+                                            i < mockDailyStreak ? "bg-primary animate-streak-fill" : "bg-muted/30"
                                         )}
                                     />
                                 ))}
@@ -425,23 +428,23 @@ const DashboardContent: React.FC = () => {
             <CardContent className="px-3 pt-2 pb-2.5 sm:px-4 sm:pb-3 border-t border-border/50">
               <div className="space-y-2 mb-3">
                 <Label htmlFor="rawTaskDesc" className="text-xs text-muted-foreground">New Task / Goal for {format(selectedDateForPlanning, "MMM d")}:</Label>
-                <Textarea 
-                  id="rawTaskDesc" 
-                  placeholder="e.g., Finish math homework, 30 min jog, Call grandma" 
+                <Textarea
+                  id="rawTaskDesc"
+                  placeholder="e.g., Finish math homework, 30 min jog, Call grandma"
                   value={currentRawTaskDesc}
                   onChange={(e) => setCurrentRawTaskDesc(e.target.value)}
                   className="min-h-[40px] text-sm"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                  <Input 
-                    type="number" 
-                    placeholder="Mins (opt.)" 
-                    value={currentRawTaskDuration} 
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Mins (opt.)"
+                    value={currentRawTaskDuration}
                     onChange={(e) => setCurrentRawTaskDuration(e.target.value)}
                     className="h-8 text-xs"
                   />
-                  <select 
-                    value={currentRawTaskPriority} 
+                  <select
+                    value={currentRawTaskPriority}
                     onChange={(e) => setCurrentRawTaskPriority(e.target.value as 'low'|'medium'|'high')}
                     className="h-8 text-xs neumorphic-inset-sm rounded-md px-2 py-1 bg-input border border-input"
                   >
@@ -449,8 +452,8 @@ const DashboardContent: React.FC = () => {
                     <option value="medium">Medium Priority</option>
                     <option value="high">High Priority</option>
                   </select>
-                  <select 
-                    value={currentRawTaskType} 
+                  <select
+                    value={currentRawTaskType}
                     onChange={(e) => setCurrentRawTaskType(e.target.value as QuestType)}
                     className="h-8 text-xs neumorphic-inset-sm rounded-md px-2 py-1 bg-input border border-input"
                   >
@@ -458,17 +461,17 @@ const DashboardContent: React.FC = () => {
                       <option key={type} value={type} className="capitalize">{type.charAt(0).toUpperCase() + type.slice(1)}</option>
                     ))}
                   </select>
-                   <Input 
-                    type="text" 
-                    placeholder="Urgency (e.g. ASAP)" 
-                    value={currentRawTaskUrgency} 
+                   <Input
+                    type="text"
+                    placeholder="Urgency (e.g. ASAP)"
+                    value={currentRawTaskUrgency}
                     onChange={(e) => setCurrentRawTaskUrgency(e.target.value)}
                     className="h-8 text-xs"
                   />
-                   <Input 
-                    type="text" 
-                    placeholder="Energy (e.g. High Focus)" 
-                    value={currentRawTaskEnergy} 
+                   <Input
+                    type="text"
+                    placeholder="Energy (e.g. High Focus)"
+                    value={currentRawTaskEnergy}
                     onChange={(e) => setCurrentRawTaskEnergy(e.target.value)}
                     className="h-8 text-xs"
                   />
@@ -489,7 +492,7 @@ const DashboardContent: React.FC = () => {
                       </div>
                     ))}
                   </ScrollArea>
-                  <Textarea 
+                  <Textarea
                     placeholder="Any special notes for AI? (e.g., I have an appointment at 2 PM, prefer workouts in evening)"
                     value={userScheduleContext}
                     onChange={(e) => setUserScheduleContext(e.target.value)}
@@ -527,7 +530,7 @@ const DashboardContent: React.FC = () => {
                 <ScrollArea className="h-[250px] sm:h-[300px] w-full">
                   <div className="space-y-2 sm:space-y-2.5 pr-1">
                     {displayedItems.map((item) => {
-                       const isBreak = 'suggestion' in item; 
+                       const isBreak = 'suggestion' in item;
                        const quest = isBreak ? null : item as ScheduledQuestType;
                        const breakItem = isBreak ? item as BreakSlot : null;
                        const itemId = item.id;
@@ -538,7 +541,7 @@ const DashboardContent: React.FC = () => {
                             key={itemId}
                             ref={el => questCardRefs.current.set(itemId, el)}
                             className={cn(
-                                "neumorphic-sm p-2 sm:p-2.5 rounded-md group quest-card-ripple", 
+                                "neumorphic-sm p-2 sm:p-2.5 rounded-md group quest-card-ripple",
                                 isCompleted && "opacity-60 bg-card/50"
                             )}
                           >
@@ -551,7 +554,7 @@ const DashboardContent: React.FC = () => {
                                         {quest ? quest.title : breakItem?.suggestion || "Quick Break"}
                                     </p>
                                     <p className="text-2xs sm:text-xs text-muted-foreground">
-                                      {item.startTime} - {item.endTime} 
+                                      {item.startTime} - {item.endTime}
                                       {quest && ` | XP: ${quest.xp}`}
                                       {breakItem && breakItem.xp ? ` | XP: ${breakItem.xp}`: ''}
                                     </p>
@@ -728,10 +731,10 @@ const DashboardContent: React.FC = () => {
                 <span className="flex items-center gap-1 sm:gap-1.5 text-primary">
                   <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Grocery Haul
                 </span>
-                 <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleGenerateGroceryList} 
+                 <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateGroceryList}
                     disabled={isLoadingGroceryList || !wellnessPlan}
                     className="neumorphic-button text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
                   >
@@ -756,7 +759,7 @@ const DashboardContent: React.FC = () => {
                           {items.map(item => (
                             <li key={item.id} className="text-2xs sm:text-xs flex justify-between items-center neumorphic-inset-sm p-1 rounded">
                               <span className="truncate max-w-[85%]">
-                                {item.name} 
+                                {item.name}
                                 {item.quantity && <span className="text-muted-foreground text-3xs"> ({item.quantity})</span>}
                                 {item.notes && <em className="text-muted-foreground text-3xs block truncate"> - {item.notes}</em>}
                               </span>
@@ -855,3 +858,4 @@ export default function DashboardPage() {
   return <DashboardContent />;
 }
 
+    
