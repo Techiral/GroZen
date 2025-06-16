@@ -16,10 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress as ShadProgress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import SocialShareCard from '@/components/social-share-card';
+// Removed SocialShareCard as it's not currently used and was causing issues with mood log dependencies
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Palette, Edit3, Sparkle, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star } from 'lucide-react';
-import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask, BreakSlot } from '@/types/wellness';
+import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, RawTask, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
 import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -86,8 +86,8 @@ const DashboardContent: React.FC = () => {
   const [mockUserXP, setMockUserXP] = useState(0);
   const [mockUserLevel, setMockUserLevel] = useState(1);
   const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250);
-  const [mockDailyStreak, setMockDailyStreak] = useState(0);
-  const [mockBestStreak, setMockBestStreak] = useState(0);
+  const [mockDailyStreak, setMockDailyStreak] = useState(0); // UI Only for now
+  const [mockBestStreak, setMockBestStreak] = useState(0); // UI Only for now
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
 
   // State for Raw Task Input
@@ -118,6 +118,7 @@ const DashboardContent: React.FC = () => {
       setNewDisplayName(currentUserProfile.displayName || '');
       setMockUserXP(currentUserProfile.xp || 0);
       setMockUserLevel(currentUserProfile.level || 1);
+      // For now, streaks are mock. Real streaks would come from context/backend.
       setMockDailyStreak(currentUserProfile.dailyQuestStreak || 0);
       setMockBestStreak(currentUserProfile.bestQuestStreak || 0);
     }
@@ -134,14 +135,88 @@ const DashboardContent: React.FC = () => {
     }
   }, [aiFeedbackToDisplay]);
 
-  const startCamera = useCallback(async () => { /* ... (existing camera logic) ... */ }, []);
-  const stopCamera = useCallback(() => { /* ... (existing camera logic) ... */ }, []);
-  const capturePhoto = useCallback(() => { /* ... (existing camera logic) ... */ }, [stopCamera]);
-  const handleMoodSubmit = async () => { /* ... (existing mood submit logic) ... */ };
-  const handleDeleteMoodLog = async (logId: string) => { /* ... (existing mood delete logic) ... */ };
-  const handleGenerateGroceryList = async () => { /* ... (existing grocery list logic) ... */ };
-  const handleDeleteGroceryItem = async (itemId: string) => { /* ... (existing grocery item delete logic) ... */ };
-  const handleUpdateDisplayName = async () => { /* ... (existing display name update logic) ... */ };
+  const startCamera = useCallback(async () => {
+    try {
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast({variant: "destructive", title: "Camera Error", description: "Could not access camera."});
+      setIsCameraOpen(false);
+    }
+  }, [toast]);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if(videoRef.current) videoRef.current.srcObject = null;
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUri = canvas.toDataURL('image/webp', 0.8); // Use webp for smaller size
+        setSelfieDataUri(dataUri);
+        stopCamera();
+        setIsCameraOpen(false);
+      }
+    }
+  }, [stopCamera]);
+
+  const handleMoodSubmit = async () => {
+    if (!selectedMood) {
+        toast({variant: "destructive", title: "Mood Missing", description: "Please select a mood."});
+        return;
+    }
+    setIsSubmittingMood(true);
+    const feedback = await addMoodLog(selectedMood, moodNotes, selfieDataUri); // Assuming addMoodLog returns AI feedback
+    setIsSubmittingMood(false);
+    setIsMoodDialogOpen(false);
+    setSelectedMood('');
+    setMoodNotes('');
+    setSelfieDataUri(undefined);
+    setIsCameraOpen(false); // Close camera view in modal
+    if(typeof feedback === 'string' && feedback) {
+      setAiFeedbackToDisplay(feedback);
+    }
+  };
+
+  const handleDeleteMoodLog = async (logId: string) => {
+    await deleteMoodLog(logId);
+  };
+  
+  const handleGenerateGroceryList = async () => {
+    if (!wellnessPlan) {
+      toast({ variant: "destructive", title: "No Plan", description: "Generate a wellness plan first!" });
+      return;
+    }
+    await generateGroceryList(wellnessPlan);
+  };
+
+  const handleDeleteGroceryItem = async (itemId: string) => {
+    await deleteGroceryItem(itemId);
+  };
+  
+  const handleUpdateDisplayName = async () => {
+    if (!newDisplayName.trim()) {
+        toast({variant: "destructive", title: "Name Needed", description: "Please enter a display name."});
+        return;
+    }
+    setIsUpdatingName(true);
+    await updateUserDisplayName(newDisplayName);
+    setIsUpdatingName(false);
+    setIsSettingsDialogOpen(false);
+  };
 
   const handleAddRawTask = async () => {
     if (!currentRawTaskDesc.trim()) {
@@ -181,17 +256,51 @@ const DashboardContent: React.FC = () => {
     }
     await completeQuestInSchedule(questId);
 
-    // Mock XP gain for UI feedback - replace with actual XP from quest and context later
     const questXP = scheduledQuestsForSelectedDate.find(q => q.id === questId)?.xp ||
                     scheduledBreaksForSelectedDate.find(b => b.id === questId)?.xp || 10;
-    setMockUserXP(prev => prev + questXP);
+    
+    const newTotalXP = (currentUserProfile?.xp || 0) + questXP;
+    setMockUserXP(newTotalXP); // Update local mock XP
 
-    // Simple Level Up Mock
-    const newTotalXP = (currentUserProfile?.xp || 0) + questXP; // Use context for true XP if available
     if (newTotalXP >= mockXPToNextLevel) {
-      setMockUserLevel(prev => prev + 1);
+      const newLevel = (currentUserProfile?.level || 1) + 1;
+      setMockUserLevel(newLevel);
       setMockXPToNextLevel(prev => prev + 150); // Increase next level threshold
-      toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${mockUserLevel + 1}!`, duration: 4000 });
+      toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${newLevel}! Keep crushing it!`, duration: 4000 });
+      
+      // Animate XP bar reset for level up
+      if (xpBarRef.current) {
+        const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
+        if(indicator) {
+            anime({
+                targets: indicator,
+                width: ['100%', '0%'],
+                duration: 300,
+                easing: 'easeOutExpo',
+                complete: () => {
+                     anime({
+                        targets: indicator,
+                        width: `${( (newTotalXP - mockXPToNextLevel + 150) / (mockXPToNextLevel - mockXPToNextLevel + 150 +150) ) * 100}%`, // This logic needs refinement based on actual next level XP
+                        duration: 500,
+                        easing: 'easeOutExpo'
+                    });
+                }
+            });
+        }
+      }
+    } else {
+        // Animate XP bar fill
+        if (xpBarRef.current) {
+          const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
+          if (indicator) {
+            anime({
+                targets: indicator,
+                width: `${(newTotalXP / mockXPToNextLevel) * 100}%`,
+                duration: 500,
+                easing: 'easeOutExpo'
+            });
+          }
+        }
     }
   };
 
@@ -203,8 +312,13 @@ const DashboardContent: React.FC = () => {
     let earnedBadges: BadgeType[] = [];
     if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
-      localStorage.setItem('badge_quick_achiever_earned_v2', 'true');
+      localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); // Mock earning
     }
+     if (completedToday.length >= 1 && mockDailyStreak === 0 && !localStorage.getItem('badge_first_streak_earned')) {
+      earnedBadges.push({id: 'b_streak1', name: 'Streak Starter!', description: 'Completed your first day in a row!', iconName: 'Flame'});
+      localStorage.setItem('badge_first_streak_earned', 'true');
+    }
+
 
     setMockDailySummary({
       date: format(selectedDateForPlanning, 'yyyy-MM-dd'),
@@ -212,7 +326,7 @@ const DashboardContent: React.FC = () => {
       totalQuests: totalToday,
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
-      streakContinued: mockDailyStreak > 0,
+      streakContinued: mockDailyStreak > 0, // This should be based on actual streak logic
       activityScore: Math.round((completedToday.length / (totalToday || 1)) * 100)
     });
     setIsSummaryDialogOpen(true);
@@ -224,10 +338,6 @@ const DashboardContent: React.FC = () => {
       .reverse(),
   [moodLogs]);
 
-  const moodLogsWithSelfies = useMemo(() => moodLogs.filter(log => log.selfieDataUri), [moodLogs]);
-  const beforeLog = moodLogsWithSelfies.length > 1 ? moodLogsWithSelfies[moodLogsWithSelfies.length - 1] : null;
-  const afterLog = moodLogsWithSelfies.length > 0 ? moodLogsWithSelfies[0] : null;
-
   const groupedGroceryItems = useMemo(() =>
     groceryList?.items.reduce((acc, item) => {
       const category = item.category || 'Other';
@@ -236,10 +346,6 @@ const DashboardContent: React.FC = () => {
       return acc;
     }, {} as Record<string, GroceryItem[]>) || {},
   [groceryList]);
-
-  const challengeProgress = userActiveChallenge ? Math.round((userActiveChallenge.daysCompleted / CURRENT_CHALLENGE.durationDays) * 100) : 0;
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const hasLoggedToday = userActiveChallenge?.completedDates.includes(todayStr) || false;
 
   const displayedItems = useMemo(() => {
     return [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate]
@@ -267,11 +373,11 @@ const DashboardContent: React.FC = () => {
         <Zap className="w-12 h-12 text-accent my-4" />
         <h2 className="text-lg font-semibold text-primary">Your Quest Planner is Ready!</h2>
         <p className="text-muted-foreground text-sm max-w-md mt-2 mb-4">
-          Looks like you don't have any tasks scheduled for today yet, or an AI plan hasn't been generated.
-          Add some tasks above and let GroZen's AI craft your epic daily quest list!
+          Looks like you don&apos;t have any tasks scheduled for {format(selectedDateForPlanning, "eeee")} yet, or an AI plan hasn&apos;t been generated for this day.
+          Add some tasks above and let GroZen&apos;s AI craft your epic daily quest list!
         </p>
         <Button onClick={() => document.getElementById('rawTaskDesc')?.focus()} className="neumorphic-button-primary">
-          <Plus className="mr-2 h-4 w-4" /> Add First Task
+          <Plus className="mr-2 h-4 w-4" /> Add First Task for {format(selectedDateForPlanning, "MMM d")}
         </Button>
       </div>
     );
@@ -350,15 +456,15 @@ const DashboardContent: React.FC = () => {
                 )}
                 <div>
                   <CardTitle className="text-sm sm:text-base text-primary">
-                    Hey {currentUserProfile?.displayName || 'GroZen User'}! Let's Rock Today! 👋
+                    Hey {currentUserProfile?.displayName || 'GroZen User'}! Let&apos;s Rock Today! 👋
                   </CardTitle>
                   <CardDescription className="text-2xs sm:text-xs">
-                    Level {mockUserLevel}  |  XP: {mockUserXP} / {mockXPToNextLevel}
+                    Level {mockUserLevel}  |  XP: {mockUserXP % mockXPToNextLevel} / {mockXPToNextLevel}
                   </CardDescription>
                 </div>
               </div>
               <div ref={xpBarRef}>
-                 <ShadProgress value={(mockUserXP / mockXPToNextLevel) * 100} className="h-2 sm:h-2.5 animate-progress-fill" indicatorClassName="progress-bar-fill-xp" />
+                 <ShadProgress value={(mockUserXP % mockXPToNextLevel) / mockXPToNextLevel * 100} className="h-2 sm:h-2.5 animate-progress-fill" indicatorClassName="progress-bar-fill-xp" />
               </div>
             </CardHeader>
           </Card>
@@ -582,6 +688,70 @@ const DashboardContent: React.FC = () => {
               ) : null}
             </CardContent>
           </Card>
+
+          {/* Reinstated Wellness Plan Display */}
+          {wellnessPlan && isPlanAvailable && (
+            <Card className="neumorphic">
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="text-sm sm:text-base text-primary flex items-center">
+                  <BookOpen className="h-4 w-4 mr-1.5 text-accent" /> GroZen Blueprint
+                </CardTitle>
+                <CardDescription className="text-2xs sm:text-xs">Your personalized wellness plan.</CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
+                <Tabs defaultValue="meals" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 h-auto neumorphic-inset-sm">
+                    <TabsTrigger value="meals" className="text-2xs px-1 py-1 sm:text-xs sm:px-1.5 sm:py-1.5"><Utensils className="h-3 w-3 mr-1" /> Meals</TabsTrigger>
+                    <TabsTrigger value="exercise" className="text-2xs px-1 py-1 sm:text-xs sm:px-1.5 sm:py-1.5"><Dumbbell className="h-3 w-3 mr-1" /> Exercise</TabsTrigger>
+                    <TabsTrigger value="mindfulness" className="text-2xs px-1 py-1 sm:text-xs sm:px-1.5 sm:py-1.5"><Brain className="h-3 w-3 mr-1" /> Mind</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="meals" className="mt-2">
+                    <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                      <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                        {wellnessPlan.meals.map((meal: Meal, index: number) => (
+                          <ItemCard key={`meal-${index}`} className="bg-card">
+                            <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center"><CalendarIcon className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {meal.day}</h5>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>B:</strong> {meal.breakfast}</p>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>L:</strong> {meal.lunch}</p>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>D:</strong> {meal.dinner}</p>
+                          </ItemCard>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </TabsContent>
+                  <TabsContent value="exercise" className="mt-2">
+                    <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                      <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                        {wellnessPlan.exercise.map((ex: Exercise, index: number) => (
+                          <ItemCard key={`ex-${index}`} className="bg-card">
+                            <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center"><CalendarIcon className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {ex.day}</h5>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Activity:</strong> {ex.activity}</p>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {ex.duration}</p>
+                          </ItemCard>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </TabsContent>
+                  <TabsContent value="mindfulness" className="mt-2">
+                     <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                      <div className="flex space-x-1.5 sm:space-x-2 pb-2 sm:pb-2.5">
+                        {wellnessPlan.mindfulness.map((mind: Mindfulness, index: number) => (
+                          <ItemCard key={`mind-${index}`} className="bg-card">
+                            <h5 className="font-semibold text-2xs sm:text-xs mb-0.5 flex items-center"><CalendarIcon className="h-2.5 w-2.5 mr-1 text-muted-foreground" /> {mind.day}</h5>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Practice:</strong> {mind.practice}</p>
+                            <p className="text-3xs xs:text-2xs break-words whitespace-normal"><strong>Duration:</strong> {mind.duration}</p>
+                          </ItemCard>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
@@ -817,7 +987,7 @@ const DashboardContent: React.FC = () => {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <div className="p-2 neumorphic-sm rounded-md bg-card animate-badge-pop">
-                                                    <Medal className="h-8 w-8 text-accent" />
+                                                    {badge.iconName === 'Medal' ? <Medal className="h-8 w-8 text-accent" /> : <Flame className="h-8 w-8 text-accent" />}
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent className="neumorphic-sm text-xs">
@@ -857,5 +1027,3 @@ export default function DashboardPage() {
   }
   return <DashboardContent />;
 }
-
-    
