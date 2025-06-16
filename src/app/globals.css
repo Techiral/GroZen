@@ -58,9 +58,33 @@
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
+/* Added for quest completion ripple */
+@keyframes ripple-effect {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Added for badge pop-up */
+@keyframes badge-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1) translateY(-10px); opacity: 1; }
+  80% { transform: scale(0.95) translateY(0px); }
+  100% { transform: scale(1) translateY(0px); opacity: 1; }
+}
+
+
 @layer base {
   :root {
-    /* Original Minimalist Dark Theme - Black, White, Light Gray */
+    /* Minimalist Dark Theme - Black, White, Light Gray */
     --background: 0 0% 0%; /* Deep Black #000000 */
     --foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
@@ -288,4 +312,30 @@
     background-image: linear-gradient(to right, hsl(var(--accent)), hsl(var(--primary)));
     transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
   }
+
+  .quest-card-ripple {
+    position: relative;
+    overflow: hidden; /* To contain the ripple */
+  }
+  .quest-card-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: hsl(var(--accent) / 0.6);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+  }
+  .quest-card-ripple.animate-ripple::after {
+    animation: ripple-effect 0.7s ease-out forwards;
+  }
+
+  .badge-earned-popup {
+    animation: badge-pop 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+  }
 }
+

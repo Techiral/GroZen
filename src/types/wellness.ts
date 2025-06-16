@@ -59,6 +59,13 @@ export interface UserProfile {
   displayName: string | null;
   email: string | null;
   avatarUrl?: string;
+  // Gamification elements to be expanded
+  level?: number;
+  xp?: number;
+  dailyQuestStreak?: number;
+  bestQuestStreak?: number;
+  lastQuestCompletionDate?: string; // YYYY-MM-DD
+  title?: string; // e.g., "Novice Quester"
 }
 
 // For Admin Dashboard
@@ -76,6 +83,7 @@ export interface FullUserDetail extends UserListItem { // FullUserDetail now ext
   groceryList: GroceryList | null;
   activeChallengeProgress?: UserActiveChallenge | null;
   // avatarUrl is inherited from UserListItem
+  profile?: UserProfile; // Include full profile for admin view
 }
 
 // For Mood Chart
@@ -108,4 +116,57 @@ export interface LeaderboardEntry {
   daysCompleted: number;
   rank?: number;
   avatarUrl?: string;
+  // Could expand to show level or XP for gamified leaderboards
+  level?: number;
+  xp?: number;
+}
+
+// GAMIFICATION TYPES
+export type QuestType = 'study' | 'workout' | 'hobby' | 'chore' | 'wellness' | 'creative' | 'social' | 'break' | 'other';
+
+export interface Quest {
+  id: string;
+  title: string;
+  description?: string;
+  questType: QuestType;
+  xpValue: number;
+  isCompleted: boolean;
+  scheduledDate: string; // YYYY-MM-DD
+  scheduledTime?: string; // Optional: HH:MM
+  durationMinutes?: number; // Optional
+  urgency?: 'low' | 'medium' | 'high' | 'asap'; // Optional
+  energyLevel?: 'low' | 'medium' | 'high'; // Optional
+  isRecurring?: boolean; // Optional
+  relatedHabitId?: string; // Optional
+  isTimeLimited?: boolean; // Optional
+  deadline?: string; // Optional, ISOString or similar for time-limited quests
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  iconName: string; // e.g., name of a Lucide icon or path to custom SVG
+  earnedDate?: string; // ISO string
+}
+
+export interface Collectible { // For skins, perks, boosts
+  id: string;
+  name: string;
+  description: string;
+  type: 'skin_avatar' | 'skin_profile_border' | 'boost_xp' | 'boost_quest_slot';
+  iconName: string;
+  duration?: number; // For boosts, in hours or days
+  effectValue?: number; // For boosts, e.g., 2 for 2x XP
+  isEquipped?: boolean;
+}
+
+export interface DailySummary {
+  date: string; // YYYY-MM-DD
+  questsCompleted: number;
+  totalQuests: number;
+  xpGained: number;
+  badgesEarned: Badge[];
+  streakContinued: boolean;
+  activityScore?: number; // Optional: some comparative score
 }
