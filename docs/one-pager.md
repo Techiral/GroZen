@@ -20,7 +20,8 @@ I’m a teen, and life’s crazy- school, friends, and stress make it tough to e
 | Leaderboard | ![Leaderboard](../public/leaderboard.png) |
 
 ## User Flow Diagram 🗺️
-![GroZen User Flow](../public/user-flow-diagram.png)  
+![GroZen User Flow](../public/user-flow-diagram.png) 
+<div style="position: relative; box-sizing: content-box; max-height: 80vh; max-height: 80svh; width: 100%; aspect-ratio: 2.00251677852349; padding: 40px 0 40px 0;"><iframe src="https://app.supademo.com/embed/cmc4pcj1d0epyllpn4izbui9n?embed_v=2" loading="lazy" title="GroZen Demo" allow="clipboard-write" frameborder="0" webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 *From landing page to dashboard: sign up, set goals, get AI plans, log moods, and join challenges.*
 
 ## Innovation & Originality (25%) 🚀
