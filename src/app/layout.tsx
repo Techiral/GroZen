@@ -10,53 +10,58 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const appUrl = 'https://grozen.app'; // Placeholder for your actual domain
+const appTitle = 'GroZen: AI Wellness Quest - Level Up Your Vibe! ✨';
+const appDescription = 'Free AI wellness app for teens! Get personalized diet plans, AI-powered daily quests, mood tracking with empathetic feedback, and crush goals with fun challenges & leaderboards. Your adventure to a healthier, happier you starts here!';
+const appKeywords = 'teen wellness, AI coach, free wellness app, teen fitness, mental health for teens, gamified wellness, personalized plans, GroZen, mood tracking, habit building, fun app for teens, AI wellness app, teen wellness tracker, free mood tracker, gamified self-care, daily health missions, AI diet planner, budget grocery list, mini workouts app, mood diary via emojis, selfie mood check, AI stress tips, wellness challenge app, live leaderboards, health badges, self-care for teens, habit tracker for students, stress relief app, mental health for teens, healthy habits game, meal planner for teens, study break reminders, youth fitness app, grocery planner app, self-care reminders, AI wellness coach, student wellness app, school stress tracker, mindful breaks tool, Genkit, Gemini AI';
+
 export const metadata: Metadata = {
-  title: 'GroZen | Free AI Wellness App to Level Up Your Mood, Meals & Mind with AI Mood Tracker & Diet Plans',
-  description: 'GroZen is a free AI wellness app for teens: get daily health missions (meals, mini‑workouts, chill breaks), mood tracking via emojis & selfies, AI tips, budget‑smart grocery lists, live leaderboards & badges for fun self‑care.',
-  keywords: 'teen wellness, AI coach, free wellness app, teen fitness, mental health for teens, gamified wellness, personalized plans, GroZen, mood tracking, habit building, fun app for teens, AI wellness app, teen wellness tracker, free mood tracker, gamified self-care, daily health missions, AI diet planner, budget grocery list, mini workouts app, mood diary via emojis, selfie mood check, AI stress tips, wellness challenge app, live leaderboards, health badges, self-care for teens, habit tracker for students, stress relief app, mental health for teens, healthy habits game, meal planner for teens, study break reminders, youth fitness app, grocery planner app, self-care reminders, AI wellness coach, student wellness app, school stress tracker, mindful breaks tool',
+  title: appTitle,
+  description: appDescription,
+  keywords: appKeywords,
   authors: [
     { name: "Lakshya Gupta" },
     { name: "The Techiral Team" }
   ],
-  creator: 'Techiral',
+  creator: 'Lakshya Gupta / Techiral',
   publisher: 'Techiral',
   robots: 'index, follow',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://grozen.vercel.app',
+    url: appUrl,
     siteName: 'GroZen',
     title: 'GroZen: Your Epic AI Wellness Adventure (Free for Teens!)',
     description: 'GroZen is a free AI-powered game that turns self-care into daily fun: get quick mood checks, easy meal & workout missions, smart grocery lists, and compete with friends to crush stress and level up your health!',
     images: [
       {
-        url: 'https://i.ibb.co/Xr8LtLpd/Chat-GPT-Image-Jun-19-2025-09-07-01-PM.png', // Placeholder OG image
+        url: 'https://placehold.co/1200x630.png?text=GroZen+AI+Wellness+Adventure', // Placeholder OG image
         width: 1200,
         height: 630,
-        alt: 'GroZen - Fun AI Wellness App for Teens',
+        alt: 'GroZen - Fun AI Wellness App for Teens with Personalized Plans & Mood Tracking',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@techiral_', // Placeholder for your Twitter handle
-    creator: '@techiral_', // Placeholder for your Twitter handle
-    title: 'This Free AI App Turns Self-Care Into a Game — And It’s Actually Fun”',
-    description: 'This free AI app gives you mood boosts, fun daily missions, and zero-pressure self-care that actually feels good.',
-    images: ['https://i.ibb.co/Xr8LtLpd/Chat-GPT-Image-Jun-19-2025-09-07-01-PM.png'], // Placeholder Twitter image
+    site: '@lakshyaagy', // Placeholder for your Twitter handle
+    creator: '@lakshyaagy', // Placeholder for your Twitter handle
+    title: 'GroZen: This Free AI App Turns Self-Care Into a Game—And It’s Actually Fun!',
+    description: 'GroZen offers free AI-driven diet plans, mood tracking with empathetic feedback, and gamified daily quests to make wellness enjoyable for teens.',
+    images: ['https://placehold.co/1200x600.png?text=GroZen+AI+App+for+Teens'], // Placeholder Twitter image
   },
-  manifest: '/manifest.json', // Placeholder for your manifest file in /public
+  manifest: '/manifest.json', // You'll need to create public/manifest.json
   icons: {
-    icon: '/favicon.png', // Placeholder for your favicon in /public
-    apple: '/favicon.png', // Placeholder for your apple touch icon in /public
+    icon: '/favicon.png', // You'll need to create public/favicon.png
+    apple: '/apple-touch-icon.png', // You'll need to create public/apple-touch-icon.png
   },
   alternates: {
-    canonical: 'https://grozen.vercel.app', // Placeholder for your actual domain
+    canonical: appUrl,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: 'hsl(var(--primary))',
+  themeColor: 'hsl(var(--primary))', // Should match your primary dark theme color
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -66,8 +71,8 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'GroZen',
-  description: 'A fun, gamified AI-powered wellness and fitness app for teens. Get free personalized plans to improve mood, habits, and confidence. Simple, engaging, and effective.',
-  url: 'https://grozen.vercel.app', // Placeholder for your actual domain
+  description: 'A fun, gamified AI-powered wellness and fitness app for teens. Get free personalized plans to improve mood, habits, and confidence. Simple, engaging, and effective, using Genkit and Google Gemini models.',
+  url: appUrl,
   applicationCategory: 'HealthApplication',
   operatingSystem: 'Web',
   offers: {
@@ -75,7 +80,7 @@ const jsonLd = {
     price: '0',
     priceCurrency: 'USD',
   },
-  keywords: 'teen wellness, AI coach, free wellness app, gamified fitness, mental health app for teens, personalized wellness, habit tracker, fun app',
+  keywords: appKeywords,
   audience: {
     '@type': 'Audience',
     audienceType: 'Teenagers',
@@ -88,8 +93,18 @@ const jsonLd = {
   },
   potentialAction: {
     "@type": "CreateAction",
-    "target": "https://grozen.vercel.app" // Placeholder for your domain
-  }
+    "target": appUrl
+  },
+  creator: [
+    {
+      "@type": "Person",
+      "name": "Lakshya Gupta"
+    },
+    {
+      "@type": "Organization",
+      "name": "Techiral"
+    }
+  ]
 };
 
 export default function RootLayout({
@@ -107,6 +122,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://placehold.co" />
+        {/* Add actual manifest and icon links here if not using the ones in metadata.icons */}
+        {/* <link rel="manifest" href="/manifest.json" /> */}
+        {/* <link rel="icon" href="/favicon.ico" sizes="any" /> */}
+        {/* <link rel="apple-touch-icon" href="/apple-touch-icon.png" /> */}
       </head>
       <body
         className={`${inter.variable} font-sans antialiased bg-background text-foreground min-h-screen flex flex-col`}
@@ -120,4 +139,3 @@ export default function RootLayout({
     </html>
   );
 }
-
