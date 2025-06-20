@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, Utensils, Dumbbell, Brain, Smile, ShoppingCart, CalendarDays as CalendarIcon, Camera, Trash2, LogOut, Settings, Trophy, Plus, Sparkles, Target, CheckCircle, BarChart3, Users, RefreshCw, X, UserCircle, PartyPopper, ThumbsUp, Flame, BookOpen, Paintbrush, FerrisWheel, Briefcase, Coffee, Award as AwardIcon, Medal, Info, Edit3, Wand2, Clock, CircleDashed, ChevronLeft, ChevronRight, Zap, Star, Wind } from 'lucide-react';
 import type { MoodLog, GroceryItem, ChartMoodLog, ScheduledQuest as ScheduledQuestType, QuestType, DailySummary, Badge as BadgeType, BreakSlot, WellnessPlan, Meal, Exercise, Mindfulness } from '@/types/wellness';
-import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid } from 'date-fns';
+import { format, parseISO, isToday, subDays, startOfDay, isSameDay, addDays, isValid, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
@@ -49,13 +49,13 @@ const questTypeIcons: Record<QuestType, React.ElementType> = {
 const DashboardContent: React.FC = () => {
   const router = useRouter();
   const {
-    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan,
+    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan, onboardingData, generatePlan,
     moodLogs, addMoodLog, deleteMoodLog, groceryList, isLoadingGroceryList,
     generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge,
     isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile,
     updateUserDisplayName,
     selectedDateForPlanning, setSelectedDateForPlanning, 
-    naturalLanguageDailyInput, setNaturalLanguageDailyInput,
+    naturalLanguageDailyInput, setNaturalLanguageDailyInput, userScheduleContext, setUserScheduleContext,
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
     isLoadingSchedule, 
     generateQuestScheduleForSelectedDate, completeQuestInSchedule, deleteScheduledItem,
@@ -73,7 +73,8 @@ const DashboardContent: React.FC = () => {
   const [newDisplayName, setNewDisplayName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [aiFeedbackToDisplay, setAiFeedbackToDisplay] = useState<string | null>(null);
-  const [userScheduleContext, setUserScheduleContext] = useState('');
+  const [isRegeneratePlanDialogOpen, setIsRegeneratePlanDialogOpen] = useState(false);
+  const [isLoadingPlanGeneration, setIsLoadingPlanGeneration] = useState(false);
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -86,7 +87,7 @@ const DashboardContent: React.FC = () => {
 
   const [mockUserXP, setMockUserXP] = useState(0);
   const [mockUserLevel, setMockUserLevel] = useState(1);
-  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250);
+  const [mockXPToNextLevel, setMockXPToNextLevel] = useState(250); // Initial XP for level 2
   const [mockDailyStreak, setMockDailyStreak] = useState(0); 
   const [mockBestStreak, setMockBestStreak] = useState(0); 
   const [mockDailySummary, setMockDailySummary] = useState<DailySummary | null>(null);
@@ -107,6 +108,7 @@ const DashboardContent: React.FC = () => {
       setNewDisplayName(currentUserProfile.displayName || '');
       setMockUserXP(currentUserProfile.xp || 0);
       setMockUserLevel(currentUserProfile.level || 1);
+      setMockXPToNextLevel((currentUserProfile.level || 1) * 250);
       setMockDailyStreak(currentUserProfile.dailyQuestStreak || 0);
       setMockBestStreak(currentUserProfile.bestQuestStreak || 0);
     }
@@ -211,74 +213,49 @@ const DashboardContent: React.FC = () => {
         toast({ title: "No Tasks Yet!", description: "Describe your day's tasks before generating a schedule." });
         return;
     }
-    await generateQuestScheduleForSelectedDate(naturalLanguageDailyInput, userScheduleContext);
+    await generateQuestScheduleForSelectedDate();
   };
 
-  const handleCompleteQuest = async (questId: string) => {
-    const cardRef = questCardRefs.current.get(questId);
+  const handleCompleteQuest = async (itemId: string, itemType: 'quest' | 'break') => {
+    const cardRef = questCardRefs.current.get(itemId);
     if (cardRef) {
       cardRef.classList.add('animate-ripple');
       setTimeout(() => cardRef.classList.remove('animate-ripple'), 700);
     }
-    await completeQuestInSchedule(questId);
-
-    const questXP = scheduledQuestsForSelectedDate.find(q => q.id === questId)?.xp ||
-                    scheduledBreaksForSelectedDate.find(b => b.id === questId)?.xp || 10;
+    await completeQuestInSchedule(itemId, itemType);
     
-    const newTotalXP = (currentUserProfile?.xp || 0) + questXP;
-    setMockUserXP(newTotalXP); 
-
-    if (newTotalXP >= mockXPToNextLevel) {
-      const newLevel = (currentUserProfile?.level || 1) + 1;
-      setMockUserLevel(newLevel);
-      setMockXPToNextLevel(prev => prev + 150); 
-      toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${newLevel}! Keep crushing it!`, duration: 4000 });
-      
-      if (xpBarRef.current) {
-        const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
-        if(indicator) {
-            anime({
-                targets: indicator,
-                width: ['100%', '0%'],
-                duration: 300,
-                easing: 'easeOutExpo',
-                complete: () => {
-                     anime({
-                        targets: indicator,
-                        width: `${( (newTotalXP - mockXPToNextLevel + 150) / (mockXPToNextLevel - mockXPToNextLevel + 150 +150) ) * 100}%`, 
-                        duration: 500,
-                        easing: 'easeOutExpo'
-                    });
-                }
-            });
-        }
-      }
-    } else {
-        if (xpBarRef.current) {
-          const indicator = xpBarRef.current.querySelector('.progress-bar-fill-xp') as HTMLDivElement;
-          if (indicator) {
-            anime({
-                targets: indicator,
-                width: `${(newTotalXP / mockXPToNextLevel) * 100}%`,
-                duration: 500,
-                easing: 'easeOutExpo'
-            });
-          }
-        }
-    }
+    // XP and Level are now updated via currentUserProfile useEffect
+    // Streak is also updated in context and reflected in currentUserProfile
   };
 
+
   const handleViewDailySummary = () => {
-    const completedToday = scheduledQuestsForSelectedDate.filter(q => q.notes?.includes("(Completed!)"));
-    const totalToday = scheduledQuestsForSelectedDate.length;
-    const xpGainedToday = completedToday.reduce((sum, q) => sum + q.xp, 0);
+    const planDocRef = getDailyPlanDocRef(selectedDateForPlanning);
+    if (!planDocRef) return;
+
+    let completedTodayCount = 0;
+    let totalTodayCount = 0;
+    let xpGainedToday = 0;
+
+    const currentItems = [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate];
+    totalTodayCount = scheduledQuestsForSelectedDate.length; // Only count main quests for total
+
+    currentItems.forEach(item => {
+        const isQuest = 'questType' in item;
+        const notesOrSuggestion = isQuest ? (item as ScheduledQuestType).notes : (item as BreakSlot).suggestion;
+        if(notesOrSuggestion?.includes("(Completed!)") || notesOrSuggestion?.includes("(Taken!)")) {
+            if(isQuest) completedTodayCount++;
+            xpGainedToday += (item as ScheduledQuestType).xp || (item as BreakSlot).xp || 0;
+        }
+    });
+
 
     let earnedBadges: BadgeType[] = [];
-    if (completedToday.length >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
+    if (completedTodayCount >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
       localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); 
     }
-     if (completedToday.length >= 1 && mockDailyStreak === 0 && !localStorage.getItem('badge_first_streak_earned')) {
+     if (completedTodayCount >= 1 && (currentUserProfile?.dailyQuestStreak || 0) === 1 && !localStorage.getItem('badge_first_streak_earned')) {
       earnedBadges.push({id: 'b_streak1', name: 'Streak Starter!', description: 'Completed your first day in a row!', iconName: 'Flame'});
       localStorage.setItem('badge_first_streak_earned', 'true');
     }
@@ -286,12 +263,12 @@ const DashboardContent: React.FC = () => {
 
     setMockDailySummary({
       date: format(selectedDateForPlanning, 'yyyy-MM-dd'),
-      questsCompleted: completedToday.length,
-      totalQuests: totalToday,
+      questsCompleted: completedTodayCount,
+      totalQuests: totalTodayCount,
       xpGained: xpGainedToday,
       badgesEarned: earnedBadges,
-      streakContinued: mockDailyStreak > 0, 
-      activityScore: Math.round((completedToday.length / (totalToday || 1)) * 100)
+      streakContinued: (currentUserProfile?.dailyQuestStreak || 0) > 0 && currentUserProfile?.lastQuestCompletionDate === format(selectedDateForPlanning, 'yyyy-MM-dd'), 
+      activityScore: Math.round((completedTodayCount / (totalTodayCount || 1)) * 100)
     });
     setIsSummaryDialogOpen(true);
   };
@@ -300,6 +277,19 @@ const DashboardContent: React.FC = () => {
     await deleteScheduledItem(itemId, itemType);
     toast({title: `${itemType === 'quest' ? 'Quest' : 'Break'} Removed`, description: "Your schedule has been updated."});
   };
+
+  const handleRegenerateWellnessPlan = async () => {
+    if (!onboardingData) {
+      toast({ variant: "destructive", title: "Missing Info", description: "Onboarding data is needed to generate a plan. Please complete onboarding." });
+      router.push('/onboarding');
+      return;
+    }
+    setIsLoadingPlanGeneration(true);
+    await generatePlan(onboardingData);
+    setIsLoadingPlanGeneration(false);
+    setIsRegeneratePlanDialogOpen(false);
+  };
+
 
   const chartData: ChartMoodLog[] = useMemo(() =>
     moodLogs.filter(log => moodToValue[log.mood] !== undefined).slice(0, 30)
@@ -325,6 +315,9 @@ const DashboardContent: React.FC = () => {
         });
   }, [scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate]);
 
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isChallengeDayLogged = userActiveChallenge?.completedDates.includes(todayStr) || false;
+
 
   if (!isMounted || isLoadingAuth || (!currentUser && !isLoadingAuth) || (currentUser && !isOnboardedState && !isLoadingAuth)) {
     return (
@@ -336,7 +329,7 @@ const DashboardContent: React.FC = () => {
     );
   }
   
-  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && !naturalLanguageDailyInput.trim()) {
+  if (!isPlanAvailable && scheduledQuestsForSelectedDate.length === 0 && !naturalLanguageDailyInput.trim() && !userScheduleContext.trim()) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
         <Logo size="text-xl sm:text-2xl" />
@@ -512,6 +505,7 @@ const DashboardContent: React.FC = () => {
                   className="min-h-[80px] text-sm"
                 />
                  <Textarea
+                    id="userScheduleContext"
                     placeholder="Any special notes for AI? (e.g., I have an appointment at 2 PM, prefer workouts in evening)"
                     value={userScheduleContext}
                     onChange={(e) => setUserScheduleContext(e.target.value)}
@@ -552,7 +546,29 @@ const DashboardContent: React.FC = () => {
                        const quest = isBreak ? null : item as ScheduledQuestType;
                        const breakItem = isBreak ? item as BreakSlot : null;
                        const itemId = item.id;
-                       const isCompleted = quest?.notes?.includes("(Completed!)") || breakItem?.suggestion?.includes("(Taken!)");
+                       
+                       let isCompleted = false;
+                       if (quest?.notes?.includes("(Completed!)")) isCompleted = true;
+                       if (breakItem?.suggestion?.includes("(Taken!)")) isCompleted = true;
+                       
+                       // Check against questCompletionStatus from Firestore for more robust completion check
+                        const planDocRef = getDailyPlanDocRef(selectedDateForPlanning);
+                        const [completionStatus, setCompletionStatus] = useState<Record<string, 'active' | 'completed' | 'missed'>>({});
+                        
+                        useEffect(() => {
+                            const fetchStatus = async () => {
+                                if(planDocRef) {
+                                    const docSnap = await getDoc(planDocRef);
+                                    if (docSnap.exists()) {
+                                        setCompletionStatus(docSnap.data().questCompletionStatus || {});
+                                    }
+                                }
+                            };
+                            fetchStatus();
+                        }, [planDocRef, selectedDateForPlanning]);
+
+                        if (completionStatus[itemId] === 'completed') isCompleted = true;
+
 
                        return (
                           <div
@@ -584,7 +600,7 @@ const DashboardContent: React.FC = () => {
                                   <Button
                                     variant="neumorphic-primary"
                                     size="sm"
-                                    onClick={() => handleCompleteQuest(itemId)}
+                                    onClick={() => handleCompleteQuest(itemId, isBreak ? 'break' : 'quest')}
                                     className="text-3xs px-1.5 h-6 sm:h-7 sm:text-2xs sm:px-2"
                                   >
                                     {isBreak ? "Done!" : "Complete"}
@@ -626,11 +642,35 @@ const DashboardContent: React.FC = () => {
 
           {wellnessPlan && isPlanAvailable && (
             <Card className="neumorphic">
-              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
-                <CardTitle className="text-sm sm:text-base text-primary flex items-center">
-                  <BookOpen className="h-4 w-4 mr-1.5 text-accent" /> GroZen Blueprint
-                </CardTitle>
-                <CardDescription className="text-2xs sm:text-xs">Your personalized wellness plan.</CardDescription>
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5 flex flex-row justify-between items-center">
+                <div>
+                  <CardTitle className="text-sm sm:text-base text-primary flex items-center">
+                    <BookOpen className="h-4 w-4 mr-1.5 text-accent" /> GroZen Blueprint
+                  </CardTitle>
+                  <CardDescription className="text-2xs sm:text-xs">Your personalized wellness plan.</CardDescription>
+                </div>
+                <AlertDialog open={isRegeneratePlanDialogOpen} onOpenChange={setIsRegeneratePlanDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="neumorphic-button text-3xs h-7 sm:h-8" disabled={!onboardingData}>
+                      <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="neumorphic">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Regenerate Wellness Plan?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will create a new wellness plan based on your saved preferences. Your current plan details will be overwritten.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="neumorphic-button">Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRegenerateWellnessPlan} className="neumorphic-button-primary" disabled={isLoadingPlanGeneration}>
+                        {isLoadingPlanGeneration && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Yes, Regenerate
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardHeader>
               <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3">
                 <Tabs defaultValue="meals" className="w-full">
@@ -725,6 +765,45 @@ const DashboardContent: React.FC = () => {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
+          <Card className="neumorphic">
+              <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
+                <CardTitle className="text-sm sm:text-base text-primary flex items-center gap-1.5">
+                  <Trophy className="h-4 w-4 text-accent" /> Current Challenge
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pt-0 pb-2.5 sm:px-4 sm:pb-3 text-center">
+                {isLoadingUserChallenge ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                ) : (
+                  <>
+                    <h3 className="text-xs sm:text-sm font-semibold text-primary">{CURRENT_CHALLENGE.title}</h3>
+                    <p className="text-2xs text-muted-foreground mb-2">{CURRENT_CHALLENGE.description}</p>
+                    {userActiveChallenge && userActiveChallenge.challengeId === CURRENT_CHALLENGE.id ? (
+                      <>
+                        <ShadProgress value={(userActiveChallenge.daysCompleted / CURRENT_CHALLENGE.durationDays) * 100} className="h-2 my-2 progress-bar-fill" />
+                        <p className="text-2xs text-muted-foreground">
+                          {userActiveChallenge.daysCompleted} / {CURRENT_CHALLENGE.durationDays} days completed
+                        </p>
+                        <Button 
+                          onClick={logChallengeDay} 
+                          disabled={isChallengeDayLogged || isLoadingUserChallenge} 
+                          className="w-full mt-2 neumorphic-button-primary text-xs h-8"
+                        >
+                          {isLoadingUserChallenge ? <Loader2 className="h-4 w-4 animate-spin" /> : (isChallengeDayLogged ? <CheckCircle className="mr-1 h-4 w-4" /> : <Plus className="mr-1 h-4 w-4" />)}
+                          {isChallengeDayLogged ? "Logged for Today!" : "Log Today's Progress"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button onClick={joinCurrentChallenge} disabled={isLoadingUserChallenge} className="w-full mt-2 neumorphic-button-primary text-xs h-8">
+                         {isLoadingUserChallenge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="mr-1 h-4 w-4" />}
+                        Join the Challenge!
+                      </Button>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
            <Card className="neumorphic">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
               <CardTitle className="flex items-center justify-between text-sm sm:text-base">
@@ -817,7 +896,7 @@ const DashboardContent: React.FC = () => {
                                 </AlertDialogContent>
                             </AlertDialog>
                             </div>
-                            <p className="text-3xs text-muted-foreground">{format(parseISO(log.date), "MMM d, h:mma")}</p>
+                            <p className="text-3xs text-muted-foreground">{isValid(parseISO(log.date)) ? format(parseISO(log.date), "MMM d, h:mma") : "Invalid date"}</p>
                             {log.notes && <p className="text-2xs sm:text-xs mt-1 truncate" title={log.notes}>{log.notes}</p>}
                             {log.aiFeedback && <p className="text-2xs sm:text-xs mt-1 italic text-primary/80 truncate" title={log.aiFeedback}><Sparkles className="h-3 w-3 inline-block mr-0.5 text-accent"/>{log.aiFeedback}</p>}
                         </div>
@@ -888,7 +967,7 @@ const DashboardContent: React.FC = () => {
                     <PartyPopper className="h-6 w-6 text-accent"/> Daily Quest Recap!
                 </DialogTitle>
                 <DialogDescription className="text-center text-muted-foreground text-sm">
-                    {mockDailySummary ? format(parseISO(mockDailySummary.date), "eeee, MMMM do") : "Recap"}
+                    {mockDailySummary ? format(parse(mockDailySummary.date, 'yyyy-MM-dd', new Date()), "eeee, MMMM do") : "Recap"}
                 </DialogDescription>
             </DialogHeader>
             {mockDailySummary ? (
@@ -962,3 +1041,5 @@ export default function DashboardPage() {
   return <DashboardContent />;
 }
 
+
+    

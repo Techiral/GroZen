@@ -21,7 +21,7 @@ import {
 import { doc, getDoc, setDoc, collection, addDoc, query, getDocs, orderBy, serverTimestamp, FieldValue, deleteDoc, Timestamp, updateDoc, where, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { CURRENT_CHALLENGE } from '@/config/challenge';
-import { format, startOfDay, parse } from 'date-fns';
+import { format, startOfDay, parse, isSameDay, subDays, isValid } from 'date-fns';
 
 
 interface PlanContextType {
@@ -201,7 +201,8 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (currentUser) {
       fetchDailyPlan(_selectedDateForPlanning);
     }
-  }, [_selectedDateForPlanning, currentUser, fetchDailyPlan]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_selectedDateForPlanning, currentUser]);
 
 
   useEffect(() => {
@@ -230,6 +231,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               xp: userData.xp || 0,
               dailyQuestStreak: userData.dailyQuestStreak || 0,
               bestQuestStreak: userData.bestQuestStreak || 0,
+              lastQuestCompletionDate: userData.lastQuestCompletionDate || undefined,
             });
             if (userData.onboardingData) {
               _setOnboardingData(userData.onboardingData as OnboardingData);
@@ -308,7 +310,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 displayName: initialProfileName,
                 email: user.email || '',
                 avatarUrl: initialAvatarUrl,
-                level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0
+                level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0, lastQuestCompletionDate: undefined,
             });
              const basicUserDoc = {
                 email: user.email,
@@ -323,6 +325,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 xp: 0,
                 dailyQuestStreak: 0,
                 bestQuestStreak: 0,
+                lastQuestCompletionDate: null,
              };
              try {
                 await setDoc(doc(db, "users", user.uid), basicUserDoc, { merge: true });
@@ -390,7 +393,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await setDoc(usernameDocRef, usernameData);
 
       const userDocRef = doc(db, "users", user.uid);
-      const userDocPayload: UserProfile & { createdAt: FieldValue, onboardingData: null, wellnessPlan: null, currentGroceryList: null, activeChallengeProgress: null } = {
+      const userDocPayload: UserProfile & { createdAt: FieldValue, onboardingData: null, wellnessPlan: null, currentGroceryList: null, activeChallengeProgress: null, lastQuestCompletionDate: null } = {
         email: user.email,
         displayName: usernameVal.trim(),
         avatarUrl: (avatarDataUri && typeof avatarDataUri === 'string' && avatarDataUri.trim() !== "") ? avatarDataUri : undefined,
@@ -403,6 +406,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         xp: 0,
         dailyQuestStreak: 0,
         bestQuestStreak: 0,
+        lastQuestCompletionDate: null,
       };
 
       await setDoc(userDocRef, userDocPayload);
@@ -411,7 +415,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         displayName: usernameVal.trim(),
         email: user.email || '',
         avatarUrl: userDocPayload.avatarUrl || undefined,
-        level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0,
+        level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0, lastQuestCompletionDate: undefined
       });
       _setIsOnboardedState(false);
 
@@ -510,7 +514,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await updateProfile(auth.currentUser, { displayName: newName.trim() });
       await updateDoc(userDocRef, { displayName: newName.trim() });
-      setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '', avatarUrl: prev?.avatarUrl, level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0 });
+      setCurrentUserProfile(prev => prev ? { ...prev, displayName: newName.trim() } : { displayName: newName.trim(), email: currentUser.email || '', avatarUrl: prev?.avatarUrl, level: 1, xp: 0, dailyQuestStreak: 0, bestQuestStreak: 0, lastQuestCompletionDate: prev?.lastQuestCompletionDate });
       toast({ title: "Display Name Updated" });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -698,7 +702,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const dailyPlansColRef = collection(db, "users", targetUserId, "dailyPlans");
-      const dailyPlansSnap = await getDocs(query(dailyPlansColRef, orderBy("lastGeneratedAt", "desc"))); // Or sort by doc ID (date)
+      const dailyPlansSnap = await getDocs(query(dailyPlansColRef, orderBy("lastGeneratedAt", "desc"))); 
       const fetchedDailyPlans = dailyPlansSnap.docs.map(d => {
         const planData = d.data() as DailyPlan;
         return { ...planData, id: d.id };
@@ -726,7 +730,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             lastQuestCompletionDate: userData.lastQuestCompletionDate || undefined,
             title: userData.title || undefined,
           },
-          dailyPlans: fetchedDailyPlans, // Added daily plans
+          dailyPlans: fetchedDailyPlans, 
         } as FullUserDetail;
     } catch (error: any) {
         toast({variant: "destructive", title: "Admin Error", description: `Could not fetch user details: ${error.message}`});
@@ -850,70 +854,139 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const completeQuestInSchedule = async (itemId: string, itemType: 'quest' | 'break') => {
-    if (!currentUser) return;
+ const completeQuestInSchedule = async (itemId: string, itemType: 'quest' | 'break') => {
+    if (!currentUser || !currentUserProfile) return;
 
     let xpGained = 0;
-    let isQuest = itemType === 'quest';
+    let itemTitle = "";
+    const isQuest = itemType === 'quest';
+    const currentDateKey = format(_selectedDateForPlanning, 'yyyy-MM-dd');
 
+    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
+    if (!planDocRef) return;
+
+    let dailyPlanData: DailyPlan | null = null;
+    try {
+        const planSnap = await getDoc(planDocRef);
+        if (planSnap.exists()) {
+            dailyPlanData = planSnap.data() as DailyPlan;
+        }
+    } catch (e) {
+        console.error("Error fetching daily plan for completion:", e);
+        toast({variant: "destructive", title: "Sync Error", description: "Could not fetch daily plan to mark completion."});
+        return;
+    }
+
+    if (!dailyPlanData) {
+        toast({variant: "destructive", title: "Plan Not Found", description: "Daily plan for this date is missing."});
+        return;
+    }
+    
+    // Check if this quest was already completed for this day
+    if (dailyPlanData.questCompletionStatus?.[itemId] === 'completed') {
+      toast({title: "Already Done!", description: "You've already crushed this one today!"});
+      return;
+    }
+
+    let allItemsForDay: (ScheduledQuest | BreakSlot)[] = [
+        ...(dailyPlanData.generatedQuests || []),
+        ...(dailyPlanData.generatedBreaks || [])
+    ];
+    const itemToComplete = allItemsForDay.find(it => it.id === itemId);
+
+    if (!itemToComplete) {
+        toast({variant: "destructive", title: "Item Not Found", description: "Could not find the item to complete."});
+        return;
+    }
+    xpGained = (itemToComplete as ScheduledQuest).xp || (itemToComplete as BreakSlot).xp || 0;
+    itemTitle = (itemToComplete as ScheduledQuest).title || (itemToComplete as BreakSlot).suggestion || "Task";
+
+
+    // Update local state immediately for responsiveness
     if (isQuest) {
         _setScheduledQuestsForSelectedDate(prevQuests =>
-            prevQuests.map(q => {
-                if (q.id === itemId && !q.notes?.includes("(Completed!)")) {
-                    xpGained = q.xp;
-                    return {...q, notes: (q.notes || "") + " (Completed!)" };
-                }
-                return q;
-            })
+            prevQuests.map(q => q.id === itemId ? {...q, notes: (q.notes || "") + " (Completed!)" } : q)
         );
     } else {
         _setScheduledBreaksForSelectedDate(prevBreaks =>
-            prevBreaks.map(b => {
-                if (b.id === itemId && !b.suggestion?.includes("(Taken!)")) {
-                    xpGained = b.xp || 0;
-                    return {...b, suggestion: (b.suggestion || "") + " (Taken!)" };
-                }
-                return b;
-            })
+            prevBreaks.map(b => b.id === itemId ? {...b, suggestion: (b.suggestion || "") + " (Taken!)" } : b)
         );
     }
 
-    if (xpGained > 0 && currentUserProfile) {
-        const newTotalXP = (currentUserProfile.xp || 0) + xpGained;
-        let newLevel = currentUserProfile.level || 1;
-        // Basic level up logic, can be expanded
-        const xpForNextLevel = (newLevel * 250); // Example: Level 1 needs 250, Level 2 needs 500 etc.
-        if (newTotalXP >= xpForNextLevel) {
-            newLevel += 1;
-            toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${newLevel}! Keep crushing it!`, duration: 4000 });
-        }
-         setCurrentUserProfile(prev => prev ? {...prev, xp: newTotalXP, level: newLevel } : null);
-         await updateDoc(doc(db, "users", currentUser.uid), { xp: newTotalXP, level: newLevel });
+    // Update Firestore for quest completion status within the daily plan
+    const updatedStatus = { ...(dailyPlanData.questCompletionStatus || {}), [itemId]: 'completed' as const };
+    try {
+        await updateDoc(planDocRef, {
+            questCompletionStatus: updatedStatus,
+            updatedAt: serverTimestamp()
+        });
+    } catch (error) {
+        toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion to daily plan."});
+        // Revert local state if Firestore update fails
+        if (isQuest) _setScheduledQuestsForSelectedDate(dailyPlanData.generatedQuests || []);
+        else _setScheduledBreaksForSelectedDate(dailyPlanData.generatedBreaks || []);
+        return;
     }
 
+    // XP and Streak Logic
+    let userProfileUpdates: Partial<UserProfile> = {
+        xp: (currentUserProfile.xp || 0) + xpGained,
+    };
 
-    const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
-    if (planDocRef) {
-        try {
-            const currentPlanSnap = await getDoc(planDocRef);
-            if (currentPlanSnap.exists()) {
-                const currentPlanData = currentPlanSnap.data() as DailyPlan;
-                const updatedStatus = { ...currentPlanData.questCompletionStatus, [itemId]: 'completed' as const };
-                await updateDoc(planDocRef, {
-                    questCompletionStatus: updatedStatus,
-                    updatedAt: serverTimestamp()
-                });
-                 if (xpGained > 0) {
-                    toast({title: `+${xpGained} XP!`, description: "Awesome job staying on track!"});
-                 } else {
-                    toast({title: "Task Complete!", description: "Great job staying on track!"});
-                 }
+    // Check if this is the first completion for THIS selectedDateForPlanning
+    const allQuestsCompletedToday = Object.values(updatedStatus).every(status => status === 'completed');
+    const isFirstCompletionForThisDate = Object.values(dailyPlanData.questCompletionStatus || {}).filter(s => s === 'completed').length === 0;
+
+
+    if (isFirstCompletionForThisDate) {
+        const lastCompletionDateStr = currentUserProfile.lastQuestCompletionDate;
+        let newStreak = currentUserProfile.dailyQuestStreak || 0;
+
+        if (lastCompletionDateStr && isValid(parse(lastCompletionDateStr, 'yyyy-MM-dd', new Date()))) {
+            const lastCompletionDate = parse(lastCompletionDateStr, 'yyyy-MM-dd', new Date());
+            const expectedPreviousDate = subDays(_selectedDateForPlanning, 1);
+            if (isSameDay(lastCompletionDate, expectedPreviousDate)) {
+                newStreak++;
+            } else if (!isSameDay(lastCompletionDate, _selectedDateForPlanning)) {
+                newStreak = 1; // Reset if not consecutive and not the same day
             }
-        } catch (error) {
-            toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion."})
+            // If it's the same day, streak doesn't change based on subsequent completions
+        } else {
+            newStreak = 1; // First ever completion or invalid last date
         }
+        userProfileUpdates.dailyQuestStreak = newStreak;
+        userProfileUpdates.bestQuestStreak = Math.max(currentUserProfile.bestQuestStreak || 0, newStreak);
+        userProfileUpdates.lastQuestCompletionDate = currentDateKey;
+    }
+    
+    // Level up logic
+    const currentLevel = userProfileUpdates.level || currentUserProfile.level || 1;
+    const currentXP = userProfileUpdates.xp || 0;
+    const xpForNextLevel = currentLevel * 250; // Example: Level 1 needs 250, Level 2 needs 500
+    if (currentXP >= xpForNextLevel) {
+        userProfileUpdates.level = currentLevel + 1;
+        toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${userProfileUpdates.level}! Keep crushing it!`, duration: 4000 });
+    }
+    
+    // Update user profile in Firestore and local state
+    if (Object.keys(userProfileUpdates).length > 0) {
+        try {
+            await updateDoc(doc(db, "users", currentUser.uid), userProfileUpdates);
+            setCurrentUserProfile(prev => prev ? { ...prev, ...userProfileUpdates } : null);
+        } catch (error) {
+            console.error("Error updating user profile for XP/streak:", error);
+            toast({variant: "destructive", title: "Profile Sync Error", description: "Could not update your XP/streak."});
+            // Consider reverting XP/level if critical, but streak might be harder to revert cleanly
+        }
+    }
+
+    if (xpGained > 0) {
+      toast({title: `+${xpGained} XP! "${itemTitle}"`, description: "Awesome job staying on track!"});
+    } else {
+      toast({title: `"${itemTitle}" Complete!`, description: "Great job staying on track!"});
     }
   };
+
 
   const deleteScheduledItem = async (itemId: string, itemType: 'quest' | 'break') => {
     if (!currentUser) return;
@@ -995,3 +1068,6 @@ export const usePlan = (): PlanContextType => {
   if (context === undefined) throw new Error('usePlan must be used within a PlanProvider');
   return context;
 };
+
+
+    
