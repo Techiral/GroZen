@@ -80,7 +80,7 @@ export interface FullUserDetail extends UserListItem {
   groceryList: GroceryList | null;
   activeChallengeProgress?: UserActiveChallenge | null;
   profile?: UserProfile;
-  dailyPlans?: DailyPlan[]; // Added to hold daily quest plans
+  dailyPlans?: DailyPlan[];
 }
 
 export interface ChartMoodLog {
@@ -116,7 +116,6 @@ export interface LeaderboardEntry {
 
 export type QuestType = 'study' | 'workout' | 'hobby' | 'chore' | 'wellness' | 'creative' | 'social' | 'break' | 'other';
 
-// AI-Generated Scheduled Quest
 export interface ScheduledQuest {
   id: string;
   originalTaskId: string;
@@ -128,7 +127,6 @@ export interface ScheduledQuest {
   notes?: string;
 }
 
-// AI-Generated Break Slot
 export interface BreakSlot {
   id: string;
   startTime: string;
@@ -137,9 +135,8 @@ export interface BreakSlot {
   xp?: number;
 }
 
-// Structure for storing daily plans in Firestore
 export interface DailyPlan {
-  id?: string; // Document ID, typically the date string YYYY-MM-DD
+  id?: string; 
   naturalLanguageDailyInput: string | null;
   userContextForAI: string | null;
   generatedQuests: ScheduledQuest[];
@@ -178,4 +175,49 @@ export interface DailySummary {
   badgesEarned: Badge[];
   streakContinued: boolean;
   activityScore?: number;
+}
+
+// Added for PlanContextType
+export interface PlanContextType {
+  currentUser: any | null; // Replace 'any' with actual User type if available
+  isAdminUser: boolean;
+  isLoadingAuth: boolean;
+  currentUserProfile: UserProfile | null;
+  onboardingData: OnboardingData | null;
+  wellnessPlan: WellnessPlan | null;
+  isLoadingPlan: boolean;
+  errorPlan: string | null;
+  generatePlan: (data: OnboardingData) => Promise<void>;
+  clearPlanAndData: (isFullLogout?: boolean, clearOnlyPlanRelatedState?: boolean) => void;
+  isPlanAvailable: boolean;
+  isOnboardedState: boolean;
+  completeOnboarding: (data: OnboardingData) => Promise<void>;
+  moodLogs: MoodLog[];
+  addMoodLog: (mood: string, notes?: string, selfieDataUri?: string) => Promise<string | undefined>;
+  deleteMoodLog: (logId: string) => Promise<void>;
+  groceryList: GroceryList | null;
+  isLoadingGroceryList: boolean;
+  errorGroceryList: string | null;
+  generateGroceryList: (currentPlan: WellnessPlan) => Promise<void>;
+  deleteGroceryItem: (itemId: string) => Promise<void>;
+  userActiveChallenge: UserActiveChallenge | null;
+  isLoadingUserChallenge: boolean;
+  joinCurrentChallenge: () => Promise<void>;
+  logChallengeDay: () => Promise<void>;
+  fetchLeaderboardData: () => Promise<LeaderboardEntry[]>;
+  selectedDateForPlanning: Date;
+  setSelectedDateForPlanning: (date: Date) => void;
+  naturalLanguageDailyInput: string;
+  setNaturalLanguageDailyInput: (input: string) => void;
+  userScheduleContext: string;
+  setUserScheduleContext: (context: string) => void;
+  scheduledQuestsForSelectedDate: ScheduledQuest[];
+  scheduledBreaksForSelectedDate: BreakSlot[];
+  aiDailySummaryMessage: string | null;
+  isLoadingSchedule: boolean;
+  fetchDailyPlan: (date: Date) => Promise<void>;
+  generateQuestScheduleForSelectedDate: () => Promise<void>;
+  completeQuestInSchedule: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
+  deleteScheduledItem: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
+  questCompletionStatusForSelectedDate: Record<string, 'active' | 'completed' | 'missed'>;
 }

@@ -49,7 +49,7 @@ const questTypeIcons: Record<QuestType, React.ElementType> = {
 const DashboardContent: React.FC = () => {
   const router = useRouter();
   const {
-    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan, onboardingData, generatePlan,
+    currentUser, isLoadingAuth, isPlanAvailable, isOnboardedState, wellnessPlan, onboardingData,
     moodLogs, addMoodLog, deleteMoodLog, groceryList, isLoadingGroceryList,
     generateGroceryList, deleteGroceryItem, logoutUser, userActiveChallenge,
     isLoadingUserChallenge, joinCurrentChallenge, logChallengeDay, currentUserProfile,
@@ -59,6 +59,7 @@ const DashboardContent: React.FC = () => {
     scheduledQuestsForSelectedDate, scheduledBreaksForSelectedDate, aiDailySummaryMessage,
     isLoadingSchedule, 
     generateQuestScheduleForSelectedDate, completeQuestInSchedule, deleteScheduledItem,
+    questCompletionStatusForSelectedDate, // Added this
   } = usePlan();
   const { toast } = useToast();
 
@@ -74,7 +75,6 @@ const DashboardContent: React.FC = () => {
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [aiFeedbackToDisplay, setAiFeedbackToDisplay] = useState<string | null>(null);
   const [isRegeneratePlanDialogOpen, setIsRegeneratePlanDialogOpen] = useState(false);
-  const [isLoadingPlanGeneration, setIsLoadingPlanGeneration] = useState(false);
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -223,41 +223,33 @@ const DashboardContent: React.FC = () => {
       setTimeout(() => cardRef.classList.remove('animate-ripple'), 700);
     }
     await completeQuestInSchedule(itemId, itemType);
-    
-    // XP and Level are now updated via currentUserProfile useEffect
-    // Streak is also updated in context and reflected in currentUserProfile
   };
 
 
   const handleViewDailySummary = () => {
-    const planDocRef = getDailyPlanDocRef(selectedDateForPlanning);
-    if (!planDocRef) return;
-
     let completedTodayCount = 0;
     let totalTodayCount = 0;
     let xpGainedToday = 0;
 
     const currentItems = [...scheduledQuestsForSelectedDate, ...scheduledBreaksForSelectedDate];
-    totalTodayCount = scheduledQuestsForSelectedDate.length; // Only count main quests for total
+    totalTodayCount = scheduledQuestsForSelectedDate.length; 
 
     currentItems.forEach(item => {
-        const isQuest = 'questType' in item;
-        const notesOrSuggestion = isQuest ? (item as ScheduledQuestType).notes : (item as BreakSlot).suggestion;
-        if(notesOrSuggestion?.includes("(Completed!)") || notesOrSuggestion?.includes("(Taken!)")) {
-            if(isQuest) completedTodayCount++;
+        if (questCompletionStatusForSelectedDate[item.id] === 'completed') {
+            if ('questType' in item) completedTodayCount++; // Only count main quests for "quests done"
             xpGainedToday += (item as ScheduledQuestType).xp || (item as BreakSlot).xp || 0;
         }
     });
 
 
     let earnedBadges: BadgeType[] = [];
-    if (completedTodayCount >= 2 && !localStorage.getItem('badge_quick_achiever_earned_v2')) {
+    if (completedTodayCount >= 2 && !localStorage.getItem(`badge_quick_achiever_${format(selectedDateForPlanning, 'yyyy-MM-dd')}`)) {
       earnedBadges.push({id: 'b1', name: 'Quick Achiever!', description: 'Completed 2 quests today!', iconName: 'Medal'});
-      localStorage.setItem('badge_quick_achiever_earned_v2', 'true'); 
+      localStorage.setItem(`badge_quick_achiever_${format(selectedDateForPlanning, 'yyyy-MM-dd')}`, 'true'); 
     }
-     if (completedTodayCount >= 1 && (currentUserProfile?.dailyQuestStreak || 0) === 1 && !localStorage.getItem('badge_first_streak_earned')) {
+     if (completedTodayCount >= 1 && (currentUserProfile?.dailyQuestStreak || 0) === 1 && !localStorage.getItem(`badge_first_streak_${format(selectedDateForPlanning, 'yyyy-MM-dd')}`)) {
       earnedBadges.push({id: 'b_streak1', name: 'Streak Starter!', description: 'Completed your first day in a row!', iconName: 'Flame'});
-      localStorage.setItem('badge_first_streak_earned', 'true');
+      localStorage.setItem(`badge_first_streak_${format(selectedDateForPlanning, 'yyyy-MM-dd')}`, 'true');
     }
 
 
@@ -278,15 +270,8 @@ const DashboardContent: React.FC = () => {
     toast({title: `${itemType === 'quest' ? 'Quest' : 'Break'} Removed`, description: "Your schedule has been updated."});
   };
 
-  const handleRegenerateWellnessPlan = async () => {
-    if (!onboardingData) {
-      toast({ variant: "destructive", title: "Missing Info", description: "Onboarding data is needed to generate a plan. Please complete onboarding." });
-      router.push('/onboarding');
-      return;
-    }
-    setIsLoadingPlanGeneration(true);
-    await generatePlan(onboardingData);
-    setIsLoadingPlanGeneration(false);
+  const handleRegenerateWellnessPlan = () => {
+    router.push('/onboarding');
     setIsRegeneratePlanDialogOpen(false);
   };
 
@@ -548,26 +533,9 @@ const DashboardContent: React.FC = () => {
                        const itemId = item.id;
                        
                        let isCompleted = false;
-                       if (quest?.notes?.includes("(Completed!)")) isCompleted = true;
-                       if (breakItem?.suggestion?.includes("(Taken!)")) isCompleted = true;
-                       
-                       // Check against questCompletionStatus from Firestore for more robust completion check
-                        const planDocRef = getDailyPlanDocRef(selectedDateForPlanning);
-                        const [completionStatus, setCompletionStatus] = useState<Record<string, 'active' | 'completed' | 'missed'>>({});
-                        
-                        useEffect(() => {
-                            const fetchStatus = async () => {
-                                if(planDocRef) {
-                                    const docSnap = await getDoc(planDocRef);
-                                    if (docSnap.exists()) {
-                                        setCompletionStatus(docSnap.data().questCompletionStatus || {});
-                                    }
-                                }
-                            };
-                            fetchStatus();
-                        }, [planDocRef, selectedDateForPlanning]);
-
-                        if (completionStatus[itemId] === 'completed') isCompleted = true;
+                       if (questCompletionStatusForSelectedDate && questCompletionStatusForSelectedDate[itemId] === 'completed') {
+                           isCompleted = true;
+                       }
 
 
                        return (
@@ -659,14 +627,13 @@ const DashboardContent: React.FC = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Regenerate Wellness Plan?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will create a new wellness plan based on your saved preferences. Your current plan details will be overwritten.
+                        This will take you to the preferences page to update your inputs for a new wellness plan. Your current plan details will be overwritten upon new plan generation.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel className="neumorphic-button">Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleRegenerateWellnessPlan} className="neumorphic-button-primary" disabled={isLoadingPlanGeneration}>
-                        {isLoadingPlanGeneration && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Yes, Regenerate
+                      <AlertDialogAction onClick={handleRegenerateWellnessPlan} className="neumorphic-button-primary">
+                        Yes, Update Preferences
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -1040,6 +1007,3 @@ export default function DashboardPage() {
   }
   return <DashboardContent />;
 }
-
-
-    

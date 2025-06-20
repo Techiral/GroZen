@@ -75,6 +75,7 @@ interface PlanContextType {
   generateQuestScheduleForSelectedDate: () => Promise<void>;
   completeQuestInSchedule: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
   deleteScheduledItem: (itemId: string, itemType: 'quest' | 'break') => Promise<void>;
+  questCompletionStatusForSelectedDate: Record<string, 'active' | 'completed' | 'missed'>;
 }
 
 const defaultOnboardingData: OnboardingData | null = null;
@@ -105,6 +106,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [_scheduledBreaksForSelectedDate, _setScheduledBreaksForSelectedDate] = useState<BreakSlot[]>([]);
   const [_aiDailySummaryMessage, _setAiDailySummaryMessage] = useState<string | null>(null);
   const [_isLoadingSchedule, _setIsLoadingSchedule] = useState(false);
+  const [_questCompletionStatusForSelectedDate, _setQuestCompletionStatusForSelectedDate] = useState<Record<string, 'active' | 'completed' | 'missed'>>({});
 
 
   const { toast } = useToast();
@@ -127,6 +129,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setScheduledBreaksForSelectedDate([]);
       _setAiDailySummaryMessage(null);
       _setIsLoadingSchedule(false);
+      _setQuestCompletionStatusForSelectedDate({});
       return;
     }
 
@@ -150,6 +153,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     _setScheduledBreaksForSelectedDate([]);
     _setAiDailySummaryMessage(null);
     _setIsLoadingSchedule(false);
+    _setQuestCompletionStatusForSelectedDate({});
 
 
     if (isFullLogout) {
@@ -169,6 +173,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const planDocRef = getDailyPlanDocRef(date);
     if (!planDocRef) {
       _setIsLoadingSchedule(false);
+      _setNaturalLanguageDailyInput('');
+      _setUserScheduleContext('');
+      _setScheduledQuestsForSelectedDate([]);
+      _setScheduledBreaksForSelectedDate([]);
+      _setAiDailySummaryMessage(null);
+      _setQuestCompletionStatusForSelectedDate({});
       return;
     }
 
@@ -181,16 +191,24 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         _setScheduledQuestsForSelectedDate(data.generatedQuests || []);
         _setScheduledBreaksForSelectedDate(data.generatedBreaks || []);
         _setAiDailySummaryMessage(data.aiDailySummaryMessage || null);
+        _setQuestCompletionStatusForSelectedDate(data.questCompletionStatus || {});
       } else {
         _setNaturalLanguageDailyInput('');
          _setUserScheduleContext('');
         _setScheduledQuestsForSelectedDate([]);
         _setScheduledBreaksForSelectedDate([]);
         _setAiDailySummaryMessage(null);
+        _setQuestCompletionStatusForSelectedDate({});
       }
     } catch (error: any) {
       console.error("Error fetching daily plan:", error);
       toast({ variant: "destructive", title: "Load Error", description: `Could not load daily plan: ${error.message}` });
+      _setNaturalLanguageDailyInput('');
+      _setUserScheduleContext('');
+      _setScheduledQuestsForSelectedDate([]);
+      _setScheduledBreaksForSelectedDate([]);
+      _setAiDailySummaryMessage(null);
+      _setQuestCompletionStatusForSelectedDate({});
     } finally {
       _setIsLoadingSchedule(false);
     }
@@ -343,6 +361,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             _setScheduledQuestsForSelectedDate([]);
             _setScheduledBreaksForSelectedDate([]);
             _setAiDailySummaryMessage(null);
+            _setQuestCompletionStatusForSelectedDate({});
           }
         } catch (error) {
           console.error("Error in onAuthStateChanged fetching/creating user data from Firestore:", error);
@@ -828,6 +847,16 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setScheduledQuestsForSelectedDate(result.scheduledQuests || []);
       _setScheduledBreaksForSelectedDate(result.breaks || []);
       _setAiDailySummaryMessage(result.dailySummaryMessage || null);
+      
+      const initialQuestStatus = (result.scheduledQuests || []).reduce((acc, quest) => {
+          acc[quest.id] = 'active';
+          return acc;
+      }, {} as Record<string, 'active' | 'completed' | 'missed'>);
+       (result.breaks || []).forEach(br => { initialQuestStatus[br.id] = 'active'; });
+
+
+      _setQuestCompletionStatusForSelectedDate(initialQuestStatus);
+
 
       const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
       if (planDocRef) {
@@ -837,10 +866,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             generatedQuests: result.scheduledQuests || [],
             generatedBreaks: result.breaks || [],
             aiDailySummaryMessage: result.dailySummaryMessage || null,
-            questCompletionStatus: (result.scheduledQuests || []).reduce((acc, quest) => {
-                acc[quest.id] = 'active';
-                return acc;
-            }, {} as Record<string, 'active' | 'completed' | 'missed'>),
+            questCompletionStatus: initialQuestStatus,
             lastGeneratedAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         };
@@ -882,8 +908,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
     }
     
-    // Check if this quest was already completed for this day
-    if (dailyPlanData.questCompletionStatus?.[itemId] === 'completed') {
+    if (_questCompletionStatusForSelectedDate[itemId] === 'completed') {
       toast({title: "Already Done!", description: "You've already crushed this one today!"});
       return;
     }
@@ -903,18 +928,11 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
     // Update local state immediately for responsiveness
-    if (isQuest) {
-        _setScheduledQuestsForSelectedDate(prevQuests =>
-            prevQuests.map(q => q.id === itemId ? {...q, notes: (q.notes || "") + " (Completed!)" } : q)
-        );
-    } else {
-        _setScheduledBreaksForSelectedDate(prevBreaks =>
-            prevBreaks.map(b => b.id === itemId ? {...b, suggestion: (b.suggestion || "") + " (Taken!)" } : b)
-        );
-    }
+    const updatedStatus = { ..._questCompletionStatusForSelectedDate, [itemId]: 'completed' as const };
+    _setQuestCompletionStatusForSelectedDate(updatedStatus);
+
 
     // Update Firestore for quest completion status within the daily plan
-    const updatedStatus = { ...(dailyPlanData.questCompletionStatus || {}), [itemId]: 'completed' as const };
     try {
         await updateDoc(planDocRef, {
             questCompletionStatus: updatedStatus,
@@ -923,8 +941,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
         toast({variant: "destructive", title: "Sync Error", description: "Couldn't save completion to daily plan."});
         // Revert local state if Firestore update fails
-        if (isQuest) _setScheduledQuestsForSelectedDate(dailyPlanData.generatedQuests || []);
-        else _setScheduledBreaksForSelectedDate(dailyPlanData.generatedBreaks || []);
+        _setQuestCompletionStatusForSelectedDate(_questCompletionStatusForSelectedDate); // Revert to previous state
         return;
     }
 
@@ -932,25 +949,24 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let userProfileUpdates: Partial<UserProfile> = {
         xp: (currentUserProfile.xp || 0) + xpGained,
     };
+    
+    const previouslyCompletedToday = Object.values(dailyPlanData.questCompletionStatus || {}).some(status => status === 'completed');
 
-    // Check if this is the first completion for THIS selectedDateForPlanning
-    const allQuestsCompletedToday = Object.values(updatedStatus).every(status => status === 'completed');
-    const isFirstCompletionForThisDate = Object.values(dailyPlanData.questCompletionStatus || {}).filter(s => s === 'completed').length === 0;
-
-
-    if (isFirstCompletionForThisDate) {
+    if (!previouslyCompletedToday) { // This is the first completion for *any* quest on this selected date
         const lastCompletionDateStr = currentUserProfile.lastQuestCompletionDate;
         let newStreak = currentUserProfile.dailyQuestStreak || 0;
 
         if (lastCompletionDateStr && isValid(parse(lastCompletionDateStr, 'yyyy-MM-dd', new Date()))) {
             const lastCompletionDate = parse(lastCompletionDateStr, 'yyyy-MM-dd', new Date());
             const expectedPreviousDate = subDays(_selectedDateForPlanning, 1);
-            if (isSameDay(lastCompletionDate, expectedPreviousDate)) {
+
+            if (isSameDay(lastCompletionDate, _selectedDateForPlanning)) {
+                // Already counted streak for today, do nothing
+            } else if (isSameDay(lastCompletionDate, expectedPreviousDate)) {
                 newStreak++;
-            } else if (!isSameDay(lastCompletionDate, _selectedDateForPlanning)) {
+            } else {
                 newStreak = 1; // Reset if not consecutive and not the same day
             }
-            // If it's the same day, streak doesn't change based on subsequent completions
         } else {
             newStreak = 1; // First ever completion or invalid last date
         }
@@ -962,13 +978,13 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Level up logic
     const currentLevel = userProfileUpdates.level || currentUserProfile.level || 1;
     const currentXP = userProfileUpdates.xp || 0;
-    const xpForNextLevel = currentLevel * 250; // Example: Level 1 needs 250, Level 2 needs 500
+    const xpForNextLevel = currentLevel * 250; 
     if (currentXP >= xpForNextLevel) {
         userProfileUpdates.level = currentLevel + 1;
+        userProfileUpdates.xp = currentXP % xpForNextLevel; // Carry over excess XP
         toast({ title: "LEVEL UP! 🎉", description: `You've reached Level ${userProfileUpdates.level}! Keep crushing it!`, duration: 4000 });
     }
     
-    // Update user profile in Firestore and local state
     if (Object.keys(userProfileUpdates).length > 0) {
         try {
             await updateDoc(doc(db, "users", currentUser.uid), userProfileUpdates);
@@ -976,7 +992,6 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
             console.error("Error updating user profile for XP/streak:", error);
             toast({variant: "destructive", title: "Profile Sync Error", description: "Could not update your XP/streak."});
-            // Consider reverting XP/level if critical, but streak might be harder to revert cleanly
         }
     }
 
@@ -1002,26 +1017,25 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       _setScheduledBreaksForSelectedDate(updatedBreaks);
     }
 
+    const updatedCompletionStatus = { ..._questCompletionStatusForSelectedDate };
+    delete updatedCompletionStatus[itemId];
+    _setQuestCompletionStatusForSelectedDate(updatedCompletionStatus);
+
+
     const planDocRef = getDailyPlanDocRef(_selectedDateForPlanning);
     if (planDocRef) {
       try {
-        const currentPlanSnap = await getDoc(planDocRef);
-        if (currentPlanSnap.exists()) {
-            const currentPlanData = currentPlanSnap.data() as DailyPlan;
-            const updatedStatus = { ...currentPlanData.questCompletionStatus };
-            delete updatedStatus[itemId];
-
-            await updateDoc(planDocRef, {
-              generatedQuests: updatedQuests,
-              generatedBreaks: updatedBreaks,
-              questCompletionStatus: updatedStatus,
-              updatedAt: serverTimestamp(),
-            });
-        }
+        await updateDoc(planDocRef, {
+          generatedQuests: updatedQuests,
+          generatedBreaks: updatedBreaks,
+          questCompletionStatus: updatedCompletionStatus,
+          updatedAt: serverTimestamp(),
+        });
       } catch (error) {
         console.error("Error deleting scheduled item from Firestore:", error);
         if (itemType === 'quest') _setScheduledQuestsForSelectedDate(_scheduledQuestsForSelectedDate);
         else _setScheduledBreaksForSelectedDate(_scheduledBreaksForSelectedDate);
+        _setQuestCompletionStatusForSelectedDate(_questCompletionStatusForSelectedDate); // Revert
         toast({ variant: "destructive", title: "Delete Error", description: "Could not remove item from schedule." });
       }
     }
@@ -1054,6 +1068,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       generateQuestScheduleForSelectedDate,
       completeQuestInSchedule,
       deleteScheduledItem,
+      questCompletionStatusForSelectedDate: _questCompletionStatusForSelectedDate,
   };
 
   return (
@@ -1068,6 +1083,3 @@ export const usePlan = (): PlanContextType => {
   if (context === undefined) throw new Error('usePlan must be used within a PlanProvider');
   return context;
 };
-
-
-    
