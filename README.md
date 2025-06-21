@@ -148,7 +148,7 @@ As a student, I often have trouble focusing because my attention span is short. 
 
 * **Presentation (PPT)**: [Project PPT](docs/grozen-presentation.pptx)
 * **One-Pager Summary (Markdown)**: [One Page Summary](docs/one-pager.md)
-* **Code Snippets (Markdown)**: [Code Snippets Summ](docs/code-snippets.md)
+* **Code Snippets (Markdown)**: [Code Snippets Summary](docs/code-snippets.md)
 
 <a name="future-plans"></a>
 
