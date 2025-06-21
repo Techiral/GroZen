@@ -24,6 +24,24 @@ It’s free, vibrant, and built for teens who want wellness to feel like a game!
 </div>
 
 
+---
+
+## 📚 Table of Contents
+
+- [Why GroZen? 🌟](#why-grozen-🌟)
+- [What It Does 🥗😊🏆](#what-it-does-🥗😊🏆)
+- [Why It’s Perfect for StartWell 🌍](#why-it’s-perfect-for-startwell-🌍)
+- [Tech Stack 🛠️](#tech-stack-🛠️)
+- [Visuals (Screenshots, Demo Video, Interactive Demo) 📸🎥](#visuals-📸🎥🕹️)
+- [Getting Started 🏃](#getting-started-🏃)
+- [The Team 👥](#the-team-👥)
+- [Documentation 🗎](#documentation-🗎)
+- [Future Plans 🔮](#future-plans-🔮)
+- [Ethics & Privacy 🔒](#ethics--privacy-🔒)
+- [License 📜](#license-📜)
+- [Contact 📩](#contact-📩)
+
+---
 
 ## Why GroZen? 🌟
 As a student, I often have trouble focusing because my attention span is short. I wanted one place to track my mood, thoughts, plans, and productivity instead of using different apps for to-do lists, well-being, and budgeting. This need for simplicity and organization led to the creation of Grozen.
@@ -49,13 +67,22 @@ As a student, I often have trouble focusing because my attention span is short. 
 - **Backend**: Firebase (Authentication, Firestore, Cloud Functions).
 - **Hosting**: Firebase Hosting or Vercel.
 
-## Screenshots 📸
+## Visuals 📸🎥🕹️
+### Screenshots 📸
 | Feature | Screenshot |
 |---------|------------|
 | Landing Page | ![Landing Page](public/landing.png) |
 | Login | ![Login](public/login.png) |
 | Dashboard | ![Dashboard](public/dashboard.png) |
 | Leaderboard | ![Leaderboard](public/leaderboard.png) |
+
+### Demo Video 🎥
+[Watch our GroZen Demo!](https://youtube.com/your-video)  
+*Public, marked “Not for Kids” for COPPA compliance.*
+
+### Interactive Demo 🕹️
+[Watch our GroZen Demo!](https://app.supademo.com/demo/cmc4pcj1d0epyllpn4izbui9n)  
+*Built with Supademo, interact and use the app in realtime.*
 
 ## Getting Started 🏃
 1. **Clone the Repo**:
@@ -81,15 +108,16 @@ As a student, I often have trouble focusing because my attention span is short. 
    ```
    Check Genkit UI at `http://localhost:4000`.
 
-## Demo Video 🎥
-[Watch our GroZen Demo!](https://youtube.com/your-video)  
-*Public, marked “Not for Kids” for COPPA compliance.*
-
 ## The Team 👥
 - **Lakshya Gupta**: Student Developer (Full-Stack, AI Integration)
 - **The Techiral Team**: Conceptual Support
 
-## Future Vibes 🔮
+## Documentation 🗎
+- **Presentation (PPT)**: [Project PPT](docs/grozen-presentation.pptx)
+- **One-Pager Summary (Markdown)**: [One Page Summary](docs/one-pager.md)
+- **Code Snippets (Markdown)**: [Code Snippets Summ](docs/code-snippets.md)
+
+## Future Plans 🔮
 - Expand AI features for deeper insights and personalized suggestions
 - Gather user feedback and iterate on design and features
 - Launching the mobile app so you can use GroZen anywhere.
