@@ -93,7 +93,7 @@ As a student, I often have trouble focusing because my attention span is short. 
 
 ### Demo Video 🎥
 
-[Watch our GroZen Demo!](https://youtube.com/your-video)
+[Watch our GroZen Demo!](https://youtu.be/3UkTfjzaGjs)
 *Public, marked “Not for Kids” for COPPA compliance.*
 
 ### Interactive Demo 🕹️
